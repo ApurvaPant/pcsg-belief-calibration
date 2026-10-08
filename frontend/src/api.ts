@@ -126,6 +126,25 @@ export async function createSession(title?: string): Promise<Session> {
   );
 }
 
+export interface DeleteSessionResult {
+  deleted: boolean;
+  purged_memory: boolean;
+  removed_nodes: number;
+  removed_attributes: number;
+}
+
+export async function deleteSession(
+  sessionId: string,
+  purgeMemory: boolean,
+): Promise<DeleteSessionResult> {
+  return json<DeleteSessionResult>(
+    await fetch(`${BASE}/sessions/${sessionId}?purge_memory=${purgeMemory}`, {
+      method: "DELETE",
+      headers: headers(),
+    }),
+  );
+}
+
 export async function fetchSessionMessages(sessionId: string): Promise<StoredMessage[]> {
   return json<StoredMessage[]>(
     await fetch(`${BASE}/sessions/${sessionId}/messages`, { headers: headers() }),

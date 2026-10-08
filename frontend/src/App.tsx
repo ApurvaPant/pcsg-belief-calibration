@@ -5,6 +5,7 @@ import NodeDetailView from "./components/NodeDetail";
 import Sidebar from "./components/Sidebar";
 import Login from "./components/Login";
 import {
+  deleteSession as apiDeleteSession,
   describeApiError,
   fetchNode,
   fetchSessionMessages,
@@ -168,6 +169,27 @@ function Workspace({ user, theme, onToggleTheme, onLogout }: WorkspaceProps) {
     [activeSession, sessions, refreshGraph],
   );
 
+  const handleDeleteSession = useCallback(
+    async (id: string, purgeMemory: boolean) => {
+      setError(null);
+      try {
+        await apiDeleteSession(id, purgeMemory);
+        const sess = await fetchSessions();
+        setSessions(sess);
+        if (activeSession === id) {
+          setActiveSession(sess[0]?.id ?? null);
+          setMessages([]);
+          setSelectedId(null);
+          setDetail(null);
+        }
+        if (purgeMemory) await refreshGraph();
+      } catch (e) {
+        setError(describeApiError(e));
+      }
+    },
+    [activeSession, refreshGraph],
+  );
+
   const handleSelectNode = useCallback(async (nodeId: string) => {
     setSelectedId(nodeId);
     setDetailLoading(true);
@@ -196,6 +218,7 @@ function Workspace({ user, theme, onToggleTheme, onLogout }: WorkspaceProps) {
         activeId={activeSession}
         onSelect={(id) => { setActiveSession(id); setSelectedId(null); setDetail(null); }}
         onNewChat={handleNewChat}
+        onDeleteSession={handleDeleteSession}
         busy={busy}
         user={user}
         onLogout={onLogout}

@@ -127,6 +127,21 @@ def session_messages(session_id: str, user: dict = Depends(auth.current_user)) -
     ]
 
 
+@app.delete("/sessions/{session_id}")
+def delete_session(
+    session_id: str,
+    purge_memory: bool = False,
+    user: dict = Depends(auth.current_user),
+) -> dict:
+    """Delete a chat. With purge_memory=true, also remove the graph nodes/
+    attributes that were learned ONLY from this chat (nodes also grounded by
+    other chats are kept). Without it, the learned state is preserved."""
+    from . import update
+    with get_conn() as conn:
+        _owned_session(conn, session_id, user["id"])
+        return update.delete_session(conn, user["id"], session_id, purge_memory)
+
+
 @app.post("/sessions/{session_id}/close")
 def close_session(session_id: str, user: dict = Depends(auth.current_user)) -> dict:
     """Session-end consolidation hook. Stubbed — future cross-session merging."""

@@ -262,6 +262,78 @@ def _find_duplicate(conn, user_id, dimension, key, value):
     return best, best_sim
 
 
+def delete_session(conn, user_id: str, session_id: str, purge_memory: bool = False) -> dict[str, Any]:
+    """Delete a chat. Ownership is verified by the caller.
+
+    purge_memory=False : remove the chat (messages, logs, slots) but KEEP every
+      learned node/attribute. Their evidence rows are detached from the session
+      (session_id -> NULL) so the quotes survive as grounding.
+    purge_memory=True  : also remove this chat's contribution to the graph —
+      delete the evidence it produced, then delete any node/attribute that is
+      left ungrounded (i.e. was known ONLY from this chat). Nodes also grounded
+      by other chats are kept, just without this chat's evidence.
+    """
+    msg_ids = [r["id"] for r in conn.execute(
+        "SELECT id FROM messages WHERE session_id = ?", (session_id,))]
+    removed_nodes = removed_attrs = 0
+
+    if purge_memory:
+        node_ev = [r["node_id"] for r in conn.execute(
+            "SELECT DISTINCT node_id FROM evidence WHERE session_id = ? AND node_id IS NOT NULL",
+            (session_id,))]
+        attr_ev = [r["attribute_id"] for r in conn.execute(
+            "SELECT DISTINCT attribute_id FROM evidence WHERE session_id = ? AND attribute_id IS NOT NULL",
+            (session_id,))]
+
+        def _grounded_elsewhere(col: str, _id: str) -> bool:
+            return conn.execute(
+                f"SELECT COUNT(*) c FROM evidence WHERE {col} = ? "
+                "AND (session_id IS NULL OR session_id != ?)", (_id, session_id)).fetchone()["c"] > 0
+
+        orphan_nodes = [n for n in node_ev if not _grounded_elsewhere("node_id", n)]
+
+        # This chat's evidence goes first (detaches it from kept nodes too).
+        conn.execute("DELETE FROM evidence WHERE session_id = ?", (session_id,))
+
+        for nid in orphan_nodes:
+            conn.execute("UPDATE nodes SET previous_node_id = NULL WHERE previous_node_id = ?", (nid,))
+            conn.execute("DELETE FROM edges WHERE source_node_id = ? OR target_node_id = ?", (nid, nid))
+            aids = [r["id"] for r in conn.execute("SELECT id FROM attributes WHERE node_id = ?", (nid,))]
+            for aid in aids:
+                conn.execute("UPDATE attributes SET previous_attribute_id = NULL WHERE previous_attribute_id = ?", (aid,))
+                conn.execute("DELETE FROM evidence WHERE attribute_id = ?", (aid,))
+            conn.execute("UPDATE pending_slots SET node_id = NULL WHERE node_id = ?", (nid,))
+            conn.execute("DELETE FROM evidence WHERE node_id = ?", (nid,))
+            conn.execute("DELETE FROM attributes WHERE node_id = ?", (nid,))
+            conn.execute("DELETE FROM nodes WHERE id = ?", (nid,))
+            removed_nodes += 1
+
+        # Orphaned attributes on surviving nodes (the node lives on other chats).
+        for aid in attr_ev:
+            if not conn.execute("SELECT 1 FROM attributes WHERE id = ?", (aid,)).fetchone():
+                continue  # already removed with its node
+            if _grounded_elsewhere("attribute_id", aid):
+                continue
+            conn.execute("UPDATE attributes SET previous_attribute_id = NULL WHERE previous_attribute_id = ?", (aid,))
+            conn.execute("DELETE FROM evidence WHERE attribute_id = ?", (aid,))
+            conn.execute("DELETE FROM attributes WHERE id = ?", (aid,))
+            removed_attrs += 1
+    else:
+        # Keep the learned state; just detach its evidence from the gone session.
+        conn.execute("UPDATE evidence SET session_id = NULL WHERE session_id = ?", (session_id,))
+
+    conn.execute("DELETE FROM pending_slots WHERE session_id = ?", (session_id,))
+    conn.execute("DELETE FROM gate_log WHERE session_id = ?", (session_id,))
+    conn.execute("DELETE FROM events WHERE session_id = ?", (session_id,))
+    if msg_ids:
+        qm = ",".join("?" * len(msg_ids))
+        conn.execute(f"DELETE FROM extraction_log WHERE message_id IN ({qm})", msg_ids)
+    conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
+    conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+    return {"deleted": True, "session_id": session_id, "purged_memory": purge_memory,
+            "removed_nodes": removed_nodes, "removed_attributes": removed_attrs}
+
+
 def _cross_dimension_match(conn, user_id, dimension, value):
     """fix step 4: an active node with the SAME normalised value under a
     DIFFERENT dimension. Returns the node, unless the two dimensions are allowed

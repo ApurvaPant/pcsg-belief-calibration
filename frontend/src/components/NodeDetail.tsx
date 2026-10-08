@@ -32,7 +32,6 @@ export default function NodeDetail({ detail, loading, onClose }: Props) {
   if (!detail && !loading) return null;
   const color = detail ? colorFor(detail.dimension) : "var(--muted)";
   const conf = detail ? Math.round(detail.confidence_calibrated * 100) : 0;
-  const discSize = detail ? 12 + Math.round(20 * detail.confidence_calibrated) : 16;
 
   return (
     <aside className="detail" style={{ ["--dim" as string]: color } as CSSProperties}>
@@ -60,12 +59,13 @@ export default function NodeDetail({ detail, loading, onClose }: Props) {
           </div>
 
           <div className="d-conf" title={`raw ${Math.round(detail.confidence_raw * 100)}%`}>
-            <span
-              className="d-conf-disc"
-              style={{ width: discSize, height: discSize, background: color, opacity: 0.35 + 0.65 * detail.confidence_calibrated }}
-            />
-            <span className="d-conf-num">{conf}%</span>
-            <span className="d-conf-cap">confidence</span>
+            <div className="d-conf-head">
+              <span className="d-conf-num">{conf}%</span>
+              <span className="d-conf-cap">confidence</span>
+            </div>
+            <div className="d-conf-bar">
+              <div className="d-conf-fill" style={{ width: `${conf}%` }} />
+            </div>
           </div>
 
           {detail.attributes.filter((a) => a.status === "active").length > 0 && (
