@@ -399,6 +399,20 @@ button { font-family: inherit; }
 .d-key { color: var(--text); text-transform: capitalize; font-weight: 600; }
 .d-since { color: var(--faint); }
 
+.d-restore {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 16px; padding: 10px 12px; border-radius: var(--r);
+  border: 1px solid color-mix(in srgb, var(--dim) 30%, transparent);
+  background: color-mix(in srgb, var(--dim) 10%, transparent);
+  font-size: 12.5px; color: var(--muted);
+}
+.d-restore button {
+  flex: none; padding: 6px 12px; border: 1px solid var(--line-strong); border-radius: var(--r-sm);
+  background: var(--bg); color: var(--text); font-size: 12.5px; font-weight: 700; cursor: pointer;
+  transition: background 0.12s;
+}
+.d-restore button:hover { background: var(--raise); }
+
 .d-conf {
   display: flex; flex-direction: column; gap: 9px; margin: 24px 0 4px;
   padding-bottom: 24px; border-bottom: 1px solid var(--line);

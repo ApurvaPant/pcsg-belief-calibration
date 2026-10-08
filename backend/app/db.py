@@ -130,11 +130,28 @@ CREATE TABLE IF NOT EXISTS edges (
     id              TEXT PRIMARY KEY,
     user_id         TEXT NOT NULL REFERENCES users(id),
     source_node_id  TEXT NOT NULL REFERENCES nodes(id),
-    relation        TEXT NOT NULL,   -- part_of | requires | blocks | related_to | works_on | involves
+    relation        TEXT NOT NULL,   -- part_of | requires | blocks | related_to | works_on | involves | gets_along_with
     target_node_id  TEXT NOT NULL REFERENCES nodes(id),
+    polarity        TEXT DEFAULT 'positive',  -- positive | negative (a negated relation)
     quote           TEXT,            -- the message span that justified the edge
     created_at      TEXT NOT NULL,
     UNIQUE (source_node_id, relation, target_node_id)
+);
+
+-- Destructive operations (END / supersede) blocked by the guard, awaiting an
+-- explicit user confirmation on a later turn (never applied silently).
+CREATE TABLE IF NOT EXISTS pending_confirmation (
+    id           TEXT PRIMARY KEY,
+    user_id      TEXT NOT NULL REFERENCES users(id),
+    session_id   TEXT REFERENCES sessions(id),
+    message_id   TEXT,
+    kind         TEXT NOT NULL,     -- end | supersede
+    node_id      TEXT,              -- the node the op would have closed
+    dimension    TEXT, key TEXT, value TEXT,
+    quote        TEXT,
+    reason_code  TEXT,
+    status       TEXT NOT NULL,     -- open | confirmed | dismissed
+    created_at   TEXT NOT NULL
 );
 
 -- Every extraction attempt, for future distillation into a small extractor.
@@ -248,6 +265,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
     edge_cols = {r["name"] for r in conn.execute("PRAGMA table_info(edges)")}
     if edge_cols and "quote" not in edge_cols:
         conn.execute("ALTER TABLE edges ADD COLUMN quote TEXT")
+    if edge_cols and "polarity" not in edge_cols:
+        conn.execute("ALTER TABLE edges ADD COLUMN polarity TEXT DEFAULT 'positive'")
 
     ev_cols2 = {r["name"] for r in conn.execute("PRAGMA table_info(events)")}
     if ev_cols2 and "similarity" not in ev_cols2:

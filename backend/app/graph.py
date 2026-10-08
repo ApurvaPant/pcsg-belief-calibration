@@ -55,14 +55,14 @@ def build_graph(user_id: str) -> dict[str, Any]:
     # PART 8: typed inter-node relations.
     with get_conn() as conn:
         rel_rows = conn.execute(
-            "SELECT id, source_node_id, relation, target_node_id FROM edges WHERE user_id = ?",
-            (user_id,),
+            "SELECT * FROM edges WHERE user_id = ?", (user_id,),
         ).fetchall()
     for e in rel_rows:
         if e["source_node_id"] in ids and e["target_node_id"] in ids:
+            pol = e["polarity"] if "polarity" in e.keys() else "positive"
             edges.append({"data": {
                 "id": e["id"], "source": e["source_node_id"], "target": e["target_node_id"],
-                "relation": e["relation"], "kind": "relation",
+                "relation": e["relation"], "kind": "relation", "polarity": pol or "positive",
             }})
 
     return {"user_id": user_id, "nodes": nodes, "edges": edges}

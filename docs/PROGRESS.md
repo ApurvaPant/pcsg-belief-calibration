@@ -5,6 +5,66 @@ nothing here is aspirational.
 
 ---
 
+## 2026-10-08 — Critical fix: a negation can no longer END a correct node
+
+### The bug
+"my mom and my dog don't get along" then "they don't" ENDed `relationship/mom`.
+Plain negation was being treated as cessation, and a rewritten fragment could
+trigger a destructive op.
+
+### Fixes (7 items)
+1. **END vocabulary** (`salience.CESSATION_RE`): END requires a real cessation
+   verb (stopped/quit/left/broke up/… or a negation explicitly scoped by
+   "anymore"). Plain not/don't/doesn't/never do NOT trigger END.
+2. **Destructive-operation guard** (`update._destructive_ok`, in code): END /
+   supersede apply only if not a Q-A-rewritten fragment AND confidence ≥
+   `destructive_min_conf` (0.80); END additionally requires a cessation verb in
+   the quote AND that the quote names the target. Blocked ops write a
+   `pending_confirmation` row and return `reason_code=destructive_blocked`; the
+   node is untouched. *Deviation:* the spec's "supersede requires an explicit
+   replacement word" was relaxed to not-fragment + confidence, because requiring
+   a marker wrongly blocks ordinary single-slot corrections ("my name is X");
+   negation-driven risk manifests as END, which stays strict.
+3. **Negated relations** (`edges.polarity`, `gets_along_with`): a "don't get
+   along" statement stores a negative edge between the two entities (never an
+   END); a negated preference becomes a dislike. Negative edges render red/dashed.
+4. **Q-A resolution context** (P8): now sees the last 3 turns and returns
+   UNRESOLVED when ambiguous; fragment-derived assertions can add facts but never
+   destroy. Bare non-answers ("they don't", "not really") no longer attach as
+   attributes.
+5. **No fabrication** (P4 wired into the chat prompt): the assistant may only
+   state facts in the state block; missing details → "don't know"/ask. Tests
+   added (empty-graph query asserts nothing, prompt forbids guessing).
+6. **Undo**: `POST /nodes/{id}/restore` and `POST /events/{id}/revert` reactivate
+   an ended/superseded node (logged as a new event, history preserved); a
+   "Restore" button appears in the inspector for non-active nodes. No ended
+   `relationship/mom` exists in the current DB, so the requested restore was a
+   no-op (the live model had not persisted it).
+7. **Metrics + eval**: the harness now reports **END precision** and
+   **destructive-operation error rate** as headline metrics, with an `edges`
+   check and a `forbid_destructive` case flag. Added 4 DEV + 4 TEST negated-fact
+   cases (incl. the full mom/dog 3-turn chat).
+
+### Numbers (mock provider)
+| split | pass | END precision | destructive error rate |
+|-------|------|---------------|------------------------|
+| dev   | **7/7 = 100%** | 100% | 0% (0/4 forbid cases) |
+| test  | **7/7 = 100%** | 100% | 0% (0/4 forbid cases) |
+
+84 backend tests pass (incl. new `test_destructive_guard.py`). tsc clean. The
+guard's protection against the *real* model is proven by unit tests, since the
+mock never produced the false END (the live model did). Real-provider spot-check:
+"they don't" after the mom/dog turn destroyed nothing and the reply asserted no
+answer.
+
+### Caveat
+Real-provider before/after on the full 45-case set still needs the eval file +
+`budget_usd` (unchanged blocker). Entity-relation *creation* from a sentence
+(item 3) is model-dependent; the mock does it deterministically, the live model
+did not on one spot-check.
+
+---
+
 ## 2026-10-08 — Fix: question–answer resolution for fragment replies
 
 ### What was broken

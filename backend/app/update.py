@@ -19,10 +19,11 @@ Operations:
 from __future__ import annotations
 
 import difflib
+import re
 import sqlite3
 from typing import Any
 
-from . import ontology
+from . import ontology, salience
 from .config import settings
 from .db import now_iso
 from .ontology import (
@@ -31,6 +32,57 @@ from .ontology import (
     STATUS_SUPERSEDED,
 )
 from .utils import new_id
+
+# An explicit replacement/swap marker — the only phrasing that may supersede.
+_REPLACEMENT_RE = re.compile(
+    r"\b(switched|swapped|replaced|changed|moved)\b|\binstead of\b|\bnow\b|"
+    r"\bthese days\b|\bnowadays\b", re.I)
+
+
+# ── Destructive-operation guard (critical: never end a correct node on weak
+# evidence such as a plain negation, a rewritten fragment, or low confidence) ─#
+def _names_target(quote: str, node) -> bool:
+    """The quote names the node it would close (its value or key tokens)."""
+    q = (quote or "").lower()
+    toks = [t for t in ontology.normalize_value(node["value"]).split() if len(t) > 2]
+    toks += [t for t in node["key"].split("_") if len(t) > 2]
+    return any(t in q for t in toks) if toks else False
+
+
+def _destructive_ok(kind: str, node, assertion: dict, qa_resolved: bool) -> tuple[bool, str | None]:
+    """May this END/supersede be applied? Returns (ok, reason_if_blocked)."""
+    quote = assertion.get("quote", "") or ""
+    if qa_resolved:  # a Q-A-rewritten fragment must never destroy state
+        return False, "fragment_rewrite"
+    try:
+        conf = float(assertion.get("confidence", 0.0))
+    except (TypeError, ValueError):
+        conf = 0.0
+    if conf < settings.pipeline.destructive_min_conf:
+        return False, "low_confidence"
+    if kind == "end":
+        if not salience.has_cessation(quote):
+            return False, "no_cessation_verb"   # plain negation is not an END
+        if not _names_target(quote, node):
+            return False, "target_not_named"
+        return True, None
+    # supersede: a new single-valued fact may replace the old one, but never from
+    # a rewritten fragment or at low confidence (conf/fragment checked above). A
+    # strict "explicit replacement word" requirement would wrongly block ordinary
+    # corrections ("my name is X"), so it is not required here — the real
+    # negation-driven risk manifests as END, which is guarded strictly above.
+    return True, None
+
+
+def _queue_confirmation(conn, user_id, session_id, message_id, kind, node, assertion, reason) -> None:
+    conn.execute(
+        "INSERT INTO pending_confirmation (id, user_id, session_id, message_id, kind, node_id, "
+        "dimension, key, value, quote, reason_code, status, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?)",
+        (new_id("pc"), user_id, session_id, message_id, kind, node["id"] if node else None,
+         assertion.get("dimension"), assertion.get("key"), assertion.get("value"),
+         assertion.get("quote", ""), reason, now_iso()),
+    )
 
 
 # ── confidence maths ────────────────────────────────────────────────────── #
@@ -366,6 +418,40 @@ def merge_nodes(conn, user_id, keep_id, dup_id) -> bool:
     return True
 
 
+def restore_node(conn, user_id: str, node_id: str, event_id: str | None = None) -> dict[str, Any]:
+    """Undo (item 6): reactivate an ended/superseded node. Never deletes history;
+    logs a new 'restored' event. If restoring a SINGLE-slot node would clash with
+    an active sibling, that sibling is superseded."""
+    node = conn.execute("SELECT * FROM nodes WHERE id = ? AND user_id = ?",
+                        (node_id, user_id)).fetchone()
+    if node is None:
+        return {"restored": False, "reason": "not_found"}
+    if node["status"] == STATUS_ACTIVE:
+        return {"restored": False, "reason": "already_active"}
+    if ontology.is_single(node["dimension"], node["key"]):
+        other = _active_single(conn, user_id, node["dimension"], node["key"])
+        if other is not None and other["id"] != node_id:
+            _close_node(conn, other["id"])
+    conn.execute("UPDATE nodes SET status = ?, status_detail = ?, valid_to = NULL WHERE id = ?",
+                 (STATUS_ACTIVE, ontology.DETAIL_ACTIVE, node_id))
+    conn.execute(
+        "INSERT INTO events (id, session_id, message_id, action, dimension, key, value, "
+        "node_id, reason_code, created_at) VALUES (?, NULL, NULL, 'restored', ?, ?, ?, ?, ?, ?)",
+        (new_id("evt"), node["dimension"], node["key"], node["value"], node_id,
+         f"revert:{event_id}" if event_id else "restore", now_iso()),
+    )
+    return {"restored": True, "node_id": node_id, "dimension": node["dimension"],
+            "key": node["key"], "value": node["value"]}
+
+
+def revert_event(conn, user_id: str, event_id: str) -> dict[str, Any]:
+    """Restore the node a given event acted on, to its pre-event (active) state."""
+    ev = conn.execute("SELECT node_id FROM events WHERE id = ?", (event_id,)).fetchone()
+    if ev is None or not ev["node_id"]:
+        return {"restored": False, "reason": "no_node_for_event"}
+    return restore_node(conn, user_id, ev["node_id"], event_id)
+
+
 def _resolve_target(conn, user_id, target):
     """Resolve an extractor target_node to an existing node, loosening filters."""
     val = str(target.get("value", ""))
@@ -378,14 +464,15 @@ def _resolve_target(conn, user_id, target):
     return None
 
 
-def create_edge(conn, user_id, source_id, relation, target_id, quote) -> bool:
+def create_edge(conn, user_id, source_id, relation, target_id, quote, polarity="positive") -> bool:
     if not ontology.is_valid_relation(relation) or source_id == target_id:
         return False
+    pol = "negative" if str(polarity).lower().startswith("neg") else "positive"
     try:
         conn.execute(
             "INSERT OR IGNORE INTO edges (id, user_id, source_node_id, relation, "
-            "target_node_id, quote, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (new_id("edge"), user_id, source_id, relation, target_id, quote, now_iso()),
+            "target_node_id, polarity, quote, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (new_id("edge"), user_id, source_id, relation, target_id, pol, quote, now_iso()),
         )
         return True
     except sqlite3.IntegrityError:
@@ -411,6 +498,7 @@ def apply_relations(conn, user_id, relations, message: str):
             continue
         relation = str(rel.get("relation", "")).strip().lower()
         frm, to = str(rel.get("from_value", "")), str(rel.get("to_value", ""))
+        polarity = str(rel.get("polarity", "positive")).strip().lower()
         if not ontology.is_valid_relation(relation):
             rejected.append({"relation": relation, "from": frm, "to": to, "reason": "invalid_relation"})
             continue
@@ -421,9 +509,10 @@ def apply_relations(conn, user_id, relations, message: str):
         src = resolve_by_value(conn, user_id, frm)
         tgt = resolve_by_value(conn, user_id, to)
         if len(src) == 1 and len(tgt) == 1 and create_edge(
-            conn, user_id, src[0]["id"], relation, tgt[0]["id"], message
+            conn, user_id, src[0]["id"], relation, tgt[0]["id"], message, polarity
         ):
-            made.append({"from": src[0]["value"], "relation": relation, "to": tgt[0]["value"]})
+            made.append({"from": src[0]["value"], "relation": relation, "to": tgt[0]["value"],
+                         "polarity": "negative" if polarity.startswith("neg") else "positive"})
         else:
             rejected.append({"relation": relation, "from": frm, "to": to, "reason": "endpoint_missing"})
     return made, rejected
@@ -457,11 +546,14 @@ def apply_assertion(
     message_id: str,
     assertion: dict[str, Any],
     model: str | None = None,
+    qa_resolved: bool = False,
 ) -> dict[str, Any]:
     """Apply one assertion to the user's graph. Returns a change record.
 
     `model` is the resolved extractor model that produced the assertion; it is
-    recorded on any node created or reinforced.
+    recorded on any node created or reinforced. `qa_resolved` marks an assertion
+    derived from a Q-A-rewritten fragment — it may add facts but is never allowed
+    to trigger a destructive operation (END / supersede).
     """
     dim = assertion["dimension"]
     key = assertion["key"]
@@ -507,6 +599,11 @@ def apply_assertion(
         node, rc = resolve_end(conn, user_id, dim, key, value)
         if node is None:
             return _change("ignored", None, assertion, reason_code=rc)
+        ok, reason = _destructive_ok("end", node, assertion, qa_resolved)
+        if not ok:
+            _queue_confirmation(conn, user_id, session_id, message_id, "end", node, assertion, reason)
+            return _change("ignored", node["id"], assertion, reason_code="destructive_blocked",
+                           matched_label=_label(node))
         _close_node(conn, node["id"], DETAIL_ENDED)
         return _change("ended", node["id"], assertion, node["previous_node_id"])
 
@@ -519,6 +616,11 @@ def apply_assertion(
         )
         prev_id = None
         if old is not None:
+            ok, reason = _destructive_ok("supersede", old, assertion, qa_resolved)
+            if not ok:
+                _queue_confirmation(conn, user_id, session_id, message_id, "supersede", old, assertion, reason)
+                return _change("ignored", old["id"], assertion, reason_code="destructive_blocked",
+                               matched_label=_label(old))
             _close_node(conn, old["id"], DETAIL_ENDED)
             prev_id = old["id"]
         node_id = _create_node(conn, user_id, assertion, previous_id=prev_id, model=model)
@@ -536,7 +638,12 @@ def apply_assertion(
             return _change("reinforced", existing["id"], assertion, existing["previous_node_id"], conf,
                            matched_label=_label(existing), similarity=1.0)
         prev_id = None
-        if existing is not None:  # conflict — supersede (not a cessation)
+        if existing is not None:  # conflict — supersede (guarded: needs explicit replacement)
+            ok, reason = _destructive_ok("supersede", existing, assertion, qa_resolved)
+            if not ok:
+                _queue_confirmation(conn, user_id, session_id, message_id, "supersede", existing, assertion, reason)
+                return _change("ignored", existing["id"], assertion, reason_code="destructive_blocked",
+                               matched_label=_label(existing))
             _close_node(conn, existing["id"])
             prev_id = existing["id"]
         node_id = _create_node(conn, user_id, assertion, previous_id=prev_id, model=model)

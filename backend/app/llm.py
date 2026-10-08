@@ -212,17 +212,19 @@ def _mock_complete(messages: list[Message]) -> dict[str, Any]:
     }
 
 
-_QA_Q_RE = re.compile(r"Question:\s*(.+)", re.I)
-_QA_R_RE = re.compile(r"Reply:\s*(.+)", re.I)
+_QA_R_RE = re.compile(r"User's reply:\s*(.+)", re.I)
+_QA_ASST_RE = re.compile(r"^ASSISTANT:\s*(.+)$", re.I | re.M)
 _QA_SUBJECT = re.compile(r"^\s*(i\b|i'|i’|my\b|we\b|we'|i am|i'm)", re.I)
 _QA_LEAD_ADVERB = re.compile(r"^\s*(mostly|usually|really|just|probably|maybe|mainly|kinda|sort of|a bit of)\s+", re.I)
 
 
 def mock_qa_resolve(prompt: str) -> str:
     """Deterministic P8 stand-in: rewrite a fragment reply as one first-person
-    sentence using the question. Public so tests can reference the same rules."""
-    qm, rm = _QA_Q_RE.search(prompt), _QA_R_RE.search(prompt)
-    question = (qm.group(1).strip() if qm else "").lower()
+    sentence using the most recent assistant question. Public so tests can
+    reference the same rules."""
+    rm = _QA_R_RE.search(prompt)
+    asst = _QA_ASST_RE.findall(prompt)
+    question = (asst[-1].strip() if asst else "").lower()
     reply = (rm.group(1).strip() if rm else prompt.strip())
     if not reply:
         return reply
@@ -370,7 +372,12 @@ _MY_REL_OCC_RE = re.compile(
 # "my dog name is herald" -> pet node + name attribute (NOT the user's identity).
 _MY_NOUN_NAME_RE = re.compile(r"\bmy (\w+)(?:'s)? name is ([a-z][a-z'-]*)", re.I)
 _PETS = {"dog", "cat", "pet", "puppy", "kitten", "bird", "fish", "hamster", "rabbit"}
-_HATE_RE = re.compile(r"\bi (?:hate|dislike|can't stand|cannot stand|don't like)\s+(.+)", re.I)
+# "my mom and my dog don't get along" — a NEGATED relation between two entities,
+# never an END (critical bug). Captures both entity nouns.
+_GET_ALONG_RE = re.compile(
+    r"\bmy (\w+) and (?:my )?(\w+)\b[^.?!]*\b(?:don'?t|doesn'?t|do not|didn'?t) get along", re.I)
+_HATE_RE = re.compile(
+    r"\bi (?:really |absolutely )?(?:hate|dislike|can'?t stand|cannot stand|don'?t like|do not like)\s+(.+)", re.I)
 _TARGET_RE = re.compile(r"TARGET message:\s*(.+?)(?:\n|$)", re.S)
 _HINT_RE = re.compile(r"about the '([a-z_]+)' of (?:the node )?(.+?)[\.\n]", re.I)
 _LABEL_RE = re.compile(r"([a-z_]+)/([a-z_]+)=(.+)", re.I)
@@ -388,6 +395,10 @@ def mock_relations(user: str) -> list[dict[str, Any]]:
         to = ontology.normalize_value(m.group(2))
         if frm and to:
             out.append({"from_value": frm, "relation": "part_of", "to_value": to})
+    mg = _GET_ALONG_RE.search(target)
+    if mg:
+        out.append({"from_value": mg.group(1).lower(), "relation": "gets_along_with",
+                    "to_value": mg.group(2).lower(), "polarity": "negative"})
     return out
 _SWAP_RE = re.compile(
     r"\b(?:switched|moved|changed)\s+from\s+(.+?)\s+to\s+(.+)", re.I
@@ -440,6 +451,18 @@ def mock_extract(user: str) -> list[dict[str, Any]]:
                 return [a]
 
     text = target  # extract only from the target message
+
+    # 0a2. "my X and my Y don't get along" -> two entity nodes + a NEGATED edge
+    # (emitted by mock_relations). Never an END.
+    m = _GET_ALONG_RE.search(text)
+    if m:
+        for noun in (m.group(1).lower(), m.group(2).lower()):
+            key, val = ("pet", noun) if noun in _PETS else (noun, noun)
+            a = _assertion("relationship", key, val, operation="ADD", quote=text,
+                           subject=f"relationship/{key}={val}")
+            if a:
+                out.append(a)
+        return out
 
     # 0b. Relationship breakup END ("i broke up with hailey").
     m = _BREAKUP_RE.search(text)
@@ -612,14 +635,18 @@ def mock_extract(user: str) -> list[dict[str, Any]]:
                     out.append(a)
         return out
 
-    # 4g. Dislike ("i hate momos") -> preference/food_dislikes.
+    # 4g. Dislike ("i hate momos", "i don't like mornings") -> a preference
+    # DISLIKE (negated preference). Never an END.
     m = _HATE_RE.search(text)
     if m:
         cls = _classify(m.group(1))
         if cls and cls[1] == "food_likes":
             a = _assertion("preference", "food_dislikes", cls[2], operation="ADD", quote=text)
-            if a:
-                out.append(a)
+        else:
+            a = _assertion("preference", "dislikes", ontology.normalize_value(m.group(1)),
+                           operation="ADD", quote=text)
+        if a:
+            out.append(a)
         return out
 
     # 5. Preference / interest ("i love X").

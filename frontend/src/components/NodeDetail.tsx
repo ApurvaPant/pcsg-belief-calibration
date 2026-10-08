@@ -6,6 +6,7 @@ interface Props {
   detail: NodeDetailType | null;
   loading: boolean;
   onClose: () => void;
+  onRestore?: (nodeId: string) => void;
 }
 
 function day(ts: string | null): string {
@@ -28,7 +29,7 @@ function transition(n: UserNode): string {
   return "first learned";
 }
 
-export default function NodeDetail({ detail, loading, onClose }: Props) {
+export default function NodeDetail({ detail, loading, onClose, onRestore }: Props) {
   if (!detail && !loading) return null;
   const color = detail ? colorFor(detail.dimension) : "var(--muted)";
   const conf = detail ? Math.round(detail.confidence_calibrated * 100) : 0;
@@ -57,6 +58,13 @@ export default function NodeDetail({ detail, loading, onClose }: Props) {
                 : `${day(detail.valid_from)} – ${day(detail.valid_to)}`}
             </span>
           </div>
+
+          {detail.status !== "active" && onRestore && (
+            <div className="d-restore">
+              <span>This was marked {statusWord(detail)}.</span>
+              <button onClick={() => onRestore(detail.id)}>↩ Restore</button>
+            </div>
+          )}
 
           <div className="d-conf" title={`raw ${Math.round(detail.confidence_raw * 100)}%`}>
             <div className="d-conf-head">

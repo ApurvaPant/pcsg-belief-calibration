@@ -279,7 +279,11 @@ def _read_graph(user_id: str) -> dict[str, Any]:
                                for a in attrs],
             })
         active_count = sum(1 for n in nodes if n["status"] == "active")
+        rel = conn.execute(
+            "SELECT relation, polarity FROM edges WHERE user_id = ?", (user_id,)).fetchall()
+        edges = [{"relation": r["relation"], "polarity": r["polarity"] or "positive"} for r in rel]
         return {"labels": out, "node_count": len(nodes), "active_count": active_count,
+                "edges": edges,
                 "max_value_words": max((len(n["value"].split()) for n in nodes), default=0)}
 
 
@@ -393,6 +397,12 @@ def _check_graph(expected: dict, graph: dict) -> list[str]:
                      for a in have)
             if not ok:
                 fails.append(f"missing attribute {w.get('name')}={w.get('value')} on {label}")
+    for e in expected.get("edges", []):
+        ok = any(x["relation"] == e.get("relation")
+                 and ("polarity" not in e or x["polarity"] == e["polarity"])
+                 for x in graph.get("edges", []))
+        if not ok:
+            fails.append(f"missing edge {e.get('relation')} {e.get('polarity', '')}")
     if "no_value_longer_than_words" in expected:
         lim = int(expected["no_value_longer_than_words"])
         if graph["max_value_words"] > lim:
@@ -409,13 +419,22 @@ def score_case(case: dict, out: dict) -> dict[str, Any]:
     detail: dict[str, Any] = {"id": case.get("id"), "category": case.get("category", "?"),
                               "split": case.get("split", "dev"), "field_hits": {}, "fails": []}
 
+    # Destructive-operation accounting (END / supersede) — the headline risk.
+    destructive = [c for c in out["written"] if c.get("action") in ("ended", "superseded")]
+    detail["ended"] = sum(1 for c in destructive if c["action"] == "ended")
+    detail["superseded"] = sum(1 for c in destructive if c["action"] == "superseded")
+    detail["forbid_destructive"] = bool(case.get("forbid_destructive"))
+    detail["destructive_error"] = detail["forbid_destructive"] and bool(destructive)
+    if detail["destructive_error"]:
+        detail["fails"].append(f"destructive op on forbid case: {[c['action'] for c in destructive]}")
+
     # ── negative case: pass iff nothing was written to the graph ── #
     if negative:
         detail["tp"], detail["fp"], detail["fn"] = 0, len(out["written"]), 0
         detail["false_write"] = len(out["written"]) > 0
         graph_fails = _check_graph(case.get("graph_after", {}), out["graph"])
-        detail["fails"] = ([f"false write: {[w.get('dimension') + '/' + w.get('key') for w in out['written']]}"]
-                           if out["written"] else []) + graph_fails
+        detail["fails"] += ([f"false write: {[w.get('dimension') + '/' + w.get('key') for w in out['written']]}"]
+                            if out["written"] else []) + graph_fails
         detail["passed"] = not detail["fails"]
         detail["negative"] = True
         return detail
@@ -453,7 +472,7 @@ def score_case(case: dict, out: dict) -> dict[str, Any]:
     detail["fp"] = max(0, len(kept) - matched)
     graph_fails = _check_graph(case.get("graph_after", {}), out["graph"])
     detail["fails"] += graph_fails
-    detail["passed"] = (matched == len(expect)) and not graph_fails
+    detail["passed"] = (matched == len(expect)) and not detail["fails"]
     detail["negative"] = False
     return detail
 
@@ -478,10 +497,23 @@ def aggregate(details: list[dict]) -> dict[str, Any]:
     prec = tp / (tp + fp) if (tp + fp) else 0.0
     rec = tp / (tp + fn) if (tp + fn) else 0.0
     f1 = 2 * prec * rec / (prec + rec) if (prec + rec) else 0.0
+
+    # Headline destructive-safety metrics (item 7): a missed END is cheap, a
+    # false END is not, so these are reported separately and must be ~100%.
+    ends_total = sum(d.get("ended", 0) for d in details)
+    false_ends = sum(d.get("ended", 0) for d in details if d.get("forbid_destructive"))
+    correct_ends = ends_total - false_ends
+    end_precision = correct_ends / ends_total if ends_total else 1.0
+    forbid_cases = sum(1 for d in details if d.get("forbid_destructive"))
+    destructive_errors = sum(1 for d in details if d.get("destructive_error"))
+    destructive_error_rate = destructive_errors / forbid_cases if forbid_cases else 0.0
     return {
         "n": len(details), "passed": passed,
         "pass_rate": passed / len(details) if details else 0.0,
         "precision": prec, "recall": rec, "f1": f1,
+        "end_precision": end_precision, "ends_total": ends_total, "false_ends": false_ends,
+        "destructive_errors": destructive_errors, "forbid_cases": forbid_cases,
+        "destructive_error_rate": destructive_error_rate,
         "false_write_rate": neg_false / neg_total if neg_total else 0.0,
         "by_category": {c: {"passed": v[0], "n": v[1], "rate": v[0] / v[1] if v[1] else 0.0}
                         for c, v in sorted(by_cat.items())},
@@ -498,6 +530,10 @@ def print_report(agg: dict, cost: dict) -> None:
     print("\n" + "=" * 62)
     print(f"  OVERALL  pass {agg['passed']}/{agg['n']} = {_fmt_pct(agg['pass_rate'])}"
           f"   P {_fmt_pct(agg['precision'])}  R {_fmt_pct(agg['recall'])}  F1 {_fmt_pct(agg['f1'])}")
+    print(f"  END precision: {_fmt_pct(agg['end_precision'])} "
+          f"({agg['false_ends']} false / {agg['ends_total']} ends)   "
+          f"DESTRUCTIVE error rate: {_fmt_pct(agg['destructive_error_rate'])} "
+          f"({agg['destructive_errors']}/{agg['forbid_cases']} forbid cases)")
     print(f"  false-write rate (negative cases): {_fmt_pct(agg['false_write_rate'])}")
     print("-" * 62)
     print("  PER CATEGORY")

@@ -208,6 +208,31 @@ def node(node_id: str, user: dict = Depends(auth.current_user)) -> dict:
     return detail
 
 
+@app.post("/nodes/{node_id}/restore")
+def restore_node(node_id: str, user: dict = Depends(auth.current_user)) -> dict:
+    """Undo an END/supersede: reactivate an ended or superseded node (item 6)."""
+    from . import update
+    with get_conn() as conn:
+        n = conn.execute("SELECT user_id FROM nodes WHERE id = ?", (node_id,)).fetchone()
+        if n is None or n["user_id"] != user["id"]:
+            raise HTTPException(status_code=404, detail="node not found")
+        res = update.restore_node(conn, user["id"], node_id)
+    if not res.get("restored"):
+        raise HTTPException(status_code=400, detail=res.get("reason", "restore failed"))
+    return res
+
+
+@app.post("/events/{event_id}/revert")
+def revert_event(event_id: str, user: dict = Depends(auth.current_user)) -> dict:
+    """Restore the node a given event acted on, to its pre-event state (item 6)."""
+    from . import update
+    with get_conn() as conn:
+        res = update.revert_event(conn, user["id"], event_id)
+    if not res.get("restored"):
+        raise HTTPException(status_code=400, detail=res.get("reason", "revert failed"))
+    return res
+
+
 @app.post("/me/nodes/merge")
 def merge_nodes(req: MergeRequest, user: dict = Depends(auth.current_user)) -> dict:
     """Collapse a duplicate node into another (bug 3 cleanup)."""

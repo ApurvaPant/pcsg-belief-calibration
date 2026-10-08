@@ -14,6 +14,7 @@ import {
   getAuthToken,
   logout as apiLogout,
   me,
+  restoreNode,
   sendChat,
   setAuthToken,
   setUnauthorizedHandler,
@@ -202,6 +203,19 @@ function Workspace({ user, theme, onToggleTheme, onLogout }: WorkspaceProps) {
     }
   }, []);
 
+  const handleRestore = useCallback(
+    async (nodeId: string) => {
+      try {
+        await restoreNode(nodeId);
+        await refreshGraph();
+        setDetail(await fetchNode(nodeId));
+      } catch (e) {
+        setError(describeApiError(e));
+      }
+    },
+    [refreshGraph],
+  );
+
   // Keep the open inspector fresh after the graph mutates.
   useEffect(() => {
     if (selectedId && detail) fetchNode(selectedId).then(setDetail).catch(() => {});
@@ -256,6 +270,7 @@ function Workspace({ user, theme, onToggleTheme, onLogout }: WorkspaceProps) {
           detail={detail}
           loading={detailLoading}
           onClose={() => { setDetail(null); setSelectedId(null); }}
+          onRestore={handleRestore}
         />
       )}
     </div>

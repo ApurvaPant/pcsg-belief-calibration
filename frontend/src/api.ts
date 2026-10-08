@@ -168,3 +168,9 @@ export async function fetchUserGraph(): Promise<GraphPayload> {
 export async function fetchNode(nodeId: string): Promise<NodeDetail> {
   return json<NodeDetail>(await fetch(`${BASE}/node/${nodeId}`, { headers: headers() }));
 }
+
+export async function restoreNode(nodeId: string): Promise<{ restored: boolean }> {
+  return json<{ restored: boolean }>(
+    await fetch(`${BASE}/nodes/${nodeId}/restore`, { method: "POST", headers: headers() }),
+  );
+}

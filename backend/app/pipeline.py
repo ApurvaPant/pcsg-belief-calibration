@@ -29,11 +29,21 @@ from .db import get_conn, now_iso
 from .update import apply_assertion, apply_relations
 from .utils import new_id
 
+# P4 (no-fabrication): the assistant may only state facts present in the state
+# block; anything missing is "I don't know" or a question — never a guess.
 _CHAT_SYSTEM = (
-    "You are a warm, attentive assistant that gradually builds an understanding "
-    "of the user. Keep replies concise and natural. When the user states a fact "
-    "with a detail worth pinning down (how long, how often, since when), ask one "
-    "short follow-up. Do not mention that you are extracting facts or a graph."
+    "You are a warm, attentive assistant who remembers things about the user.\n\n"
+    "WHAT YOU KNOW ABOUT THE USER\n{state}\n\n"
+    "How to use this:\n"
+    "- Use what you know when it is relevant. Never mention a memory system or a graph.\n"
+    "- Only state facts about the user that appear above. If a detail is not listed "
+    "— including durations, names, dates, amounts, or whether something is true — say "
+    "you don't know, or ask. NEVER guess or invent a detail, and never claim a "
+    "relationship or preference that is not listed.\n"
+    "- Items marked [ENDED] are no longer true; mention them only if the user asks "
+    "about the past.\n"
+    "- When the user states something durable and a useful detail is missing, you may "
+    "ask ONE short follow-up — but never assert the detail yourself."
 )
 
 _HISTORY_LIMIT = 12
@@ -54,10 +64,12 @@ _HISTORICAL = re.compile(
 
 # ── fix step 1: question–answer resolution (P8) ─────────────────────────────#
 _QA_RESOLVE_SYSTEM = (
-    "[[TASK:QA_RESOLVE]] Rewrite the user's reply as one standalone first-person "
-    "sentence, using only the information in the question and the reply. Do not add "
-    "any fact that is not in either. If the reply does not answer the question, "
-    "return the reply unchanged.\nReturn only the sentence."
+    "[[TASK:QA_RESOLVE]] Rewrite the user's FINAL reply as one standalone "
+    "first-person sentence, using only information already in the recent "
+    "conversation and the reply. Do not add any fact that is not present. "
+    "If the reply does not clearly answer a single question, or which question "
+    "it answers is ambiguous, respond with exactly: UNRESOLVED.\n"
+    "Return only the sentence, or UNRESOLVED."
 )
 _IS_QUESTION = re.compile(
     r"\b(what|how|why|when|who|whom|whose|which|where|do|does|did|are|is|am|was|were|"
@@ -67,6 +79,11 @@ _INTEREST_VERB = re.compile(
     r"\b(love|loves|like|likes|enjoy|enjoys|into|follow|following|favou?rite|prefer|"
     r"prefers|passionate|interested in|fan of)\b", re.I)
 _LEAD_ADVERB = re.compile(r"^\s*(mostly|usually|really|just|probably|maybe|mainly|kinda|a bit of|sort of)\s+", re.I)
+# A bare negative / non-committal reply is not a refinement answer — it must not
+# be attached as an attribute (and can never be destructive).
+_NON_ANSWER = re.compile(
+    r"^\s*(no|nope|nah|not really|not sure|dunno|idk|maybe not|they don'?t|he doesn'?t|"
+    r"she doesn'?t|we don'?t|i don'?t|don'?t|doesn'?t|didn'?t|never)\b", re.I)
 
 
 def _previous_assistant_question(history: list[dict[str, str]]) -> str | None:
@@ -94,12 +111,18 @@ def _expresses_interest(text: str) -> bool:
     return bool(_INTEREST_VERB.search(text))
 
 
-def _resolve_qa(question: str, message: str) -> str:
-    """P8: rewrite a fragment reply into one standalone first-person sentence."""
+def _resolve_qa(history: list[dict[str, str]], message: str) -> str:
+    """P8 (item 4): rewrite a fragment reply into one standalone first-person
+    sentence using the last few turns as context, or return 'UNRESOLVED' when
+    ambiguous. On any error, fall back to the raw reply (never destructive)."""
+    recent = history[-3:]
+    ctx = "\n".join(f"{'USER' if m.get('role') == 'user' else 'ASSISTANT'}: {m.get('content', '')}"
+                    for m in recent) or "(none)"
     try:
         res = llm.complete(
             messages=[{"role": "system", "content": _QA_RESOLVE_SYSTEM},
-                      {"role": "user", "content": f"Question: {question}\nReply: {message}"}],
+                      {"role": "user", "content":
+                       f"Recent conversation (oldest first):\n{ctx}\n\nUser's reply: {message}"}],
             model=llm.resolve_model("classifier"), temperature=0.0, max_tokens=60)
         out = (res.get("text") or "").strip().strip('"').splitlines()
         return (out[0].strip() if out else "") or message
@@ -319,7 +342,7 @@ def process_turn(message: str, session_id: str | None, user_id: str) -> dict[str
     refine = None
     if (_QA_FIX and open_slot and open_slot["node_id"] and slot_type == "open"
             and _is_fragment(message) and not _expresses_interest(message)
-            and _tokenize(message)):
+            and not _NON_ANSWER.match(message.strip()) and _tokenize(message)):
         refine = {"node_id": open_slot["node_id"],
                   "attr": _attr_name_from_question(open_slot["topic"] or ""),
                   "value": ontology.normalize_value(message)}
@@ -329,12 +352,15 @@ def process_turn(message: str, session_id: str | None, user_id: str) -> dict[str
     # for an attribute slot (the structured slot-hint path is more precise) and
     # when we are taking the refinement path above.
     resolved_message = message
-    qa_resolved = False
+    fragment_answer = False   # a fragment reply to a question (never destructive)
     if _QA_FIX and refine is None:
         prev_q = _previous_assistant_question(history)
         if prev_q and _is_fragment(message) and slot_type != "attribute":
-            resolved_message = _resolve_qa(prev_q, message)
-            qa_resolved = resolved_message.strip().lower() != message.strip().lower()
+            fragment_answer = True
+            out = _resolve_qa(history, message)  # P8 sees the last turns (item 4)
+            if out and out.strip().upper() != "UNRESOLVED":
+                resolved_message = out
+    rewritten = resolved_message.strip().lower() != message.strip().lower()
     work_text = resolved_message
 
     # Stage 2/3: gate + extraction (on the RESOLVED text; evidence keeps the
@@ -352,20 +378,22 @@ def process_turn(message: str, session_id: str | None, user_id: str) -> dict[str
             if open_slot and score < _SLOT_FLOOR:  # fix step 2: slot floor of 60
                 score, reason = _SLOT_FLOOR, reason + "; slot_floor"
             salient = salience.is_salient(score)
-        if qa_resolved:
+        if rewritten:
             reason += "; qa_resolved"
+        elif fragment_answer:
+            reason += "; qa_unresolved"
         if salient:
             end_forced, end_object = salience.detect_end(extract_text)
             ext = extraction.extract_assertions(extract_text, context=history, pending_slot=slot_hint,
                                                 force_end=end_forced, end_object=end_object)
-            if qa_resolved:  # evidence quote stays the user's ORIGINAL words
+            if rewritten:  # evidence quote stays the user's ORIGINAL words
                 for a in ext.kept:
                     a["quote"] = original_message
         else:
             ext = extraction.ExtractionResult([], [], None, None)
 
     # Stage 4: assistant reply (always generated from the original message).
-    system = _CHAT_SYSTEM + (f"\n\n{profile}" if profile else "")
+    system = _CHAT_SYSTEM.format(state=profile or "(nothing recorded about the user yet)")
     chat_messages = [{"role": "system", "content": system}, *history[-_CONTEXT_TURNS:],
                      {"role": "user", "content": original_message}]
     reply_result = llm.complete(messages=chat_messages, model=llm.resolve_model("chat"))
@@ -377,7 +405,7 @@ def process_turn(message: str, session_id: str | None, user_id: str) -> dict[str
     with get_conn() as conn:
         user_msg_id = _insert_message(conn, sid, "user", original_message,
                                       salience_score=score, salient=salient,
-                                      resolved_content=resolved_message if qa_resolved else None)
+                                      resolved_content=resolved_message if rewritten else None)
         _log_gate(conn, sid, user_msg_id, salient, score, raw_score, reason, classifier_model,
                   frame_tokens=ext.frame_tokens, fill_tokens=ext.fill_tokens)
 
@@ -397,7 +425,8 @@ def process_turn(message: str, session_id: str | None, user_id: str) -> dict[str
                                                model=llm.resolve_model("extractor")))
         else:
             for assertion in ext.kept:
-                changes.append(apply_assertion(conn, user_id, sid, user_msg_id, assertion, model=ext.model))
+                changes.append(apply_assertion(conn, user_id, sid, user_msg_id, assertion,
+                                               model=ext.model, qa_resolved=fragment_answer))
             for raw_item, rcode in ext.dropped:
                 item = raw_item if isinstance(raw_item, dict) else {}
                 changes.append({

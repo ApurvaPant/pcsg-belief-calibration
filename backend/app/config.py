@@ -45,6 +45,7 @@ class PipelineSettings:
     calibration_shrink: float
     reinforce_step: float
     resolve_similarity: float
+    destructive_min_conf: float
 
 
 @dataclass
@@ -118,6 +119,7 @@ def _load() -> Settings:
         calibration_shrink=float(pipe_raw.get("calibration_shrink", 0.8)),
         reinforce_step=float(pipe_raw.get("reinforce_step", 0.1)),
         resolve_similarity=float(pipe_raw.get("resolve_similarity", 0.92)),
+        destructive_min_conf=float(pipe_raw.get("destructive_min_conf", 0.80)),
     )
 
     server = ServerSettings(

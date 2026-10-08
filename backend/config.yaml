@@ -42,6 +42,10 @@ pipeline:
   # Two assertions resolve to the same node only above this lexical similarity
   # AND with a shared head noun / inflection — never across different keys.
   resolve_similarity: 0.92
+  # A destructive operation (END / supersede) is applied only when operation
+  # confidence is at least this. Below it, the op is blocked and queued for
+  # confirmation rather than silently closing a correct node.
+  destructive_min_conf: 0.80
 
 storage:
   # Relative to the backend/ directory. Overridable via DB_PATH in .env.

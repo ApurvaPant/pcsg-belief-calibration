@@ -134,6 +134,13 @@ function styleSheet(theme: Theme): cytoscape.StylesheetStyle[] {
         "text-background-padding": "2px", "text-rotation": "autorotate",
       } as cytoscape.Css.Edge,
     },
+    // A negated relation ("don't get along") reads as a red dashed link.
+    {
+      selector: 'edge[kind = "relation"][polarity = "negative"]',
+      style: {
+        "line-color": "#fb8a8a", "line-style": "dashed", "target-arrow-color": "#fb8a8a",
+      } as cytoscape.Css.Edge,
+    },
   ];
 }
 

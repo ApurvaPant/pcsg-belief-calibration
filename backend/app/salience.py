@@ -198,12 +198,23 @@ def _is_interrogative(clause: str) -> bool:
 
 
 # ── Tier-0 deterministic END detection (closed vocabulary) ─────────────── #
-_END_CUES = re.compile(
-    r"\b(stopped|quit|quitting|no longer|not anymore|gave up on|gave up|used to|"
-    r"broke up with|split up with|split up|left my (?:job|company)|dropped out|"
-    r"moved away from|graduated from|sold|cancelled|no longer (?:together|dating))\b",
+# A cessation is a real stop/leave/quit verb — or a negation that is explicitly
+# scoped by "anymore". Plain "not" / "don't" / "doesn't" / "never" are NOT
+# cessation: they assert a negated fact, not the end of something (critical bug).
+CESSATION_RE = re.compile(
+    r"\b(stopped|quit|quitting|gave up on|gave up|broke up with|split up with|split up|"
+    r"left|moved out of|moved away from|dropped out|graduated from|sold|cancell?ed|"
+    r"no longer|used to)\b"
+    r"|\b(?:not|never|don'?t|doesn'?t|didn'?t|won'?t|isn'?t|aren'?t)\b[^.?!]*\banymore\b",
     re.I)
+_END_CUES = CESSATION_RE
 _END_LEAD = re.compile(r"^\s*(?:doing|the|my|a|an|with)\s+", re.I)
+
+
+def has_cessation(text: str) -> bool:
+    """True if the text carries an explicit cessation verb (used by the
+    destructive-operation guard). Plain negation alone returns False."""
+    return bool(CESSATION_RE.search(text or ""))
 
 
 def detect_end(text: str) -> tuple[bool, str | None]:

@@ -109,6 +109,104 @@
         {"dimension": "habit", "key": "swimming", "value": "swimming", "operation": "ADD"}
       ],
       "graph_after": {"still_active": ["habit/swimming=swimming"]}
+    },
+
+    {
+      "id": "dev-neg-edge-mom-dog",
+      "category": "negated-relation",
+      "split": "dev",
+      "forbid_destructive": true,
+      "message": "my mom and my dog don't get along",
+      "expect": [
+        {"dimension": "relationship", "key": "mom", "value": "mom", "operation": "ADD"},
+        {"dimension": "relationship", "key": "pet", "value": "dog", "operation": "ADD"}
+      ],
+      "graph_after": {
+        "still_active": ["relationship/mom=mom", "relationship/pet=dog"],
+        "edges": [{"relation": "gets_along_with", "polarity": "negative"}]
+      }
+    },
+    {
+      "id": "dev-neg-property-sister",
+      "category": "negated-property",
+      "split": "dev",
+      "forbid_destructive": true,
+      "history": [{"role": "user", "text": "my sister is priya"}],
+      "message": "she doesn't like spicy food",
+      "expect": [],
+      "graph_after": {"still_active": ["relationship/sister=priya"]}
+    },
+    {
+      "id": "dev-dislike-mornings",
+      "category": "negated-preference",
+      "split": "dev",
+      "forbid_destructive": true,
+      "message": "i don't like mornings",
+      "expect": [
+        {"dimension": "preference", "key": "dislikes", "value": "mornings", "operation": "ADD"}
+      ]
+    },
+    {
+      "id": "dev-mom-dog-3turn",
+      "category": "negated-relation",
+      "split": "dev",
+      "forbid_destructive": true,
+      "history": [
+        {"role": "user", "text": "my mom and my dog don't get along"},
+        {"role": "assistant", "text": "Do you often see them interacting?"}
+      ],
+      "message": "they don't",
+      "expect": [],
+      "graph_after": {"still_active": ["relationship/mom=mom", "relationship/pet=dog"]}
+    },
+
+    {
+      "id": "test-neg-edge-brother-cat",
+      "category": "negated-relation",
+      "split": "test",
+      "forbid_destructive": true,
+      "message": "my brother and my cat don't get along",
+      "expect": [
+        {"dimension": "relationship", "key": "brother", "value": "brother", "operation": "ADD"},
+        {"dimension": "relationship", "key": "pet", "value": "cat", "operation": "ADD"}
+      ],
+      "graph_after": {
+        "still_active": ["relationship/brother=brother", "relationship/pet=cat"],
+        "edges": [{"relation": "gets_along_with", "polarity": "negative"}]
+      }
+    },
+    {
+      "id": "test-neg-property-dad",
+      "category": "negated-property",
+      "split": "test",
+      "forbid_destructive": true,
+      "history": [{"role": "user", "text": "my dad is raj"}],
+      "message": "he doesn't drink coffee",
+      "expect": [],
+      "graph_after": {"still_active": ["relationship/dad=raj"]}
+    },
+    {
+      "id": "test-dislike-crowds",
+      "category": "negated-preference",
+      "split": "test",
+      "forbid_destructive": true,
+      "message": "i don't like crowds",
+      "expect": [
+        {"dimension": "preference", "key": "dislikes", "value": "crowds", "operation": "ADD"}
+      ]
+    },
+    {
+      "id": "test-brother-cat-3turn",
+      "category": "negated-relation",
+      "split": "test",
+      "forbid_destructive": true,
+      "history": [
+        {"role": "user", "text": "my brother and my cat don't get along"},
+        {"role": "assistant", "text": "Hmm, do they fight often?"}
+      ],
+      "message": "not really",
+      "expect": [],
+      "graph_after": {"still_active": ["relationship/brother=brother", "relationship/pet=cat"]}
     }
   ]
 }

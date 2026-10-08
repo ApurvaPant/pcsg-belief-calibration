@@ -183,7 +183,8 @@ def is_valid_value(value: str) -> bool:
 
 
 # ── Inter-node relations (PART 8) ───────────────────────────────────────── #
-RELATION_TYPES = {"part_of", "requires", "blocks", "related_to", "works_on", "involves"}
+RELATION_TYPES = {"part_of", "requires", "blocks", "related_to", "works_on",
+                  "involves", "gets_along_with"}
 
 
 def is_valid_relation(relation: str) -> bool:
