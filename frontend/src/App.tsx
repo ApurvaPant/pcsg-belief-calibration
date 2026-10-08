@@ -2,24 +2,28 @@ import { useCallback, useEffect, useState } from "react";
 import ChatPanel from "./components/ChatPanel";
 import GraphPanel from "./components/GraphPanel";
 import NodeDetailView from "./components/NodeDetail";
+import MemoryPage from "./components/MemoryPage";
 import Sidebar from "./components/Sidebar";
 import Login from "./components/Login";
 import {
   deleteSession as apiDeleteSession,
   describeApiError,
+  fetchMemory,
   fetchNode,
   fetchSessionMessages,
   fetchSessions,
   fetchUserGraph,
+  forgetNode,
   getAuthToken,
   logout as apiLogout,
   me,
+  renameSession,
   restoreNode,
   sendChat,
   setAuthToken,
   setUnauthorizedHandler,
 } from "./api";
-import type { ChatMessage, GraphPayload, NodeDetail, Session, User } from "./types";
+import type { ChatMessage, GraphPayload, MemoryPayload, NodeDetail, Session, User } from "./types";
 import { useTheme } from "./useTheme";
 
 export default function App() {
@@ -83,12 +87,35 @@ function Workspace({ user, theme, onToggleTheme, onLogout }: WorkspaceProps) {
   const [detail, setDetail] = useState<NodeDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [memoryOpen, setMemoryOpen] = useState(false);
+  const [memory, setMemory] = useState<MemoryPayload | null>(null);
+  const [memoryLoading, setMemoryLoading] = useState(false);
 
   const refreshGraph = useCallback(async () => {
     try {
       setGraph(await fetchUserGraph());
     } catch (e) {
       setError(describeApiError(e));
+    }
+  }, []);
+
+  const refreshMemory = useCallback(async () => {
+    try {
+      setMemory(await fetchMemory());
+    } catch (e) {
+      setError(describeApiError(e));
+    }
+  }, []);
+
+  const openMemory = useCallback(async () => {
+    setMemoryOpen(true);
+    setMemoryLoading(true);
+    try {
+      setMemory(await fetchMemory());
+    } catch (e) {
+      setError(describeApiError(e));
+    } finally {
+      setMemoryLoading(false);
     }
   }, []);
 
@@ -191,6 +218,45 @@ function Workspace({ user, theme, onToggleTheme, onLogout }: WorkspaceProps) {
     [activeSession, refreshGraph],
   );
 
+  const handleRenameSession = useCallback(async (id: string, title: string) => {
+    setError(null);
+    try {
+      const updated = await renameSession(id, title);
+      setSessions((list) => list.map((s) => (s.id === id ? updated : s)));
+    } catch (e) {
+      setError(describeApiError(e));
+    }
+  }, []);
+
+  const handleForget = useCallback(
+    async (nodeId: string) => {
+      setError(null);
+      try {
+        await forgetNode(nodeId);
+        if (selectedId === nodeId) { setDetail(null); setSelectedId(null); }
+        await refreshGraph();
+        if (memoryOpen) await refreshMemory();
+      } catch (e) {
+        setError(describeApiError(e));
+      }
+    },
+    [selectedId, memoryOpen, refreshGraph, refreshMemory],
+  );
+
+  const handleRestoreMemory = useCallback(
+    async (nodeId: string) => {
+      setError(null);
+      try {
+        await restoreNode(nodeId);
+        await refreshGraph();
+        await refreshMemory();
+      } catch (e) {
+        setError(describeApiError(e));
+      }
+    },
+    [refreshGraph, refreshMemory],
+  );
+
   const handleSelectNode = useCallback(async (nodeId: string) => {
     setSelectedId(nodeId);
     setDetailLoading(true);
@@ -230,9 +296,12 @@ function Workspace({ user, theme, onToggleTheme, onLogout }: WorkspaceProps) {
       <Sidebar
         sessions={sessions}
         activeId={activeSession}
-        onSelect={(id) => { setActiveSession(id); setSelectedId(null); setDetail(null); }}
-        onNewChat={handleNewChat}
+        onSelect={(id) => { setActiveSession(id); setSelectedId(null); setDetail(null); setMemoryOpen(false); }}
+        onNewChat={() => { handleNewChat(); setMemoryOpen(false); }}
         onDeleteSession={handleDeleteSession}
+        onRenameSession={handleRenameSession}
+        onOpenMemory={() => (memoryOpen ? setMemoryOpen(false) : openMemory())}
+        memoryOpen={memoryOpen}
         busy={busy}
         user={user}
         onLogout={onLogout}
@@ -240,6 +309,16 @@ function Workspace({ user, theme, onToggleTheme, onLogout }: WorkspaceProps) {
         onToggleTheme={onToggleTheme}
       />
 
+      {memoryOpen ? (
+        <MemoryPage
+          memory={memory}
+          loading={memoryLoading}
+          onClose={() => setMemoryOpen(false)}
+          onForget={handleForget}
+          onRestore={handleRestoreMemory}
+        />
+      ) : (
+      <>
       <div className="main">
         <div className="chat-header">
           <span className="title">{activeTitle}</span>
@@ -271,7 +350,10 @@ function Workspace({ user, theme, onToggleTheme, onLogout }: WorkspaceProps) {
           loading={detailLoading}
           onClose={() => { setDetail(null); setSelectedId(null); }}
           onRestore={handleRestore}
+          onForget={handleForget}
         />
+      )}
+      </>
       )}
     </div>
   );

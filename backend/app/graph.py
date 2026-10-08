@@ -68,6 +68,47 @@ def build_graph(user_id: str) -> dict[str, Any]:
     return {"user_id": user_id, "nodes": nodes, "edges": edges}
 
 
+def build_memory(user_id: str) -> dict[str, Any]:
+    """Read-side view for the 'what the system knows about you' page: every
+    non-merged node enriched with its active attributes, a representative quote,
+    and an evidence count — in one round-trip so the page needs no N+1 fetches.
+    The frontend groups by dimension and separates active from past."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM nodes WHERE user_id = ? AND status != 'merged' "
+            "ORDER BY dimension ASC, created_at DESC",
+            (user_id,),
+        ).fetchall()
+        items = []
+        for r in rows:
+            attrs = conn.execute(
+                "SELECT name, value, unit FROM attributes "
+                "WHERE node_id = ? AND status = 'active' ORDER BY created_at ASC",
+                (r["id"],),
+            ).fetchall()
+            quote = conn.execute(
+                "SELECT quote FROM evidence WHERE node_id = ? ORDER BY created_at DESC LIMIT 1",
+                (r["id"],),
+            ).fetchone()
+            ev_count = conn.execute(
+                "SELECT COUNT(*) c FROM evidence WHERE node_id = ?", (r["id"],),
+            ).fetchone()["c"]
+            item = _node_data(r)
+            item["attributes"] = [
+                {"name": a["name"], "value": a["value"], "unit": a["unit"]} for a in attrs
+            ]
+            item["quote"] = quote["quote"] if quote else None
+            item["evidence_count"] = ev_count
+            items.append(item)
+
+    active = sum(1 for i in items if i["status"] == "active")
+    return {
+        "user_id": user_id,
+        "nodes": items,
+        "counts": {"total": len(items), "active": active, "past": len(items) - active},
+    }
+
+
 def get_node_detail(node_id: str) -> dict[str, Any] | None:
     """Return a node with its evidence quotes (attributed to the session they
     came from) and its full history chain."""

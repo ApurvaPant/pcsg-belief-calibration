@@ -98,6 +98,18 @@ export interface Session {
   closed_at: string | null;
 }
 
+export interface MemoryNode extends UserNode {
+  attributes: { name: string; value: string; unit: string | null }[];
+  quote: string | null;
+  evidence_count: number;
+}
+
+export interface MemoryPayload {
+  user_id: string;
+  nodes: MemoryNode[];
+  counts: { total: number; active: number; past: number };
+}
+
 export interface StoredMessage {
   id: string;
   role: "user" | "assistant";

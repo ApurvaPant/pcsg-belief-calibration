@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "../types";
+import { renderInline } from "../markdown";
 
 interface Props {
   messages: ChatMessage[];
@@ -66,7 +67,9 @@ export default function ChatPanel({ messages, onSend, busy, userInitial }: Props
               <div className="msg-avatar">{m.role === "user" ? userInitial : "◈"}</div>
               <div className="msg-body">
                 <div className="msg-role">{m.role === "user" ? "You" : "Assistant"}</div>
-                <div className="bubble">{m.content}</div>
+                <div className="bubble">
+                  {m.role === "assistant" ? renderInline(m.content) : m.content}
+                </div>
                 {m.role === "user" && m.salience_score !== undefined && (() => {
                   const isQuery = m.changes?.some((c) => c.action === "retrieval_query");
                   return (

@@ -227,3 +227,43 @@ baseline, and STEP 2+ proceed.
   possibly an HF token / licence acceptance). Versions will be pinned in the run
   config when ingested.
 - **`extraction_log.rules_fired`** column does not exist yet; STEP 2 adds it.
+
+---
+
+## 2026-10-08 — UI polish v3: rich text, chat menu, inspector, Memory page
+
+User-facing additions (frontend) + three small read/write backend routes.
+
+**Chat**
+- Assistant replies now render inline markdown — `**bold**`, `*italic*`, `` `code` ``
+  — via a tiny, safe tokenizer (`frontend/src/markdown.tsx`, no
+  `dangerouslySetInnerHTML`, so model text can't inject markup). Newlines still
+  survive through the bubble's `white-space: pre-wrap`.
+
+**Chat list (ChatGPT-style)**
+- Replaced the always-on `×` with a `⋯` kebab menu per chat → **Rename** /
+  **Delete**. Rename is inline (double-click the title also works); Delete opens
+  the existing memory-aware confirm. New route `PATCH /sessions/{id}`.
+
+**Node inspector (rewritten)**
+- Added a 3-up stat row (confidence / mentions / versions), a standalone
+  calibrated-confidence bar, and a **Forget this memory** action with inline
+  confirm. Keeps evidence quotes + supersession timeline.
+
+**Memory page (new)** — "Your memory" in the sidebar
+- A full view of everything modelled about the user, grouped by dimension, each
+  fact a card with value, key, confidence, attributes, a grounding quote and
+  "since/until" dates. Per-card **Forget** (inline confirm) and **Restore** for
+  past facts. New route `GET /me/memory` (`graph.build_memory`: nodes enriched
+  with active attributes + a representative quote + evidence count, one trip).
+
+**Forget (user-initiated erasure)**
+- New `DELETE /nodes/{id}` → `update.forget_node`: removes a fact **and its
+  whole supersession history**, with attributes/evidence/edges, and detaches any
+  chain pointers. Distinct from END/supersede (non-destructive, reversible) —
+  this is an explicit, irreversible erasure the user asked for, scoped to the
+  owner. Covered by `backend/tests/test_forget_node.py` (3 tests).
+
+**Verification**: 87 backend tests pass (84 → 87); `tsc --noEmit` clean. Both
+servers relaunched detached on fresh code (backend `0.0.0.0:8000`, Vite
+`[::1]:5173`); `/openapi.json` confirms the three new routes are live.

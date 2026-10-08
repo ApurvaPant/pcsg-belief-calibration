@@ -1,6 +1,7 @@
 import type {
   ChatResponse,
   GraphPayload,
+  MemoryPayload,
   NodeDetail,
   Session,
   StoredMessage,
@@ -145,6 +146,16 @@ export async function deleteSession(
   );
 }
 
+export async function renameSession(sessionId: string, title: string): Promise<Session> {
+  return json<Session>(
+    await fetch(`${BASE}/sessions/${sessionId}`, {
+      method: "PATCH",
+      headers: headers({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ title }),
+    }),
+  );
+}
+
 export async function fetchSessionMessages(sessionId: string): Promise<StoredMessage[]> {
   return json<StoredMessage[]>(
     await fetch(`${BASE}/sessions/${sessionId}/messages`, { headers: headers() }),
@@ -172,5 +183,15 @@ export async function fetchNode(nodeId: string): Promise<NodeDetail> {
 export async function restoreNode(nodeId: string): Promise<{ restored: boolean }> {
   return json<{ restored: boolean }>(
     await fetch(`${BASE}/nodes/${nodeId}/restore`, { method: "POST", headers: headers() }),
+  );
+}
+
+export async function fetchMemory(): Promise<MemoryPayload> {
+  return json<MemoryPayload>(await fetch(`${BASE}/me/memory`, { headers: headers() }));
+}
+
+export async function forgetNode(nodeId: string): Promise<{ forgotten: boolean; removed_nodes: number }> {
+  return json<{ forgotten: boolean; removed_nodes: number }>(
+    await fetch(`${BASE}/nodes/${nodeId}`, { method: "DELETE", headers: headers() }),
   );
 }

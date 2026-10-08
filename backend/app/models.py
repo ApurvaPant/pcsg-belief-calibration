@@ -21,6 +21,10 @@ class CreateSessionRequest(BaseModel):
     title: Optional[str] = None
 
 
+class RenameSessionRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=120)
+
+
 class MergeRequest(BaseModel):
     keep_id: str
     dup_id: str

@@ -18,6 +18,7 @@ from .models import (
     ChatResponse,
     CreateSessionRequest,
     MergeRequest,
+    RenameSessionRequest,
     SessionOut,
     UserOut,
 )
@@ -96,9 +97,33 @@ def new_session(req: CreateSessionRequest, user: dict = Depends(auth.current_use
     return SessionOut(**dict(row))
 
 
+@app.patch("/sessions/{session_id}", response_model=SessionOut)
+def rename_session(
+    session_id: str,
+    req: RenameSessionRequest,
+    user: dict = Depends(auth.current_user),
+) -> SessionOut:
+    """Rename a chat (the kebab-menu 'Rename' action)."""
+    with get_conn() as conn:
+        _owned_session(conn, session_id, user["id"])
+        conn.execute("UPDATE sessions SET title = ? WHERE id = ?", (req.title.strip(), session_id))
+        row = conn.execute(
+            "SELECT id, user_id, title, created_at, closed_at FROM sessions WHERE id = ?",
+            (session_id,),
+        ).fetchone()
+    return SessionOut(**dict(row))
+
+
 @app.get("/me/graph")
 def user_graph(user: dict = Depends(auth.current_user)) -> dict:
     return graph_mod.build_graph(user["id"])
+
+
+@app.get("/me/memory")
+def user_memory(user: dict = Depends(auth.current_user)) -> dict:
+    """Everything the system models about the user, grouped-ready for the
+    Memory page, with attributes + a representative quote per fact."""
+    return graph_mod.build_memory(user["id"])
 
 
 def _owned_session(conn, session_id: str, user_id: str):
@@ -206,6 +231,21 @@ def node(node_id: str, user: dict = Depends(auth.current_user)) -> dict:
     if detail is None or detail.get("user_id") != user["id"]:
         raise HTTPException(status_code=404, detail="node not found")
     return detail
+
+
+@app.delete("/nodes/{node_id}")
+def forget_node(node_id: str, user: dict = Depends(auth.current_user)) -> dict:
+    """Erase a fact the user asked to forget, with its history/attributes/
+    evidence/relations. Explicit and irreversible (unlike END/supersede)."""
+    from . import update
+    with get_conn() as conn:
+        n = conn.execute("SELECT user_id FROM nodes WHERE id = ?", (node_id,)).fetchone()
+        if n is None or n["user_id"] != user["id"]:
+            raise HTTPException(status_code=404, detail="node not found")
+        res = update.forget_node(conn, user["id"], node_id)
+    if not res.get("forgotten"):
+        raise HTTPException(status_code=400, detail=res.get("reason", "forget failed"))
+    return res
 
 
 @app.post("/nodes/{node_id}/restore")

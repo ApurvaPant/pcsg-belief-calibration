@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Session, User } from "../types";
 import type { Theme } from "../useTheme";
 
@@ -8,6 +8,9 @@ interface Props {
   onSelect: (id: string) => void;
   onNewChat: () => void;
   onDeleteSession: (id: string, purgeMemory: boolean) => void | Promise<void>;
+  onRenameSession: (id: string, title: string) => void | Promise<void>;
+  onOpenMemory: () => void;
+  memoryOpen: boolean;
   busy: boolean;
   user: User;
   onLogout: () => void;
@@ -22,12 +25,48 @@ function when(ts: string): string {
 }
 
 export default function Sidebar({
-  sessions, activeId, onSelect, onNewChat, onDeleteSession, busy, user, onLogout, theme, onToggleTheme,
+  sessions, activeId, onSelect, onNewChat, onDeleteSession, onRenameSession,
+  onOpenMemory, memoryOpen, busy, user, onLogout, theme, onToggleTheme,
 }: Props) {
   const name = user.username || user.label || "You";
   const [confirm, setConfirm] = useState<Session | null>(null);
   const [purge, setPurge] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const renameRef = useRef<HTMLInputElement>(null);
+
+  // Dismiss an open kebab menu on any outside click / Escape.
+  useEffect(() => {
+    if (!menuFor) return;
+    const close = () => setMenuFor(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuFor(null);
+    window.addEventListener("click", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuFor]);
+
+  useEffect(() => {
+    if (renaming) renameRef.current?.select();
+  }, [renaming]);
+
+  function startRename(s: Session) {
+    setMenuFor(null);
+    setRenaming(s.id);
+    setDraft(s.title || "");
+  }
+
+  async function commitRename(id: string) {
+    const title = draft.trim();
+    setRenaming(null);
+    if (title && title !== (sessions.find((s) => s.id === id)?.title || "")) {
+      await onRenameSession(id, title);
+    }
+  }
 
   async function doDelete() {
     if (!confirm) return;
@@ -47,26 +86,71 @@ export default function Sidebar({
         <span className="plus">+</span> New chat
       </button>
 
+      <button
+        className={`nav-item ${memoryOpen ? "active" : ""}`}
+        onClick={onOpenMemory}
+        title="See and manage what the system knows about you"
+      >
+        <span className="nav-ico" aria-hidden>◴</span>
+        <span>Your memory</span>
+      </button>
+
       <div className="sidebar-label eyebrow">Chats</div>
       <nav className="session-list">
         {sessions.length === 0 && <p className="muted small empty-hint">No chats yet.</p>}
         {sessions.map((s) => (
           <div key={s.id} className={`session-row ${s.id === activeId ? "active" : ""}`}>
+            {renaming === s.id ? (
+              <input
+                ref={renameRef}
+                className="session-rename"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                onBlur={() => commitRename(s.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); commitRename(s.id); }
+                  if (e.key === "Escape") { e.preventDefault(); setRenaming(null); }
+                }}
+              />
+            ) : (
+              <button
+                className={`session-item ${s.id === activeId ? "active" : ""}`}
+                onClick={() => onSelect(s.id)}
+                onDoubleClick={() => startRename(s)}
+              >
+                <span className="session-title">{s.title || "New chat"}</span>
+                <span className="session-when">{when(s.created_at)}</span>
+              </button>
+            )}
+
             <button
-              className={`session-item ${s.id === activeId ? "active" : ""}`}
-              onClick={() => onSelect(s.id)}
+              className={`session-kebab ${menuFor === s.id ? "open" : ""}`}
+              title="Chat options"
+              aria-label="Chat options"
+              aria-haspopup="menu"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuFor(menuFor === s.id ? null : s.id);
+              }}
             >
-              <span className="session-title">{s.title || "New chat"}</span>
-              <span className="session-when">{when(s.created_at)}</span>
+              ⋯
             </button>
-            <button
-              className="session-del"
-              title="Delete chat"
-              aria-label="Delete chat"
-              onClick={(e) => { e.stopPropagation(); setPurge(false); setConfirm(s); }}
-            >
-              ×
-            </button>
+
+            {menuFor === s.id && (
+              <div className="row-menu" role="menu" onClick={(e) => e.stopPropagation()}>
+                <button className="row-menu-item" role="menuitem" onClick={() => startRename(s)}>
+                  <span className="rm-ico" aria-hidden>✎</span> Rename
+                </button>
+                <button
+                  className="row-menu-item danger"
+                  role="menuitem"
+                  onClick={() => { setMenuFor(null); setPurge(false); setConfirm(s); }}
+                >
+                  <span className="rm-ico" aria-hidden>🗑</span> Delete
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </nav>

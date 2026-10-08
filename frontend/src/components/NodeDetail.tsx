@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import type { NodeDetail as NodeDetailType, UserNode } from "../types";
 import { colorFor } from "../theme";
@@ -7,6 +8,7 @@ interface Props {
   loading: boolean;
   onClose: () => void;
   onRestore?: (nodeId: string) => void;
+  onForget?: (nodeId: string) => void | Promise<void>;
 }
 
 function day(ts: string | null): string {
@@ -29,10 +31,19 @@ function transition(n: UserNode): string {
   return "first learned";
 }
 
-export default function NodeDetail({ detail, loading, onClose, onRestore }: Props) {
+export default function NodeDetail({ detail, loading, onClose, onRestore, onForget }: Props) {
+  const [confirmForget, setConfirmForget] = useState(false);
+  const [working, setWorking] = useState(false);
+
+  // Reset the forget prompt whenever a different node loads.
+  useEffect(() => { setConfirmForget(false); }, [detail?.id]);
+
   if (!detail && !loading) return null;
   const color = detail ? colorFor(detail.dimension) : "var(--muted)";
   const conf = detail ? Math.round(detail.confidence_calibrated * 100) : 0;
+  const rawConf = detail ? Math.round(detail.confidence_raw * 100) : 0;
+  const mentions = detail?.evidence.length ?? 0;
+  const activeAttrs = detail?.attributes.filter((a) => a.status === "active") ?? [];
 
   return (
     <aside className="detail" style={{ ["--dim" as string]: color } as CSSProperties}>
@@ -66,31 +77,37 @@ export default function NodeDetail({ detail, loading, onClose, onRestore }: Prop
             </div>
           )}
 
-          <div className="d-conf" title={`raw ${Math.round(detail.confidence_raw * 100)}%`}>
-            <div className="d-conf-head">
-              <span className="d-conf-num">{conf}%</span>
-              <span className="d-conf-cap">confidence</span>
+          <div className="d-stats">
+            <div className="d-stat">
+              <div className="d-stat-num">{conf}%</div>
+              <div className="d-stat-cap">confidence</div>
             </div>
-            <div className="d-conf-bar">
-              <div className="d-conf-fill" style={{ width: `${conf}%` }} />
+            <div className="d-stat">
+              <div className="d-stat-num">{mentions}</div>
+              <div className="d-stat-cap">mention{mentions === 1 ? "" : "s"}</div>
+            </div>
+            <div className="d-stat">
+              <div className="d-stat-num">{detail.history.length}</div>
+              <div className="d-stat-cap">version{detail.history.length === 1 ? "" : "s"}</div>
             </div>
           </div>
+          <div className="d-conf-bar" title={`raw ${rawConf}% · calibrated ${conf}%`}>
+            <div className="d-conf-fill" style={{ width: `${conf}%` }} />
+          </div>
 
-          {detail.attributes.filter((a) => a.status === "active").length > 0 && (
+          {activeAttrs.length > 0 && (
             <section className="d-section">
               <div className="d-label">details</div>
               <ul className="d-attrs">
-                {detail.attributes
-                  .filter((a) => a.status === "active")
-                  .map((a) => (
-                    <li key={a.id}>
-                      <span className="d-attr-name">{a.name.replace(/_/g, " ")}</span>
-                      <span className="d-attr-val">
-                        {a.value}
-                        {a.unit ? ` ${a.unit}` : ""}
-                      </span>
-                    </li>
-                  ))}
+                {activeAttrs.map((a) => (
+                  <li key={a.id}>
+                    <span className="d-attr-name">{a.name.replace(/_/g, " ")}</span>
+                    <span className="d-attr-val">
+                      {a.value}
+                      {a.unit ? ` ${a.unit}` : ""}
+                    </span>
+                  </li>
+                ))}
               </ul>
             </section>
           )}
@@ -125,6 +142,35 @@ export default function NodeDetail({ detail, loading, onClose, onRestore }: Prop
                   </li>
                 ))}
               </ol>
+            </section>
+          )}
+
+          {onForget && (
+            <section className="d-danger">
+              {confirmForget ? (
+                <div className="d-forget-confirm">
+                  <span>Forget this memory and its history? This can’t be undone.</span>
+                  <div className="d-forget-row">
+                    <button className="btn-ghost" disabled={working} onClick={() => setConfirmForget(false)}>
+                      Cancel
+                    </button>
+                    <button
+                      className="btn-danger"
+                      disabled={working}
+                      onClick={async () => {
+                        setWorking(true);
+                        try { await onForget(detail.id); } finally { setWorking(false); }
+                      }}
+                    >
+                      {working ? "Forgetting…" : "Forget"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button className="d-forget" onClick={() => setConfirmForget(true)}>
+                  Forget this memory
+                </button>
+              )}
             </section>
           )}
         </>

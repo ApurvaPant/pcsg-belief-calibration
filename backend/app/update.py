@@ -386,6 +386,44 @@ def delete_session(conn, user_id: str, session_id: str, purge_memory: bool = Fal
             "removed_nodes": removed_nodes, "removed_attributes": removed_attrs}
 
 
+def forget_node(conn, user_id: str, node_id: str) -> dict[str, Any]:
+    """User-initiated 'forget this about me': permanently remove a fact and its
+    whole supersession history (how it changed), together with the attributes,
+    evidence and relations grounded on it. Ownership is verified here.
+
+    Unlike END/supersede (which are non-destructive and reversible), this is an
+    explicit erasure the user asked for, so it leaves nothing behind to restore.
+    """
+    node = conn.execute(
+        "SELECT * FROM nodes WHERE id = ? AND user_id = ?", (node_id, user_id)).fetchone()
+    if node is None:
+        return {"forgotten": False, "reason": "not_found"}
+
+    # The fact is the node plus its ancestor chain (older, superseded versions).
+    chain, cur, seen = [], node, set()
+    while cur is not None and cur["id"] not in seen:
+        chain.append(cur["id"])
+        seen.add(cur["id"])
+        pid = cur["previous_node_id"]
+        cur = conn.execute(
+            "SELECT * FROM nodes WHERE id = ? AND user_id = ?", (pid, user_id)).fetchone() if pid else None
+
+    for nid in chain:
+        conn.execute("UPDATE nodes SET previous_node_id = NULL WHERE previous_node_id = ?", (nid,))
+        conn.execute("DELETE FROM edges WHERE source_node_id = ? OR target_node_id = ?", (nid, nid))
+        aids = [r["id"] for r in conn.execute("SELECT id FROM attributes WHERE node_id = ?", (nid,))]
+        for aid in aids:
+            conn.execute("UPDATE attributes SET previous_attribute_id = NULL WHERE previous_attribute_id = ?", (aid,))
+            conn.execute("DELETE FROM evidence WHERE attribute_id = ?", (aid,))
+        conn.execute("UPDATE pending_slots SET node_id = NULL WHERE node_id = ?", (nid,))
+        conn.execute("DELETE FROM evidence WHERE node_id = ?", (nid,))
+        conn.execute("DELETE FROM attributes WHERE node_id = ?", (nid,))
+        conn.execute("DELETE FROM nodes WHERE id = ?", (nid,))
+
+    return {"forgotten": True, "node_id": node_id, "removed_nodes": len(chain),
+            "dimension": node["dimension"], "key": node["key"], "value": node["value"]}
+
+
 def _cross_dimension_match(conn, user_id, dimension, value):
     """fix step 4: an active node with the SAME normalised value under a
     DIFFERENT dimension. Returns the node, unless the two dimensions are allowed
