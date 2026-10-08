@@ -68,8 +68,9 @@ _FRAME_SYSTEM = (
     f"DIMENSION — one of: {', '.join(ontology.DIMENSIONS)}.\n"
     f"OPERATION — ADD | UPDATE | REFINE | END (END synonyms: {END_SYNONYMS}).\n\n"
     "Output NOTHING (empty frames) ONLY for a message that states no durable "
-    "fact at all: a pure question, a momentary mood ('i am doing great'), a "
-    "pleasantry ('thanks'), or a one-off action ('i drank a beer last night').\n\n"
+    "fact at all: a pure question, a momentary mood or passing feeling ('i am "
+    "doing great', 'i'm anxious today', 'i'm tired'), a pleasantry ('thanks'), "
+    "or a one-off action ('i drank a beer last night').\n\n"
     "Examples:\n"
     "  \"hey, i'm kiran. i'm studying computer science in my third year. i live "
     "in a hostel near campus\" -> frames: identity/ADD (name), identity/ADD "
@@ -110,6 +111,16 @@ def _fill_system() -> str:
         "yesterday', 'i went for a run this morning') is NOT a durable fact — "
         "return no assertion for it. A habit needs recurrence ('every morning', "
         "'usually', 'i always').\n"
+        "- skill: the key is the bare ability/subject itself (guitar, french, "
+        "python, chess) — NEVER qualified ('fluent_french', 'learning_guitar', "
+        "'playing_guitar' are WRONG). Qualifiers belong in attributes: "
+        "proficiency (beginner/fluent/expert), learning_status (learning/"
+        "improving), years_experience. Speaking / knowing / studying / learning / "
+        "being able to do something is a SKILL, not a habit (a habit is a "
+        "recurring routine like the gym every morning).\n"
+        "- a passing feeling or mood ('i'm anxious these days', 'i'm stressed', "
+        "'feeling excited', 'i'm tired') is transient — return nothing; it is "
+        "never a belief or a durable trait.\n"
         "- target_node 'dimension/key=value': set when attaching an attribute to "
         "an EXISTING node (e.g. an elliptical answer 'for 6 months').\n"
         "- the FRAMES are a HINT from a cheap planner. You are authoritative: "
@@ -138,6 +149,9 @@ Examples:
 "my favorite movie is interstellar" -> {"assertions":[{"subject":"self","dimension":"preference","key":"favourite_movie","value":"interstellar","operation":"ADD","quote":"my favorite movie is interstellar","confidence":0.9}],"relations":[]}
 "i have two kids" -> {"assertions":[{"subject":"relationship/child=children","dimension":"relationship","key":"child","value":"children","operation":"ADD","attributes":[{"name":"count","value":"2"}],"quote":"i have two kids","confidence":0.9}],"relations":[]}
 "i drank a beer last night" -> {"assertions":[],"relations":[]}
+"i speak fluent french" -> {"assertions":[{"subject":"self","dimension":"skill","key":"french","value":"french","operation":"ADD","attributes":[{"name":"proficiency","value":"fluent"}],"quote":"i speak fluent french","confidence":0.9}],"relations":[]}
+"i've been learning guitar for 2 years" -> {"assertions":[{"subject":"self","dimension":"skill","key":"guitar","value":"guitar","operation":"ADD","attributes":[{"name":"learning_status","value":"learning"},{"name":"years_experience","value":"2","unit":"years"}],"quote":"i've been learning guitar for 2 years","confidence":0.9}],"relations":[]}
+"i'm feeling really anxious these days" -> {"assertions":[],"relations":[]}
 "in my free time i mostly watch movies" -> {"assertions":[{"subject":"self","dimension":"habit","key":"watching_movies","value":"movies","operation":"ADD","quote":"in my free time i mostly watch movies","confidence":0.85}],"relations":[]}
 "machine learning is part of my cs degree" -> {"assertions":[{"subject":"self","dimension":"interest","key":"topic","value":"machine learning","operation":"ADD","quote":"machine learning","confidence":0.8},{"subject":"self","dimension":"interest","key":"topic","value":"cs degree","operation":"ADD","quote":"cs degree","confidence":0.8}],"relations":[{"from_value":"machine learning","relation":"part_of","to_value":"cs degree"}]}
 "what is my name" -> {"assertions":[],"relations":[]}
