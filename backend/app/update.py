@@ -180,17 +180,21 @@ def _active_by_value(conn, user_id, dimension, key, value):
 def _close_node(conn, node_id, detail=None) -> None:
     """Close a node (supersede + set valid_to). If `detail` is given it also
     records *why* (ended/achieved/abandoned); otherwise status_detail is left
-    as-is — a plain value replacement is not a user-driven cessation."""
+    as-is — a plain value replacement is not a user-driven cessation.
+
+    A closed node's active attributes are closed with it (INV-20): the rows are
+    preserved for history/audit, but an ended relationship's `since`/`name` must
+    not read as a CURRENT attribute. Restoring the node reactivates them."""
+    ts = now_iso()
     if detail is None:
-        conn.execute(
-            "UPDATE nodes SET status = ?, valid_to = ? WHERE id = ?",
-            (STATUS_SUPERSEDED, now_iso(), node_id),
-        )
+        conn.execute("UPDATE nodes SET status = ?, valid_to = ? WHERE id = ?",
+                     (STATUS_SUPERSEDED, ts, node_id))
     else:
-        conn.execute(
-            "UPDATE nodes SET status = ?, status_detail = ?, valid_to = ? WHERE id = ?",
-            (STATUS_SUPERSEDED, detail, now_iso(), node_id),
-        )
+        conn.execute("UPDATE nodes SET status = ?, status_detail = ?, valid_to = ? WHERE id = ?",
+                     (STATUS_SUPERSEDED, detail, ts, node_id))
+    conn.execute(
+        "UPDATE attributes SET status = 'superseded', valid_to = ? "
+        "WHERE node_id = ? AND status = 'active'", (ts, node_id))
 
 
 def _create_node(conn, user_id, assertion, previous_id=None, model=None) -> str:
@@ -477,6 +481,15 @@ def restore_node(conn, user_id: str, node_id: str, event_id: str | None = None) 
             _close_node(conn, other["id"])
     conn.execute("UPDATE nodes SET status = ?, status_detail = ?, valid_to = NULL WHERE id = ?",
                  (STATUS_ACTIVE, ontology.DETAIL_ACTIVE, node_id))
+    # Reactivate attributes closed WITH the node (those with no active sibling),
+    # so a restored relationship regains its since/name (mirror of _close_node).
+    for a in conn.execute(
+        "SELECT id, name FROM attributes WHERE node_id = ? AND status = 'superseded'", (node_id,)):
+        has_active = conn.execute(
+            "SELECT 1 FROM attributes WHERE node_id = ? AND name = ? AND status = 'active' LIMIT 1",
+            (node_id, a["name"])).fetchone()
+        if not has_active:
+            conn.execute("UPDATE attributes SET status = 'active', valid_to = NULL WHERE id = ?", (a["id"],))
     conn.execute(
         "INSERT INTO events (id, session_id, message_id, action, dimension, key, value, "
         "node_id, reason_code, created_at) VALUES (?, NULL, NULL, 'restored', ?, ?, ?, ?, ?, ?)",

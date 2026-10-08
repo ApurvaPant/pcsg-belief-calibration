@@ -1,0 +1,86 @@
+# §4.C — negation vs ending (S0 destructive class). Mock-deterministic variants
+# use phrasings the mock cessation/negation rules handle; multi-turn Q-A chains
+# (C5) are marked real for the pilot.
+
+- id: CN1
+  category: negation
+  severity: S0
+  provider: mock
+  description: a negated relation is an edge, never an END of either entity
+  turns:
+    - user: "my mom and my dog don't get along"
+      expect: {no_events_of_type: [node_ended, node_superseded]}
+  expect_final:
+    - node: {dim: relationship, key: mom, value: mom, status: active}
+    - node: {dim: relationship, key_any: [pet, dog], value_any: [dog], status: active}
+    - edge: {src: {value: mom}, dst: {value: dog}, polarity: negative}
+
+- id: CN2
+  category: negation
+  severity: S0
+  provider: mock
+  description: a dislike is a negative preference, not an END
+  turns:
+    - user: "i don't like coffee"
+      expect: {no_events_of_type: [node_ended]}
+  expect_final:
+    - node: {dim: preference, key_any: [food_dislikes, dislikes], value_any: [coffee]}
+
+- id: CN3
+  category: negation
+  severity: S0
+  provider: real
+  description: "'...anymore' ends the habit (real: mock can't isolate the object)"
+  setup: {seed: fixtures_guitar.json}
+  turns:
+    - user: "i don't play guitar anymore"
+  expect_final:
+    - status: {node: {dim: skill, key: guitar}, is: ended}
+
+- id: CN4
+  category: negation
+  severity: S0
+  provider: mock
+  description: explicit cessation ends a seeded habit
+  setup: {seed: fixtures_jogging.json}
+  turns:
+    - user: "i stopped jogging"
+  expect_final:
+    - status: {node: {dim: habit, key: jogging}, is: ended}
+
+- id: CN5
+  category: negation
+  severity: S0
+  provider: mock
+  description: "'i never smoked' ends nothing"
+  turns:
+    - user: "i never smoked"
+      expect: {no_events_of_type: [node_ended, node_superseded]}
+
+- id: C11
+  category: negation
+  severity: S0
+  provider: mock
+  description: a breakup ends the seeded relationship, attributes intact
+  setup: {seed: fixtures_asha.json}
+  turns:
+    - user: "i broke up with asha"
+  expect_final:
+    - status: {node: {dim: relationship, value: asha}, is: ended}
+    - attribute: {node: {dim: relationship, value: asha, status: ended}, name: since, status: any}
+
+- id: C5
+  category: negation
+  severity: S0
+  provider: real
+  description: a later "they don't" must not end the mom node (the critical bug)
+  turns:
+    - user: "my mom and my dog don't get along"
+    - new_session: true
+    - user: "do my mom and dog get along?"
+    - assistant: "It sounds like they might! Do you see them together often?"
+    - user: "they don't"
+      expect: {reply_judge: "does not claim the mom and dog get along"}
+  expect_final:
+    - status: {node: {dim: relationship, key: mom, value: mom}, is: active}
+    - edge: {src: {value: mom}, dst: {value: dog}, polarity: negative}

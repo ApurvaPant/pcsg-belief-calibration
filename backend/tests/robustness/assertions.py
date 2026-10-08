@@ -40,8 +40,12 @@ def _match_node(n: dict, sel: dict) -> bool:
         return False
     if "value_any" in sel and _nz(n["value"]) not in {_nz(x) for x in sel["value_any"]}:
         return False
-    if "status" in sel and n.get("status") != sel["status"]:
-        return False
+    if "status" in sel:
+        want = sel["status"]
+        actual = ("ended" if (n.get("status") == "superseded" and n.get("status_detail") == "ended")
+                  else n.get("status"))
+        if want != actual and want != n.get("status"):
+            return False
     return True
 
 
@@ -87,15 +91,20 @@ def a_node_count(curr, sel, out):
 
 
 def a_attribute(curr, sel, out):
-    matches = _resolve(curr, sel["node"])
+    node_sel = sel["node"]
+    pool = _all_nodes(curr) if node_sel.get("status") else _active_nodes(curr)
+    matches = _resolve(curr, node_sel, pool)
     if len(matches) != 1:
-        out.append(("attribute", False, f"selector {sel['node']} -> {len(matches)} (ambiguous)"))
+        out.append(("attribute", False, f"selector {node_sel} -> {len(matches)} (ambiguous)"))
         return
-    got = _attrs_for(curr, matches[0]["id"], active_only=(sel.get("status", "active") == "active"))
+    astatus = sel.get("status", "active")  # 'active' | 'superseded' | 'any'
+    got = [a for a in _attrs_for(curr, matches[0]["id"], active_only=False)
+           if astatus == "any" or a.get("status") == astatus]
     want = {_nz(x) for x in sel["value_any"]} if "value_any" in sel else {_nz(sel.get("value"))}
-    ok = any(a["name"] == sel["name"] and (_nz(a["value"]) in want or "value" not in sel and "value_any" not in sel)
-             for a in got)
-    out.append(("attribute", ok, f"{sel['name']} want {want}; have {[(a['name'], a['value']) for a in got]}"))
+    has_val = "value" in sel or "value_any" in sel
+    ok = any(a["name"] == sel["name"] and (not has_val or _nz(a["value"]) in want) for a in got)
+    out.append(("attribute", ok, f"{sel['name']}({astatus}) want {want if has_val else 'present'}; "
+                                 f"have {[(a['name'], a['value'], a['status']) for a in got]}"))
 
 
 def a_status(curr, sel, out):

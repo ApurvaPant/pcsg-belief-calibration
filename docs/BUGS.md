@@ -22,3 +22,13 @@ Verified: 3/3 green, 0 invariant violations.
 
 ## capability-limit? items
 (none yet)
+
+## BUG-002  [S2]  [update_policy]  status: fixed
+Found by: robustness/C11 (INV-20 violation, mock)
+Repro: `tests/robustness/runner.py --suite negation --case C11 --provider mock`
+Expected: an ended relationship's attributes are preserved for history but NOT reported as current (INV-20).
+Actual: ending a node left its attributes `status=active`, so an ended girlfriend's `since` attribute stayed active on a superseded node.
+Root cause: `_close_node` closed the node but never closed its attributes.
+Fix: `_close_node` now sets the node's active attributes to `superseded` (rows kept for history); `restore_node` reactivates attributes with no active sibling. commit: see git log.
+Regression tests: scenario C11 (attribute survives as superseded on the ended node) + INV-20 on every turn.
+Verified: 3/3 green, 0 invariant violations.
