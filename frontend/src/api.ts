@@ -7,6 +7,11 @@ import type {
   User,
 } from "./types";
 
+// Target the backend over IPv4 explicitly. The dev page is served on IPv6
+// loopback ([::1]), so a "localhost" host would make the browser call the API
+// over IPv6 (::1:8000) where nothing listens; 127.0.0.1 forces the IPv4 path
+// that the backend actually binds. Override with VITE_API_BASE if the API is
+// elsewhere (e.g. a LAN IP or forwarded host).
 const BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 const TOKEN_KEY = "pcsg_token";
 

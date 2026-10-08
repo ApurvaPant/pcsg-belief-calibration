@@ -228,10 +228,11 @@ def _get_open_slot(conn, session_id):
 
 def _open_slot(conn, session_id, node_id, attribute_name, asked_at_message_id,
                slot_type="attribute", topic=None):
+    # Store "" not NULL for open slots: legacy DBs have attribute_name NOT NULL.
     conn.execute(
         "INSERT INTO pending_slots (id, session_id, node_id, attribute_name, slot_type, "
         "topic, asked_at_message_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?)",
-        (new_id("slot"), session_id, node_id, attribute_name, slot_type, topic,
+        (new_id("slot"), session_id, node_id, attribute_name or "", slot_type, topic,
          asked_at_message_id, now_iso()),
     )
 
@@ -305,7 +306,7 @@ def process_turn(message: str, session_id: str | None, user_id: str) -> dict[str
         open_slot = _get_open_slot(conn, sid)
         slot_type = (open_slot["slot_type"] or "attribute") if open_slot else None
         slot_hint = None
-        if open_slot:
+        if open_slot and slot_type == "attribute":  # only attribute slots use the hint
             slot_hint = {
                 "attribute_name": open_slot["attribute_name"],
                 "node_label": _node_label(conn, open_slot["node_id"]) if open_slot["node_id"] else "",

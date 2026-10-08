@@ -27,6 +27,10 @@ app = FastAPI(title="User-State Graph Chat", version="3.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.server.cors_origins,
+    # Dev convenience: also accept any other origin (localhost, a LAN IP, or a
+    # forwarded host) so the browser is never CORS-blocked. The regex makes the
+    # middleware echo the specific Origin, so allow_credentials stays valid.
+    allow_origin_regex=r".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
