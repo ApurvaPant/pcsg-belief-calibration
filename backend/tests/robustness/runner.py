@@ -71,10 +71,12 @@ def _make_judge(provider: str):
               "'PASS: <reason>' or 'FAIL: <reason>'. Be strict and literal.")
 
     def judge(rubric: str, reply: str):
+        # Use the stronger chat model (not the cheap classifier) as the judge: a
+        # flaky judge would invalidate every reply_judge result. Still inexpensive.
         r = llm.complete(
             messages=[{"role": "system", "content": sysmsg},
                       {"role": "user", "content": f"RUBRIC: {rubric}\n\nREPLY: {reply}"}],
-            model=llm.resolve_model("classifier"), temperature=0.0, max_tokens=120)
+            model=llm.resolve_model("chat"), temperature=0.0, max_tokens=120)
         t = (r.get("text") or "").strip()
         return t.upper().startswith("PASS"), t[:200]
     return judge

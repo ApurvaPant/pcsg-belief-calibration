@@ -1,0 +1,66 @@
+# §4 D/E/O — identity ownership, cardinality, idempotency. Mock-deterministic.
+
+- id: D4
+  category: state
+  severity: S0
+  provider: mock
+  description: a pet's name never touches the user's identity
+  setup: {seed: fixtures_kiran.json}
+  turns:
+    - user: "my cat's name is luna"
+  expect_final:
+    - node: {dim: identity, key: name, value: kiran, status: active}
+    - node: {dim: relationship, key_any: [pet, cat], value_any: [cat]}
+      attributes: {name: luna}
+
+- id: E4
+  category: state
+  severity: S1
+  provider: mock
+  description: multiple liked foods coexist (MULTI)
+  turns:
+    - user: "i like pizza"
+    - user: "i like pasta"
+    - user: "i like dosa"
+  expect_final:
+    - node_count: {dim: preference, key: food_likes, status: active, eq: 3}
+
+- id: E5
+  category: state
+  severity: S1
+  provider: mock
+  description: location is SINGLE — a move supersedes the old city
+  turns:
+    - user: "i live in chennai"
+    - user: "i live in bangalore"
+  expect_final:
+    - node_count: {dim: identity, key: location, status: active, eq: 1}
+    - history_chain: {node: {dim: identity, key: location}, values: [chennai, bangalore]}
+
+- id: O1
+  category: state
+  severity: S2
+  provider: mock
+  description: repeating a fact never duplicates or supersedes it
+  turns:
+    - user: "i love chess"
+    - user: "i love chess"
+    - user: "i love chess"
+      expect: {no_events_of_type: [node_superseded, node_ended]}
+    - user: "i love chess"
+    - user: "i love chess"
+      expect: {no_events_of_type: [node_superseded, node_ended]}
+  expect_final:
+    - node_count: {dim: interest, value: chess, eq: 1}
+
+- id: O3
+  category: state
+  severity: S2
+  provider: mock
+  description: casing and punctuation variants are one node
+  turns:
+    - user: "i love chess"
+    - user: "i love chess!!"
+    - user: "I Love Chess"
+  expect_final:
+    - node_count: {dim: interest, value: chess, eq: 1}

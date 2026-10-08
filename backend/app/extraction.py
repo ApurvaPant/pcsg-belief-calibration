@@ -128,9 +128,14 @@ def _fill_system() -> str:
         "For an entity subject, put the entity's detail in attributes (e.g. "
         "name=herald on the pet).\n"
         "- replaces_value: only on an explicit swap ('switched from X to Y').\n"
-        "- relations: top-level array [{from_value, relation, to_value}] using "
-        f"only {', '.join(sorted(ontology.RELATION_TYPES))}; ONLY when the "
-        "message explicitly names both endpoints.\n\n"
+        "- relations: top-level array [{from_value, relation, to_value, polarity}] "
+        f"using only {', '.join(sorted(ontology.RELATION_TYPES))}; ONLY when the "
+        "message explicitly names both endpoints. polarity is 'negative' for a "
+        "negated relation, else 'positive'.\n"
+        "- a negated interpersonal relation ('X and Y don't get along', 'X and Y "
+        "aren't close', 'X and Y don't talk') creates a relationship node for "
+        "EACH named entity PLUS a relation {relation: gets_along_with, polarity: "
+        "negative}. It is NEVER an END of either entity.\n\n"
         f"{_FILL_EXAMPLES}\n"
         'Respond ONLY with JSON: {"assertions": [...], "relations": [...]}'
     )
@@ -148,6 +153,7 @@ Examples:
 "i have a cat" -> {"assertions":[{"subject":"relationship/pet=cat","dimension":"relationship","key":"pet","value":"cat","operation":"ADD","quote":"i have a cat","confidence":0.9}],"relations":[]}
 "my favorite movie is interstellar" -> {"assertions":[{"subject":"self","dimension":"preference","key":"favourite_movie","value":"interstellar","operation":"ADD","quote":"my favorite movie is interstellar","confidence":0.9}],"relations":[]}
 "i have two kids" -> {"assertions":[{"subject":"relationship/child=children","dimension":"relationship","key":"child","value":"children","operation":"ADD","attributes":[{"name":"count","value":"2"}],"quote":"i have two kids","confidence":0.9}],"relations":[]}
+"my mom and my dog don't get along" -> {"assertions":[{"subject":"relationship/mom=mom","dimension":"relationship","key":"mom","value":"mom","operation":"ADD","quote":"my mom and my dog don't get along","confidence":0.9},{"subject":"relationship/pet=dog","dimension":"relationship","key":"pet","value":"dog","operation":"ADD","quote":"my mom and my dog don't get along","confidence":0.9}],"relations":[{"from_value":"mom","relation":"gets_along_with","to_value":"dog","polarity":"negative"}]}
 "i drank a beer last night" -> {"assertions":[],"relations":[]}
 "i speak fluent french" -> {"assertions":[{"subject":"self","dimension":"skill","key":"french","value":"french","operation":"ADD","attributes":[{"name":"proficiency","value":"fluent"}],"quote":"i speak fluent french","confidence":0.9}],"relations":[]}
 "i've been learning guitar for 2 years" -> {"assertions":[{"subject":"self","dimension":"skill","key":"guitar","value":"guitar","operation":"ADD","attributes":[{"name":"learning_status","value":"learning"},{"name":"years_experience","value":"2","unit":"years"}],"quote":"i've been learning guitar for 2 years","confidence":0.9}],"relations":[]}
@@ -328,7 +334,7 @@ _FILL_SCHEMA = {
         "relations": {"type": "array", "items": {
             "type": "object",
             "properties": {"from_value": {"type": "string"}, "relation": {"type": "string"},
-                           "to_value": {"type": "string"}},
+                           "to_value": {"type": "string"}, "polarity": {"type": "string"}},
             "required": ["from_value", "relation", "to_value"]}},
     },
     "required": ["assertions"],

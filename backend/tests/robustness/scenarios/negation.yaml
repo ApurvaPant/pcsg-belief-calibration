@@ -80,7 +80,7 @@
     - user: "do my mom and dog get along?"
     - assistant: "It sounds like they might! Do you see them together often?"
     - user: "they don't"
-      expect: {reply_judge: "does not claim the mom and dog get along"}
+      expect: {reply_judge: "PASS if the reply indicates the mom and the dog do NOT get along (or are not on good terms, or stay apart). FAIL only if the reply says they DO get along / are friendly."}
   expect_final:
     - status: {node: {dim: relationship, key: mom, value: mom}, is: active}
     - edge: {src: {value: mom}, dst: {value: dog}, polarity: negative}

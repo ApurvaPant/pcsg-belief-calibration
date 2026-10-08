@@ -231,9 +231,32 @@ def _profile_summary(conn, user_id, historical=False) -> str:
             (user_id,),
         ).fetchall()
         lines += [_fmt_node(conn, n) for n in old]
+    lines += _edge_lines(conn, user_id)
     if not lines:
         return ""
     return "Known about the user so far:\n" + "\n".join(lines)
+
+
+def _edge_lines(conn, user_id) -> list[str]:
+    """Relations between the user's entities, so the reply can use them (a
+    negated edge must read as 'do NOT get along', not be invisible)."""
+    rows = conn.execute(
+        "SELECT e.relation, e.polarity, s.value AS src, t.value AS dst "
+        "FROM edges e JOIN nodes s ON s.id = e.source_node_id "
+        "JOIN nodes t ON t.id = e.target_node_id "
+        "WHERE e.user_id = ? AND s.status = 'active' AND t.status = 'active'",
+        (user_id,),
+    ).fetchall()
+    out = []
+    for r in rows:
+        rel = r["relation"].replace("_", " ")
+        neg = str(r["polarity"] or "positive").startswith("neg")
+        if r["relation"] == "gets_along_with":
+            phrase = "do NOT get along with" if neg else "gets along with"
+        else:
+            phrase = f"{'does NOT ' if neg else ''}{rel}"
+        out.append(f"- {r['src']} {phrase} {r['dst']}")
+    return out
 
 
 # ── pending slots (PART 6) ──────────────────────────────────────────────── #

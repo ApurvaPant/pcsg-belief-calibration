@@ -41,7 +41,7 @@ _MEDIUM = [
     ("first_person_state",
      re.compile(r"\b(i am|i'?m|i have|i'?ve|i work|i live|i want|i wanna|i aim|"
                 r"i plan|i hope|i'?m learning|i study|i believe|i think|i feel|"
-                r"i can|i know|i own|i use|i play|my \w+ is)\b", re.I)),
+                r"i can|i know|i own|i use|i play|i do|i speak|my \w+ is)\b", re.I)),
 ]
 
 # ── Reject: pure pleasantries (message is nothing but filler) ───────────── #

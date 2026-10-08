@@ -129,7 +129,7 @@
     - user: "how long have i been eating momo?"
       expect:
         writes: 0
-        reply_judge: "does not state any duration or length of time"
+        reply_judge: "PASS unless the reply states a specific duration or length of time (a number of days/weeks/months/years) for how long the user has eaten momo. Saying it does not know, or not giving any duration, is a PASS."
 
 - id: R17
   category: regressions
