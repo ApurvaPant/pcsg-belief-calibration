@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Session, User } from "../types";
 import type { Theme } from "../useTheme";
+import { IconMemory, IconPencil, IconTrash } from "./icons";
 
 interface Props {
   sessions: Session[];
@@ -91,7 +92,7 @@ export default function Sidebar({
         onClick={onOpenMemory}
         title="See and manage what the system knows about you"
       >
-        <span className="nav-ico" aria-hidden>◴</span>
+        <span className="nav-ico"><IconMemory size={17} /></span>
         <span>Your memory</span>
       </button>
 
@@ -140,14 +141,14 @@ export default function Sidebar({
             {menuFor === s.id && (
               <div className="row-menu" role="menu" onClick={(e) => e.stopPropagation()}>
                 <button className="row-menu-item" role="menuitem" onClick={() => startRename(s)}>
-                  <span className="rm-ico" aria-hidden>✎</span> Rename
+                  <IconPencil size={15} /> Rename
                 </button>
                 <button
                   className="row-menu-item danger"
                   role="menuitem"
                   onClick={() => { setMenuFor(null); setPurge(false); setConfirm(s); }}
                 >
-                  <span className="rm-ico" aria-hidden>🗑</span> Delete
+                  <IconTrash size={15} /> Delete
                 </button>
               </div>
             )}

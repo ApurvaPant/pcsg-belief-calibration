@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import type { NodeDetail as NodeDetailType, UserNode } from "../types";
 import { colorFor } from "../theme";
+import { IconTrash, IconUndo } from "./icons";
 
 interface Props {
   detail: NodeDetailType | null;
@@ -73,7 +74,7 @@ export default function NodeDetail({ detail, loading, onClose, onRestore, onForg
           {detail.status !== "active" && onRestore && (
             <div className="d-restore">
               <span>This was marked {statusWord(detail)}.</span>
-              <button onClick={() => onRestore(detail.id)}>↩ Restore</button>
+              <button onClick={() => onRestore(detail.id)}><IconUndo size={13} /> Restore</button>
             </div>
           )}
 
@@ -168,7 +169,7 @@ export default function NodeDetail({ detail, loading, onClose, onRestore, onForg
                 </div>
               ) : (
                 <button className="d-forget" onClick={() => setConfirmForget(true)}>
-                  Forget this memory
+                  <IconTrash size={14} /> Forget this memory
                 </button>
               )}
             </section>

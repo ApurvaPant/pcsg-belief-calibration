@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "../types";
 import { renderInline } from "../markdown";
+import { IconMark } from "./icons";
 
 interface Props {
   messages: ChatMessage[];
@@ -64,7 +65,7 @@ export default function ChatPanel({ messages, onSend, busy, userInitial }: Props
           )}
           {messages.map((m, i) => (
             <div key={i} className={`msg msg-${m.role}`}>
-              <div className="msg-avatar">{m.role === "user" ? userInitial : "◈"}</div>
+              <div className="msg-avatar">{m.role === "user" ? userInitial : <IconMark size={15} />}</div>
               <div className="msg-body">
                 <div className="msg-role">{m.role === "user" ? "You" : "Assistant"}</div>
                 <div className="bubble">

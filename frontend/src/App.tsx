@@ -5,6 +5,7 @@ import NodeDetailView from "./components/NodeDetail";
 import MemoryPage from "./components/MemoryPage";
 import Sidebar from "./components/Sidebar";
 import Login from "./components/Login";
+import { IconGraph } from "./components/icons";
 import {
   deleteSession as apiDeleteSession,
   describeApiError,
@@ -330,7 +331,7 @@ function Workspace({ user, theme, onToggleTheme, onLogout }: WorkspaceProps) {
                 if (showGraph) { setSelectedId(null); setDetail(null); }
               }}
             >
-              ◈ {showGraph ? "Hide graph" : "Show graph"}
+              <IconGraph size={15} /> {showGraph ? "Hide graph" : "Show graph"}
             </button>
           </div>
         </div>

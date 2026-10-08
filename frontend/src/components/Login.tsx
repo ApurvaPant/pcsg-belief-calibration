@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { describeApiError, login, register } from "../api";
 import type { User } from "../types";
+import { IconMark } from "./icons";
 
 interface Props {
   onAuth: (user: User) => void;
@@ -33,7 +34,7 @@ export default function Login({ onAuth }: Props) {
     <div className="auth-screen">
       <div className="auth-card">
         <div className="auth-brand">
-          <span className="logo">◈</span>
+          <span className="logo"><IconMark size={22} /></span>
           <h1>User-State Graph</h1>
           <p className="sub">A temporal, evidence-backed model of you, built from chat.</p>
         </div>

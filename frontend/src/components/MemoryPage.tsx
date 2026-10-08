@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { CSSProperties } from "react";
 import type { MemoryNode, MemoryPayload } from "../types";
 import { DIMENSION_ORDER, colorFor } from "../theme";
+import { DimensionIcon, IconTrash, IconUndo } from "./icons";
 
 interface Props {
   memory: MemoryPayload | null;
@@ -75,7 +76,7 @@ function MemoryCard({ n, onForget, onRestore }: {
               disabled={working}
               onClick={async () => { setWorking(true); try { await onRestore(n.id); } finally { setWorking(false); } }}
             >
-              ↩ Restore
+              <IconUndo size={13} /> Restore
             </button>
           )}
           {confirming ? (
@@ -92,7 +93,7 @@ function MemoryCard({ n, onForget, onRestore }: {
             </span>
           ) : (
             <button className="mem-btn ghost-danger" onClick={() => setConfirming(true)}>
-              Forget
+              <IconTrash size={13} /> Forget
             </button>
           )}
         </span>
@@ -151,7 +152,9 @@ export default function MemoryPage({ memory, loading, onClose, onForget, onResto
         {dims.map((dim) => (
           <section key={dim} className="mem-group">
             <div className="mem-group-head">
-              <span className="mem-dot" style={{ background: colorFor(dim) }} />
+              <span className="mem-ico" style={{ color: colorFor(dim) }}>
+                <DimensionIcon name={dim} size={17} />
+              </span>
               <h2 className="mem-group-title">{dim.replace(/_/g, " ")}</h2>
               <span className="mem-group-count">{byDim.get(dim)!.length}</span>
             </div>
