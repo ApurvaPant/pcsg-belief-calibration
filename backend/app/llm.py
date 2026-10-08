@@ -54,6 +54,47 @@ def resolve_model(role: str) -> str:
 # --------------------------------------------------------------------------- #
 # Public API
 # --------------------------------------------------------------------------- #
+# ── Test-mode fault injection (§6 of the testing spec) ─────────────────────── #
+# Inert in production: the hook is only ever populated by the /debug/fault
+# endpoint, which itself is only mounted when PCSG_TEST_MODE=1. It injects a
+# failure into the NEXT N completion calls so resilience can be tested without
+# changing any extraction behaviour.
+_FAULT: dict[str, Any] = {"mode": None, "remaining": 0}
+
+
+def set_fault(mode: str | None, count: int = 1) -> None:
+    """Arm (or clear with mode=None) a completion fault for the next `count` calls."""
+    _FAULT["mode"] = mode
+    _FAULT["remaining"] = count if mode else 0
+
+
+def _maybe_fault() -> dict[str, Any] | None:
+    """Consume one armed fault, if any. Returns a canned result for the
+    'soft' faults (malformed/empty/truncated) or raises for the hard ones."""
+    if not _FAULT["mode"] or _FAULT["remaining"] <= 0:
+        return None
+    mode = _FAULT["mode"]
+    _FAULT["remaining"] -= 1
+    if _FAULT["remaining"] <= 0:
+        _FAULT["mode"] = None
+    if mode == "timeout":
+        raise httpx.ReadTimeout("injected timeout")
+    if mode == "http_429":
+        raise httpx.HTTPStatusError("429", request=None, response=httpx.Response(429))  # type: ignore[arg-type]
+    if mode == "http_500":
+        raise httpx.HTTPStatusError("500", request=None, response=httpx.Response(500))  # type: ignore[arg-type]
+    if mode == "empty":
+        return {"text": "", "prompt_tokens": 0, "completion_tokens": 0, "latency_ms": 1}
+    if mode == "malformed_json":
+        return {"text": "{not valid json at all", "prompt_tokens": 0, "completion_tokens": 0, "latency_ms": 1}
+    if mode == "schema_violation":
+        return {"text": '{"unexpected": true}', "prompt_tokens": 0, "completion_tokens": 0, "latency_ms": 1}
+    if mode == "truncated":
+        return {"text": '{"assertions": [{"dimension": "prefere', "prompt_tokens": 0,
+                "completion_tokens": 0, "latency_ms": 1}
+    return None
+
+
 def complete(
     messages: list[Message],
     model: str | None = None,
@@ -72,6 +113,9 @@ def complete(
     temperature = settings.llm.temperature if temperature is None else temperature
     max_tokens = settings.llm.max_tokens if max_tokens is None else max_tokens
 
+    injected = _maybe_fault()
+    if injected is not None:
+        return injected
     if settings.llm.provider == "mock":
         return _mock_complete(messages)
     return _http_complete(messages, model, temperature, max_tokens, response_schema, schema_name)

@@ -1,6 +1,8 @@
 """FastAPI application: auth, per-user routes, CORS, startup."""
 from __future__ import annotations
 
+import os
+
 from fastapi import Depends, FastAPI, Header, HTTPException
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,6 +38,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Test-mode debug endpoints (§1.1): mounted only under PCSG_TEST_MODE=1 so they
+# can never be reached in a normal run. They add no production behaviour.
+if os.getenv("PCSG_TEST_MODE") == "1":
+    from . import debug_routes
+    app.include_router(debug_routes.router)
 
 
 @app.on_event("startup")

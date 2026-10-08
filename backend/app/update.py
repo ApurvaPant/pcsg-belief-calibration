@@ -212,12 +212,17 @@ def _create_node(conn, user_id, assertion, previous_id=None, model=None) -> str:
 
 
 def _reinforce(conn, node, assertion, model=None) -> float:
-    new_raw = noisy_or(node["confidence_raw"], float(assertion["confidence"]))
+    # confidence_raw is the first observation's raw signal and is IMMUTABLE after
+    # insert (INV-01 / the project's hard rule). Repeated evidence accumulates
+    # into the CALIBRATED confidence via Noisy-OR, so it grows toward — but never
+    # reaches — 1.0 without ever rewriting the raw signal.
+    obs = calibrate(float(assertion["confidence"]))
+    new_cal = noisy_or(node["confidence_calibrated"], obs)
     conn.execute(
-        "UPDATE nodes SET confidence_raw = ?, confidence_calibrated = ?, model = ? WHERE id = ?",
-        (new_raw, calibrate(new_raw), model, node["id"]),
+        "UPDATE nodes SET confidence_calibrated = ?, model = ? WHERE id = ?",
+        (new_cal, model, node["id"]),
     )
-    return calibrate(new_raw)
+    return new_cal
 
 
 # ── resolver helpers (PARTS 3/4/5/8) ────────────────────────────────────── #

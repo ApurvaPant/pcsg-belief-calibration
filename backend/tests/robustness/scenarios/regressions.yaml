@@ -1,0 +1,142 @@
+# §4.R — every past regression as its own scenario. `provider: mock` cases use
+# phrasings the deterministic mock models handle, so they run free and 3/3; the
+# rest are marked `provider: real` and run in the budgeted pilot.
+
+- id: R01
+  category: regressions
+  severity: S0
+  provider: mock
+  description: a pet's name must not overwrite the user's name
+  setup: {seed: empty.json}
+  turns:
+    - user: "my name is apurva"
+      expect: {node: {dim: identity, key: name, value: apurva}}
+    - user: "my dog name is herald"
+  expect_final:
+    - node: {dim: identity, key: name, value: apurva, status: active}
+    - node: {dim: relationship, key_any: [dog, pet], value_any: [dog]}
+      attributes: {name: herald}
+
+- id: R02
+  category: regressions
+  severity: S1
+  provider: mock
+  description: a question creates nothing
+  turns:
+    - user: "what is my girlfriend name"
+      expect: {writes: 0, badge_in: [RETRIEVAL_QUERY]}
+
+- id: R03
+  category: regressions
+  severity: S1
+  provider: mock
+  description: no invented edge from an unrelated food mention
+  turns:
+    - user: "my girlfriend is hailey"
+    - user: "i love momo as a food"
+      expect: {node: {dim: preference, key: food_likes, value: momo}}
+  expect_final:
+    - absent_edge: {src: {value: momo}, dst: {value: hailey}}
+
+- id: R04
+  category: regressions
+  severity: S1
+  provider: mock
+  description: a relationship entity is not duplicated
+  turns:
+    - user: "my girlfriend is hailey"
+    - user: "my girlfriend is hailey"
+  expect_final:
+    - node_count: {dim: relationship, value: hailey, eq: 1}
+
+- id: R07
+  category: regressions
+  severity: S1
+  provider: mock
+  description: love and hate of different foods coexist
+  turns:
+    - user: "i love eating momos"
+    - user: "i hate mushrooms"
+  expect_final:
+    - node: {dim: preference, key: food_likes, value: momos, status: active}
+    - node: {dim: preference, key_any: [food_dislikes, dislikes], value_any: [mushrooms]}
+
+- id: R08
+  category: regressions
+  severity: S1
+  provider: mock
+  description: multiple likes do not supersede each other
+  turns:
+    - user: "i love machine learning"
+    - user: "i love jogging"
+    - user: "i love momos"
+  expect_final:
+    - node_count: {dim: preference, key: food_likes, status: active, gte: 1}
+    - status: {node: {value: jogging}, is: active}
+    - status: {node: {value: machine learning}, is: active}
+
+- id: R09
+  category: regressions
+  severity: S0
+  provider: mock
+  description: an explicit cessation ends the habit (was gated out)
+  setup: {seed: fixtures_jogging.json}
+  turns:
+    - user: "i stopped doing jogging"
+      expect: {badge_not_in: [GATED_OUT]}
+  expect_final:
+    - status: {node: {dim: habit, key: jogging}, is: ended}
+
+- id: R19
+  category: regressions
+  severity: S0
+  provider: mock
+  description: a breakup ends the relationship
+  turns:
+    - user: "my girlfriend is hailey"
+    - user: "i broke up with hailey"
+  expect_final:
+    - status: {node: {dim: relationship, value: hailey}, is: ended}
+
+- id: R20
+  category: regressions
+  severity: S2
+  provider: mock
+  description: a one-off past action writes nothing
+  turns:
+    - user: "i had pani puri yesterday"
+      expect: {writes: 0}
+
+- id: R10
+  category: regressions
+  severity: S2
+  provider: real
+  description: '"i do coding" must create a node (was gated out)'
+  turns:
+    - user: "i do coding"
+      expect: {badge_not_in: [GATED_OUT, RETRIEVAL_QUERY]}
+  expect_final:
+    - node: {dim: skill, key_any: [coding, programming], status: active}
+
+- id: R16
+  category: regressions
+  severity: S0
+  provider: real
+  description: no fabricated duration on retrieval
+  setup: {seed: fixtures_momo.json}
+  turns:
+    - new_session: true
+    - user: "how long have i been eating momo?"
+      expect:
+        writes: 0
+        reply_judge: "does not state any duration or length of time"
+
+- id: R17
+  category: regressions
+  severity: S1
+  provider: real
+  description: '"concise answers" is communication_style, not interest'
+  turns:
+    - user: "i prefer short and concise answers"
+  expect_final:
+    - absent_node: {dim: interest}
