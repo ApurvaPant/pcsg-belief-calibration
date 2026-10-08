@@ -147,7 +147,8 @@ ATTRIBUTES_BY_DIMENSION: dict[str, set[str]] = {
     "relationship": {"duration", "since", "relation_type", "status",
                      "name", "occupation", "birthday", "age", "location"},
     "skill": {"proficiency", "years_experience", "learning_status"},
-    "habit": {"frequency", "duration", "time_of_day", "status"},
+    "habit": {"frequency", "duration", "time_of_day", "status",
+              "genre", "topic", "detail"},  # refinement answers qualify the habit
     "goal": {"target_date", "progress", "priority", "status"},
     "project": {"role", "status", "started", "tech_stack"},
     "interest": {"intensity", "since"},
@@ -187,6 +188,30 @@ RELATION_TYPES = {"part_of", "requires", "blocks", "related_to", "works_on", "in
 
 def is_valid_relation(relation: str) -> bool:
     return relation in RELATION_TYPES
+
+
+# ── Cross-dimension duplicate policy (fix step 4) ───────────────────────────#
+# A value may legitimately exist under two dimensions only when the two mean
+# genuinely different things. The canonical case is a language that is both a
+# PREFERENCE (the user likes it) and a SKILL (the user can use it): e.g.
+# skill/german vs preference/german. Any other same-value cross-dimension pair
+# is a duplicate and should REFINE the existing node rather than create a new
+# one (logged as dimension_conflict).
+_COEXIST_PAIRS: frozenset[frozenset[str]] = frozenset({frozenset({"preference", "skill"})})
+
+
+def may_coexist_cross_dim(dim_a: str, dim_b: str) -> bool:
+    """True when the same value is allowed to live under both dimensions."""
+    return dim_a != dim_b and frozenset({dim_a, dim_b}) in _COEXIST_PAIRS
+
+
+# How the user wants responses written is ALWAYS communication_style, never
+# interest. Injected into the structuring prompt's ontology card (fix step 4).
+COMM_STYLE_RULE = (
+    "How the user wants responses WRITTEN (length, tone, format, verbosity, "
+    "formality, e.g. 'concise answers', 'no emojis', 'explain simply') is ALWAYS "
+    "dimension communication_style, NEVER interest or preference."
+)
 
 
 # ── Key format + identity self-reference guard (PART 2/6) ───────────────── #

@@ -71,6 +71,7 @@ def _fill_system() -> str:
         "frame into a complete assertion. Map to this slot ontology "
         "([SINGLE]=one value, [MULTI]=many):\n"
         f"{_slot_reference()}\n\n"
+        f"{ontology.COMM_STYLE_RULE}\n\n"
         "Rules:\n"
         "- key: snake_case matching ^[a-z][a-z0-9_]*$, never 'general'.\n"
         "- value: a SHORT noun phrase (<=4 words, NO preposition phrase "

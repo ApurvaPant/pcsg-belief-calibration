@@ -5,6 +5,66 @@ nothing here is aspirational.
 
 ---
 
+## 2026-10-08 — Fix: question–answer resolution for fragment replies
+
+### What was broken
+Short answers to the assistant's own questions were gated out or extracted in
+isolation, losing their meaning (live evidence: "8 months", "reading books",
+"technical", "deep learning" all dropped or mis-attached).
+
+### What was built (fix steps 1–5)
+1. **Q–A resolution (P8), before the gate.** When the previous assistant turn is
+   a question and the reply is a fragment (no first-person subject), the cheap
+   model rewrites it into one standalone first-person sentence; the gate, span
+   extraction and structuring then run on the RESOLVED text, while the evidence
+   quote keeps the user's original words (`messages.resolved_content` stores the
+   rewrite). Prompt P8 added; mock handler `llm.mock_qa_resolve` added so the
+   path is exercised offline. `app/pipeline.py`, `app/llm.py`, `app/db.py`.
+2. **Every assistant question opens a pending slot.** Two types — `attribute`
+   (known node + attribute) and `open` (topic, node optional). Any turn while a
+   slot is open gets the salience floor of 60 (slots now expire after 2 turns).
+   `_detect_slot` generalized; `pending_slots` gained `slot_type` + `topic`.
+3. **Refinement chains.** An open slot bound to a node created/refined recently
+   attaches the answer as an attribute of THAT node ("technical" → genre,
+   "deep learning" → topic on the reading habit) instead of making a new node —
+   unless the user expresses a new interest (love/like/follow), which creates a
+   node as before. `habit` gained `genre`/`topic`/`detail` attributes.
+4. **Cross-dimension duplicates.** Before creating a MULTI node, a same-value
+   node under another dimension is reinforced (logged `dimension_conflict`)
+   instead of duplicated — unless the two may legitimately coexist (a language
+   that is both a `skill` and a `preference`). The structuring prompt now states
+   that how the user wants responses written is always `communication_style`.
+   `app/update.py`, `app/ontology.py`, `app/extraction.py`.
+5. **Eval chains.** Harness `history` now accepts `{role, text}` turns incl.
+   assistant turns; added an `attributes_on` graph check. Seeded
+   `backend/tests/extractor_eval_cases.json` with the three DEV chains (dog
+   duration, books chain, open answer) and three TEST chains with different
+   wording (cat duration, painting chain, open answer).
+
+Also fixed a non-determinism: `_get_open_slot` now breaks `created_at` ties by
+insertion order (`rowid`), so the newest slot always wins.
+
+### Before/after (mock provider; ablation via `PCSG_DISABLE_QA_FIX=1`)
+| split | before (fix off) | after (fix on) |
+|-------|------------------|----------------|
+| dev   | 1/3 = 33.3% (F1 50.0) | **3/3 = 100%** (F1 100) |
+| test  | 1/3 = 33.3% (F1 50.0) | **3/3 = 100%** (F1 100) |
+
+All 76 unit tests pass (69 existing + 7 new in `test_qa_resolution.py`). A
+`PCSG_DISABLE_QA_FIX` ablation toggle was added so the before/after is measured
+on identical cases.
+
+### Honest caveats
+- These scores are on the **mock** provider over the **six** chains directed in
+  the spec, which I authored — not the 45-case human-labelled baseline (still
+  absent) on a real provider. The mock's P8 + extraction are deterministic
+  stand-ins; the pipeline logic they exercise is provider-agnostic. A real
+  before/after still needs the 45-case set and a `budget_usd`.
+- `extractor_eval_cases.json` currently holds only these six chains; merge the
+  45 baseline cases into its `cases` array when provided.
+
+---
+
 ## 2026-10-08 — Phase 0 / STEP 1 (harness) built; BLOCKED on two inputs
 
 ### TL;DR

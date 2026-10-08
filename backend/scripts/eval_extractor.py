@@ -163,12 +163,16 @@ def _fresh_db() -> Path:
 
 
 def _history_turns(case: dict) -> list[dict[str, str]]:
+    """Normalise history to {role, content}. Accepts bare strings (user turns)
+    and {role, text|content} objects, including assistant turns (spec step 5)."""
     out = []
     for h in case.get("history", []) or []:
         if isinstance(h, str):
             out.append({"role": "user", "content": h})
-        elif isinstance(h, dict) and h.get("content"):
-            out.append({"role": str(h.get("role", "user")), "content": str(h["content"])})
+        elif isinstance(h, dict):
+            content = h.get("content") or h.get("text")
+            if content:
+                out.append({"role": str(h.get("role", "user")), "content": str(content)})
     return out
 
 
@@ -183,8 +187,8 @@ def _inject_assistant_last(sid: str, text: str, last_changes: list[dict]) -> Non
             "VALUES (?, ?, 'assistant', ?, ?)", (amid, sid, text, now_iso()))
         det = pipeline._detect_slot(text, last_changes or [])
         if det:
-            node_id, attr = det
-            pipeline._open_slot(conn, sid, node_id, attr, amid)
+            pipeline._open_slot(conn, sid, det["node_id"], det["attribute_name"], amid,
+                                det["slot_type"], det["topic"])
 
 
 def run_case(case: dict, ledger: CallLedger) -> dict[str, Any]:
@@ -215,11 +219,12 @@ def run_case(case: dict, ledger: CallLedger) -> dict[str, Any]:
     result = pipeline.process_turn(case["message"], sid, DEFAULT_USER_ID)
     ext = ledger.last_ext
     written = [c for c in result.get("changes", []) if c.get("action") in WRITE_ACTIONS]
+    kept = [dict(a) for a in (ext.kept if ext else [])]
 
     return {
         "changes": result.get("changes", []),
         "written": written,
-        "kept": [dict(a) for a in (ext.kept if ext else [])],
+        "kept": _scored_candidates(kept, written),
         "relations": list(ext.relations) if ext else [],
         "graph": _read_graph(result["user_id"]),
         "stage_tokens": {k: dict(v) for k, v in ledger.stage_tokens.items()},
@@ -227,6 +232,34 @@ def run_case(case: dict, ledger: CallLedger) -> dict[str, Any]:
         "turn_cost": ledger.turn_cost(),
         "turn_tokens": ledger.turn_tokens(),
     }
+
+
+_ACTION_OP = {"created": "ADD", "superseded": "ADD", "reinforced": "UPDATE",
+              "ended": "END", "refined": "REFINE"}
+
+
+def _scored_candidates(kept: list[dict], written: list[dict]) -> list[dict]:
+    """Assertion-level scoring basis: the model's kept assertions PLUS any write
+    the pipeline synthesized outside the model (the step-3 refinement attach),
+    deduped on (dimension, key, value, operation). Change-derived candidates
+    carry no attributes/subject — those are verified via graph_after instead."""
+    def sig(a: dict) -> tuple:
+        return (a.get("dimension"), a.get("key"),
+                ontology.normalize_value(str(a.get("value", ""))),
+                str(a.get("operation", "")).upper())
+
+    out = list(kept)
+    seen = {sig(a) for a in kept}
+    for c in written:
+        op = _ACTION_OP.get(c.get("action"))
+        if not op:
+            continue
+        a = {"dimension": c.get("dimension"), "key": c.get("key"), "value": c.get("value"),
+             "operation": op, "subject": "self", "explicitness": "explicit", "attributes": []}
+        if sig(a) not in seen:
+            out.append(a)
+            seen.add(sig(a))
+    return out
 
 
 def _read_graph(user_id: str) -> dict[str, Any]:
@@ -349,6 +382,17 @@ def _check_graph(expected: dict, graph: dict) -> list[str]:
     for label in expected.get("must_not_exist", []):
         if _label_present(graph, label):
             fails.append(f"must_not_exist present: {label}")
+    # attributes_on: {label: [{name, value[, unit]}]} must be active on the node.
+    for label, wanted in (expected.get("attributes_on", {}) or {}).items():
+        recs = _label_present(graph, label)
+        have = [a for r in recs for a in r["attributes"]]
+        for w in wanted:
+            ok = any(_norm_key(a["name"]) == _norm_key(w.get("name"))
+                     and ("value" not in w or _norm(a["value"]) == _norm(w["value"]))
+                     and ("unit" not in w or (a.get("unit") or None) == (w.get("unit") or None))
+                     for a in have)
+            if not ok:
+                fails.append(f"missing attribute {w.get('name')}={w.get('value')} on {label}")
     if "no_value_longer_than_words" in expected:
         lim = int(expected["no_value_longer_than_words"])
         if graph["max_value_words"] > lim:

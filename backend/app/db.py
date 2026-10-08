@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS messages (
     session_id        TEXT NOT NULL REFERENCES sessions(id),
     role              TEXT NOT NULL,          -- user | assistant
     content           TEXT NOT NULL,
+    resolved_content  TEXT,                   -- Q-A-resolved rewrite (fix step 1)
     created_at        TEXT NOT NULL,
     prompt_tokens     INTEGER DEFAULT 0,
     completion_tokens INTEGER DEFAULT 0,
@@ -150,12 +151,16 @@ CREATE TABLE IF NOT EXISTS extraction_log (
     created_at     TEXT NOT NULL
 );
 
--- Assistant questions that opened a slot for a specific attribute (PART 6).
+-- Assistant questions that opened a slot (PART 6). Two kinds (fix step 2):
+--   attribute : a known node + a named attribute to fill (duration, frequency)
+--   open      : a topic question; node_id may be null until the answer lands
 CREATE TABLE IF NOT EXISTS pending_slots (
     id                  TEXT PRIMARY KEY,
     session_id          TEXT REFERENCES sessions(id),
     node_id             TEXT REFERENCES nodes(id),
-    attribute_name      TEXT NOT NULL,
+    attribute_name      TEXT,            -- nullable for 'open' slots
+    slot_type           TEXT DEFAULT 'attribute',  -- attribute | open
+    topic               TEXT,            -- the assistant's question (open slots)
     asked_at_message_id TEXT,
     status              TEXT NOT NULL,   -- open | filled | expired
     created_at          TEXT NOT NULL
@@ -248,6 +253,18 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if ev_cols2 and "similarity" not in ev_cols2:
         conn.execute("ALTER TABLE events ADD COLUMN matched_label TEXT")
         conn.execute("ALTER TABLE events ADD COLUMN similarity REAL")
+
+    # fix step 2: pending_slots gained a type + topic for 'open' slots.
+    slot_cols = {r["name"] for r in conn.execute("PRAGMA table_info(pending_slots)")}
+    if slot_cols and "slot_type" not in slot_cols:
+        conn.execute("ALTER TABLE pending_slots ADD COLUMN slot_type TEXT DEFAULT 'attribute'")
+    if slot_cols and "topic" not in slot_cols:
+        conn.execute("ALTER TABLE pending_slots ADD COLUMN topic TEXT")
+
+    # fix step 1: messages store the Q-A-resolved rewrite alongside the original.
+    msg_cols = {r["name"] for r in conn.execute("PRAGMA table_info(messages)")}
+    if msg_cols and "resolved_content" not in msg_cols:
+        conn.execute("ALTER TABLE messages ADD COLUMN resolved_content TEXT")
 
     # evidence gained attribute_id + nullable node_id: rebuild, preserving rows.
     ev_cols = {r["name"] for r in conn.execute("PRAGMA table_info(evidence)")}

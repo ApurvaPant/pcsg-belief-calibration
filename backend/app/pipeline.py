@@ -14,11 +14,17 @@ Flow per user turn:
 from __future__ import annotations
 
 import json
+import os
 import re
 import sqlite3
 from typing import Any
 
-from . import extraction, llm, salience
+# Ablation switch: set PCSG_DISABLE_QA_FIX=1 to revert the question–answer
+# resolution, generalized slots and refinement-chain behaviour (fix steps 1-3),
+# so the before/after can be measured on identical cases.
+_QA_FIX = os.getenv("PCSG_DISABLE_QA_FIX") != "1"
+
+from . import extraction, llm, ontology, salience
 from .db import get_conn, now_iso
 from .update import apply_assertion, apply_relations
 from .utils import new_id
@@ -33,7 +39,7 @@ _CHAT_SYSTEM = (
 _HISTORY_LIMIT = 12
 _CONTEXT_TURNS = 4
 _SLOT_FLOOR = 0.60
-_SLOT_EXPIRE_TURNS = 3
+_SLOT_EXPIRE_TURNS = 2  # fix step 2: a slot floors salience for 2 turns
 
 # Assistant questions that open a slot for a specific attribute (PART 6).
 _SLOT_QUESTIONS = [
@@ -45,6 +51,74 @@ _SLOT_QUESTIONS = [
 # Questions that ask about the user's PAST (surface ended/superseded state).
 _HISTORICAL = re.compile(
     r"\b(used to|have i ever|did i ever|who was|who were|what did i|were we|how long were)\b", re.I)
+
+# ── fix step 1: question–answer resolution (P8) ─────────────────────────────#
+_QA_RESOLVE_SYSTEM = (
+    "[[TASK:QA_RESOLVE]] Rewrite the user's reply as one standalone first-person "
+    "sentence, using only the information in the question and the reply. Do not add "
+    "any fact that is not in either. If the reply does not answer the question, "
+    "return the reply unchanged.\nReturn only the sentence."
+)
+_IS_QUESTION = re.compile(
+    r"\b(what|how|why|when|who|whom|whose|which|where|do|does|did|are|is|am|was|were|"
+    r"can|could|would|will|should|have|has|tell me|any)\b", re.I)
+_FIRST_PERSON_SV = re.compile(r"\b(i|i'?m|im|i'?ve|we|we'?re|my|mine)\b", re.I)
+_INTEREST_VERB = re.compile(
+    r"\b(love|loves|like|likes|enjoy|enjoys|into|follow|following|favou?rite|prefer|"
+    r"prefers|passionate|interested in|fan of)\b", re.I)
+_LEAD_ADVERB = re.compile(r"^\s*(mostly|usually|really|just|probably|maybe|mainly|kinda|a bit of|sort of)\s+", re.I)
+
+
+def _previous_assistant_question(history: list[dict[str, str]]) -> str | None:
+    """The immediately-preceding assistant turn, iff it is a question."""
+    for m in reversed(history):
+        if m.get("role") == "assistant":
+            c = (m.get("content") or "").strip()
+            return c if (c.endswith("?") or bool(_IS_QUESTION.search(c))) else None
+    return None
+
+
+def _tokenize(text: str) -> list[str]:
+    return re.findall(r"[a-z0-9']+", text.lower())
+
+
+def _is_fragment(text: str) -> bool:
+    """A reply that does not stand alone: it lacks a first-person subject
+    ("8 months", "reading books", "technical"). A reply that already carries its
+    own first-person subject ("i switched to rust") is a full statement, not a
+    fragment answer, even when short — so it is handled normally."""
+    return not _FIRST_PERSON_SV.search(text)
+
+
+def _expresses_interest(text: str) -> bool:
+    return bool(_INTEREST_VERB.search(text))
+
+
+def _resolve_qa(question: str, message: str) -> str:
+    """P8: rewrite a fragment reply into one standalone first-person sentence."""
+    try:
+        res = llm.complete(
+            messages=[{"role": "system", "content": _QA_RESOLVE_SYSTEM},
+                      {"role": "user", "content": f"Question: {question}\nReply: {message}"}],
+            model=llm.resolve_model("classifier"), temperature=0.0, max_tokens=60)
+        out = (res.get("text") or "").strip().strip('"').splitlines()
+        return (out[0].strip() if out else "") or message
+    except Exception:  # noqa: BLE001 — resolver down: fall back to the raw reply
+        return message
+
+
+def _attr_name_from_question(question: str) -> str:
+    """Derive the qualifier name an OPEN-slot answer fills, from the question."""
+    q = (question or "").lower()
+    if any(p in q for p in ("what kind of", "what type of", "what sort of", "what genre")):
+        return "genre"
+    if any(p in q for p in ("topic", "subject", "area", "specific")):
+        return "topic"
+    if "how often" in q:
+        return "frequency"
+    if "how long" in q or "since when" in q:
+        return "duration"
+    return "detail"
 
 
 # ── sessions & messages ─────────────────────────────────────────────────── #
@@ -82,13 +156,15 @@ def _history(conn, session_id, limit=_HISTORY_LIMIT):
 
 
 def _insert_message(conn, session_id, role, content, *, prompt_tokens=0,
-                    completion_tokens=0, latency_ms=0, salience_score=None, salient=False) -> str:
+                    completion_tokens=0, latency_ms=0, salience_score=None, salient=False,
+                    resolved_content=None) -> str:
     mid = new_id("msg")
     conn.execute(
-        "INSERT INTO messages (id, session_id, role, content, created_at, prompt_tokens, "
-        "completion_tokens, latency_ms, salience_score, salient) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (mid, session_id, role, content, now_iso(), prompt_tokens, completion_tokens,
-         latency_ms, salience_score, 1 if salient else 0),
+        "INSERT INTO messages (id, session_id, role, content, resolved_content, created_at, "
+        "prompt_tokens, completion_tokens, latency_ms, salience_score, salient) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (mid, session_id, role, content, resolved_content, now_iso(), prompt_tokens,
+         completion_tokens, latency_ms, salience_score, 1 if salient else 0),
     )
     return mid
 
@@ -133,7 +209,7 @@ def _node_label(conn, node_id) -> str:
 def _get_open_slot(conn, session_id):
     row = conn.execute(
         "SELECT * FROM pending_slots WHERE session_id = ? AND status = 'open' "
-        "ORDER BY created_at DESC LIMIT 1",
+        "ORDER BY created_at DESC, rowid DESC LIMIT 1",  # rowid breaks timestamp ties
         (session_id,),
     ).fetchone()
     if not row:
@@ -150,23 +226,39 @@ def _get_open_slot(conn, session_id):
     return row
 
 
-def _open_slot(conn, session_id, node_id, attribute_name, asked_at_message_id):
+def _open_slot(conn, session_id, node_id, attribute_name, asked_at_message_id,
+               slot_type="attribute", topic=None):
     conn.execute(
-        "INSERT INTO pending_slots (id, session_id, node_id, attribute_name, "
-        "asked_at_message_id, status, created_at) VALUES (?, ?, ?, ?, ?, 'open', ?)",
-        (new_id("slot"), session_id, node_id, attribute_name, asked_at_message_id, now_iso()),
+        "INSERT INTO pending_slots (id, session_id, node_id, attribute_name, slot_type, "
+        "topic, asked_at_message_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?)",
+        (new_id("slot"), session_id, node_id, attribute_name, slot_type, topic,
+         asked_at_message_id, now_iso()),
     )
 
 
 def _detect_slot(reply, changes):
-    """Did the reply ask about an attribute of a node created this turn?"""
-    low = reply.lower()
+    """fix step 2: EVERY assistant question opens a slot. Returns a dict
+    {node_id, attribute_name, slot_type, topic} or None.
+
+    - attribute slot: a qualifier question (how long / how often / ...) about a
+      node touched this turn.
+    - open slot: any other question; node_id is the most recent node touched
+      this turn (may be None), topic is the question itself.
+    """
+    low = reply.lower().strip()
+    if not (low.endswith("?") or bool(_IS_QUESTION.search(low))):
+        return None
+    node_id = None
+    for c in changes:  # the most recent node touched this turn
+        if c.get("node_id") and c.get("action") in ("created", "reinforced", "superseded", "refined"):
+            node_id = c["node_id"]
     for pat, attr in _SLOT_QUESTIONS:
-        if pat.search(low):
-            for c in changes:
-                if c.get("node_id") and c.get("action") in ("created", "reinforced", "superseded", "refined"):
-                    return c["node_id"], attr
-    return None
+        if pat.search(low) and node_id:
+            return {"node_id": node_id, "attribute_name": attr,
+                    "slot_type": "attribute", "topic": reply}
+    if not _QA_FIX:  # ablation: only attribute slots existed before the fix
+        return None
+    return {"node_id": node_id, "attribute_name": None, "slot_type": "open", "topic": reply}
 
 
 def _log_gate(conn, session_id, message_id, salient, score, raw_score, reason,
@@ -204,44 +296,77 @@ def _log_event(conn, session_id, message_id, change, extractor_json):
 
 # ── the turn ────────────────────────────────────────────────────────────── #
 def process_turn(message: str, session_id: str | None, user_id: str) -> dict[str, Any]:
+    original_message = message
+
     # Stage 1: resolve session + read context, profile, open slot.
     with get_conn() as conn:
         sid = _resolve_session(conn, session_id, user_id, message)
         history = _history(conn, sid)
         open_slot = _get_open_slot(conn, sid)
+        slot_type = (open_slot["slot_type"] or "attribute") if open_slot else None
         slot_hint = None
         if open_slot:
             slot_hint = {
                 "attribute_name": open_slot["attribute_name"],
-                "node_label": _node_label(conn, open_slot["node_id"]),
+                "node_label": _node_label(conn, open_slot["node_id"]) if open_slot["node_id"] else "",
             }
         profile = _profile_summary(conn, user_id, historical=bool(_HISTORICAL.search(message)))
 
-    # Bug 1: a pure interrogative is a retrieval query — never extract from it.
-    is_query, extract_text = salience.classify_message(message)
+    # fix step 3: refinement chain. An OPEN slot bound to a recent node, answered
+    # by a fragment that does NOT express a new interest, attaches the answer as
+    # an attribute of THAT node rather than creating a new one.
+    refine = None
+    if (_QA_FIX and open_slot and open_slot["node_id"] and slot_type == "open"
+            and _is_fragment(message) and not _expresses_interest(message)
+            and _tokenize(message)):
+        refine = {"node_id": open_slot["node_id"],
+                  "attr": _attr_name_from_question(open_slot["topic"] or ""),
+                  "value": ontology.normalize_value(message)}
 
-    # Stage 2: salience (slot floor when we just asked a question).
-    if is_query:
-        score, reason, classifier_model, raw_score, salient = 0.0, "retrieval_query", None, 0, False
-    else:
-        score, reason, classifier_model, raw_score = salience.score_salience(extract_text)
-        if open_slot and score < _SLOT_FLOOR:
-            score, reason = _SLOT_FLOOR, reason + "; slot_floor"
-        salient = salience.is_salient(score)
+    # fix step 1: Q–A resolution. Rewrite a fragment reply to the assistant's
+    # question into a standalone first-person sentence BEFORE the gate. Skipped
+    # for an attribute slot (the structured slot-hint path is more precise) and
+    # when we are taking the refinement path above.
+    resolved_message = message
+    qa_resolved = False
+    if _QA_FIX and refine is None:
+        prev_q = _previous_assistant_question(history)
+        if prev_q and _is_fragment(message) and slot_type != "attribute":
+            resolved_message = _resolve_qa(prev_q, message)
+            qa_resolved = resolved_message.strip().lower() != message.strip().lower()
+    work_text = resolved_message
 
-    # Stage 3: extraction (only the declarative half), with context + slot hint.
-    # Tier-0 rule-matched END is a constraint the extractor cannot override.
-    if salient:
-        end_forced, end_object = salience.detect_end(extract_text)
-        ext = extraction.extract_assertions(extract_text, context=history, pending_slot=slot_hint,
-                                            force_end=end_forced, end_object=end_object)
-    else:
+    # Stage 2/3: gate + extraction (on the RESOLVED text; evidence keeps the
+    # user's original words). The refinement path skips the model entirely.
+    if refine is not None:
+        is_query, extract_text = False, ""
+        score, reason, classifier_model, raw_score, salient = _SLOT_FLOOR, "slot_refine", None, 0, True
         ext = extraction.ExtractionResult([], [], None, None)
+    else:
+        is_query, extract_text = salience.classify_message(work_text)
+        if is_query:
+            score, reason, classifier_model, raw_score, salient = 0.0, "retrieval_query", None, 0, False
+        else:
+            score, reason, classifier_model, raw_score = salience.score_salience(extract_text)
+            if open_slot and score < _SLOT_FLOOR:  # fix step 2: slot floor of 60
+                score, reason = _SLOT_FLOOR, reason + "; slot_floor"
+            salient = salience.is_salient(score)
+        if qa_resolved:
+            reason += "; qa_resolved"
+        if salient:
+            end_forced, end_object = salience.detect_end(extract_text)
+            ext = extraction.extract_assertions(extract_text, context=history, pending_slot=slot_hint,
+                                                force_end=end_forced, end_object=end_object)
+            if qa_resolved:  # evidence quote stays the user's ORIGINAL words
+                for a in ext.kept:
+                    a["quote"] = original_message
+        else:
+            ext = extraction.ExtractionResult([], [], None, None)
 
-    # Stage 4: assistant reply.
+    # Stage 4: assistant reply (always generated from the original message).
     system = _CHAT_SYSTEM + (f"\n\n{profile}" if profile else "")
     chat_messages = [{"role": "system", "content": system}, *history[-_CONTEXT_TURNS:],
-                     {"role": "user", "content": message}]
+                     {"role": "user", "content": original_message}]
     reply_result = llm.complete(messages=chat_messages, model=llm.resolve_model("chat"))
     reply = reply_result["text"]
 
@@ -249,49 +374,66 @@ def process_turn(message: str, session_id: str | None, user_id: str) -> dict[str
     changes: list[dict[str, Any]] = []
     relations_made: list[dict[str, Any]] = []
     with get_conn() as conn:
-        user_msg_id = _insert_message(conn, sid, "user", message,
-                                      salience_score=score, salient=salient)
+        user_msg_id = _insert_message(conn, sid, "user", original_message,
+                                      salience_score=score, salient=salient,
+                                      resolved_content=resolved_message if qa_resolved else None)
         _log_gate(conn, sid, user_msg_id, salient, score, raw_score, reason, classifier_model,
                   frame_tokens=ext.frame_tokens, fill_tokens=ext.fill_tokens)
 
-        for assertion in ext.kept:
-            changes.append(apply_assertion(conn, user_id, sid, user_msg_id, assertion, model=ext.model))
-        for raw_item, rcode in ext.dropped:
-            item = raw_item if isinstance(raw_item, dict) else {}
-            changes.append({
-                "action": "ignored", "node_id": None,
-                "dimension": str(item.get("dimension", "") or ""),
-                "key": str(item.get("key", "") or ""),
-                "value": str(item.get("value", "") or ""),
-                "previous_node_id": None, "confidence_calibrated": None, "reason_code": rcode,
-            })
+        if refine is not None:
+            tnode = conn.execute("SELECT dimension, key, value FROM nodes WHERE id = ?",
+                                 (refine["node_id"],)).fetchone()
+            if tnode and refine["value"]:
+                ref_assertion = {
+                    "dimension": tnode["dimension"], "key": tnode["key"], "value": tnode["value"],
+                    "operation": "REFINE", "subject": "self", "replaces_value": None,
+                    "attributes": [{"name": refine["attr"], "value": refine["value"], "unit": None}],
+                    "quote": original_message, "confidence": 0.8, "explicitness": "explicit",
+                    "target_node": {"dimension": tnode["dimension"], "key": tnode["key"],
+                                    "value": tnode["value"]},
+                }
+                changes.append(apply_assertion(conn, user_id, sid, user_msg_id, ref_assertion,
+                                               model=llm.resolve_model("extractor")))
+        else:
+            for assertion in ext.kept:
+                changes.append(apply_assertion(conn, user_id, sid, user_msg_id, assertion, model=ext.model))
+            for raw_item, rcode in ext.dropped:
+                item = raw_item if isinstance(raw_item, dict) else {}
+                changes.append({
+                    "action": "ignored", "node_id": None,
+                    "dimension": str(item.get("dimension", "") or ""),
+                    "key": str(item.get("key", "") or ""),
+                    "value": str(item.get("value", "") or ""),
+                    "previous_node_id": None, "confidence_calibrated": None, "reason_code": rcode,
+                })
 
-        # Bug 1: surface the read path so a query is visibly RETRIEVAL_QUERY.
-        if is_query:
-            changes.append({
-                "action": "retrieval_query", "node_id": None, "dimension": "", "key": "",
-                "value": "", "previous_node_id": None, "confidence_calibrated": None,
-                "reason_code": None,
-            })
+            # Bug 1: surface the read path so a query is visibly RETRIEVAL_QUERY.
+            if is_query:
+                changes.append({
+                    "action": "retrieval_query", "node_id": None, "dimension": "", "key": "",
+                    "value": "", "previous_node_id": None, "confidence_calibrated": None,
+                    "reason_code": None,
+                })
 
-        # PART 8: relations (edges only when explicitly stated + both endpoints exist).
-        relations_made, relations_rejected = apply_relations(conn, user_id, ext.relations, message)
-        for r in relations_made:
-            changes.append({
-                "action": "linked", "node_id": None, "dimension": "", "key": r["relation"],
-                "value": f"{r['from']} → {r['to']}", "previous_node_id": None,
-                "confidence_calibrated": None, "reason_code": None,
-            })
-        for r in relations_rejected:
-            changes.append({
-                "action": "ignored", "node_id": None, "dimension": "edge", "key": r["relation"],
-                "value": f"{r['from']} → {r['to']}", "previous_node_id": None,
-                "confidence_calibrated": None, "reason_code": r["reason"],
-            })
+            # PART 8: relations (edges only when explicitly stated + endpoints exist).
+            relations_made, relations_rejected = apply_relations(conn, user_id, ext.relations, work_text)
+            for r in relations_made:
+                changes.append({
+                    "action": "linked", "node_id": None, "dimension": "", "key": r["relation"],
+                    "value": f"{r['from']} -> {r['to']}", "previous_node_id": None,
+                    "confidence_calibrated": None, "reason_code": None,
+                })
+            for r in relations_rejected:
+                changes.append({
+                    "action": "ignored", "node_id": None, "dimension": "edge", "key": r["relation"],
+                    "value": f"{r['from']} -> {r['to']}", "previous_node_id": None,
+                    "confidence_calibrated": None, "reason_code": r["reason"],
+                })
 
-        # PART 6: fill the open slot if this turn refined its node.
-        if open_slot and any(c.get("action") == "refined" and c.get("node_id") == open_slot["node_id"]
-                             for c in changes):
+        # PART 6: fill the open slot if this turn refined/reinforced its node.
+        if open_slot and (refine is not None or any(
+                c.get("action") in ("refined", "reinforced") and c.get("node_id") == open_slot["node_id"]
+                for c in changes)):
             conn.execute("UPDATE pending_slots SET status = 'filled' WHERE id = ?", (open_slot["id"],))
 
         for ch in changes:
@@ -301,8 +443,8 @@ def process_turn(message: str, session_id: str | None, user_id: str) -> dict[str
                        {"action": "none", "dimension": "", "key": "", "value": "",
                         "node_id": None, "reason_code": None}, ext.raw)
 
-        # PART 9: log every extraction attempt (for future distillation).
-        if salient:
+        # PART 9: log every model extraction attempt (for future distillation).
+        if salient and refine is None:
             accepted = any(c.get("action") in ("created", "reinforced", "superseded", "ended", "refined", "linked")
                            for c in changes)
             rc = next((c.get("reason_code") for c in changes if c.get("reason_code")), None)
@@ -314,11 +456,11 @@ def process_turn(message: str, session_id: str | None, user_id: str) -> dict[str
             completion_tokens=reply_result.get("completion_tokens", 0),
             latency_ms=reply_result.get("latency_ms", 0),
         )
-        # PART 6: open a new slot if the assistant just asked about an attribute.
+        # fix step 2: open a slot for ANY question the assistant just asked.
         det = _detect_slot(reply, changes)
         if det:
-            node_id, attr = det
-            _open_slot(conn, sid, node_id, attr, assistant_msg_id)
+            _open_slot(conn, sid, det["node_id"], det["attribute_name"], assistant_msg_id,
+                       det["slot_type"], det["topic"])
 
     return {
         "session_id": sid, "user_id": user_id, "reply": reply, "salient": salient,

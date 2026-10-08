@@ -199,6 +199,8 @@ def _mock_complete(messages: list[Message]) -> dict[str, Any]:
         text = json.dumps(_mock_salience(user))
     elif task == "EXTRACTION":
         text = json.dumps({"assertions": mock_extract(user), "relations": mock_relations(user)})
+    elif task == "QA_RESOLVE":
+        text = mock_qa_resolve(user)
     else:
         text = _mock_chat_reply(user)
 
@@ -208,6 +210,37 @@ def _mock_complete(messages: list[Message]) -> dict[str, Any]:
         "completion_tokens": len(text.split()),
         "latency_ms": 1,
     }
+
+
+_QA_Q_RE = re.compile(r"Question:\s*(.+)", re.I)
+_QA_R_RE = re.compile(r"Reply:\s*(.+)", re.I)
+_QA_SUBJECT = re.compile(r"^\s*(i\b|i'|i’|my\b|we\b|we'|i am|i'm)", re.I)
+_QA_LEAD_ADVERB = re.compile(r"^\s*(mostly|usually|really|just|probably|maybe|mainly|kinda|sort of|a bit of)\s+", re.I)
+
+
+def mock_qa_resolve(prompt: str) -> str:
+    """Deterministic P8 stand-in: rewrite a fragment reply as one first-person
+    sentence using the question. Public so tests can reference the same rules."""
+    qm, rm = _QA_Q_RE.search(prompt), _QA_R_RE.search(prompt)
+    question = (qm.group(1).strip() if qm else "").lower()
+    reply = (rm.group(1).strip() if rm else prompt.strip())
+    if not reply:
+        return reply
+    if _QA_SUBJECT.match(reply):  # already a first-person sentence
+        return reply
+    body = _QA_LEAD_ADVERB.sub("", reply).strip()
+    ql = question
+    # Activity / free-time / preference questions -> "i like <body>".
+    if any(w in ql for w in ("spend your time", "spend time", "free time", "weekend",
+                             "do you do", "do you like", "hobby", "hobbies", "enjoy", "like to")):
+        return f"i like {body}"
+    if "how often" in ql:
+        return f"i do {body}"
+    if ql.startswith("where"):
+        return f"i live in {body}"
+    if "how old" in ql or "your age" in ql:
+        return f"i am {body}"
+    return f"i {body}"
 
 
 def _mock_embed(text: str, dim: int = 64) -> list[float]:

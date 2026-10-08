@@ -1,0 +1,114 @@
+{
+  "_note": "SEEDED by the Q-A-resolution fix. These are the six chains directed in the fix spec (step 5), NOT the 45-case human-labelled baseline set, which is still to be provided. Merge the 45 cases into `cases` when available; `history` accepts bare strings (user turns) and {role, text} objects (incl. assistant turns). Attribute expectations are checked via graph_after.attributes_on.",
+  "cases": [
+    {
+      "id": "dev-dog-duration",
+      "category": "refinement-attribute",
+      "split": "dev",
+      "history": [
+        {"role": "user", "text": "my dog's name is max"},
+        {"role": "assistant", "text": "how long have you had him?"}
+      ],
+      "message": "8 months",
+      "expect": [
+        {"dimension": "relationship", "key": "pet", "value": "dog", "operation": "REFINE",
+         "attributes": [{"name": "duration", "value": "8", "unit": "months"}]}
+      ],
+      "graph_after": {
+        "still_active": ["relationship/pet=dog"],
+        "attributes_on": {"relationship/pet=dog": [{"name": "duration", "value": "8", "unit": "months"}]}
+      }
+    },
+    {
+      "id": "dev-books-chain",
+      "category": "refinement-chain",
+      "split": "dev",
+      "history": [
+        {"role": "assistant", "text": "how do you like to spend your time?"},
+        {"role": "user", "text": "reading books"},
+        {"role": "assistant", "text": "what kind of books do you enjoy reading?"},
+        {"role": "user", "text": "technical"},
+        {"role": "assistant", "text": "any specific technical topics?"}
+      ],
+      "message": "deep learning",
+      "expect": [
+        {"dimension": "habit", "key": "reading", "value": "reading", "operation": "REFINE"}
+      ],
+      "graph_after": {
+        "still_active": ["habit/reading=reading"],
+        "attributes_on": {"habit/reading=reading": [
+          {"name": "genre", "value": "technical"},
+          {"name": "topic", "value": "deep learning"}
+        ]}
+      }
+    },
+    {
+      "id": "dev-open-answer",
+      "category": "open-slot-answer",
+      "split": "dev",
+      "history": [
+        {"role": "assistant", "text": "what do you do on weekends?"}
+      ],
+      "message": "mostly hiking",
+      "expect": [
+        {"dimension": "habit", "key": "hiking", "value": "hiking", "operation": "ADD"}
+      ],
+      "graph_after": {"still_active": ["habit/hiking=hiking"]}
+    },
+
+    {
+      "id": "test-cat-duration",
+      "category": "refinement-attribute",
+      "split": "test",
+      "history": [
+        {"role": "user", "text": "my cat's name is simba"},
+        {"role": "assistant", "text": "how long have you had her?"}
+      ],
+      "message": "about 2 years",
+      "expect": [
+        {"dimension": "relationship", "key": "pet", "value": "cat", "operation": "REFINE",
+         "attributes": [{"name": "duration", "value": "2", "unit": "years"}]}
+      ],
+      "graph_after": {
+        "still_active": ["relationship/pet=cat"],
+        "attributes_on": {"relationship/pet=cat": [{"name": "duration", "value": "2", "unit": "years"}]}
+      }
+    },
+    {
+      "id": "test-painting-chain",
+      "category": "refinement-chain",
+      "split": "test",
+      "history": [
+        {"role": "assistant", "text": "what do you do to relax?"},
+        {"role": "user", "text": "painting"},
+        {"role": "assistant", "text": "what kind of painting?"},
+        {"role": "user", "text": "watercolor"},
+        {"role": "assistant", "text": "any particular subjects?"}
+      ],
+      "message": "landscapes",
+      "expect": [
+        {"dimension": "habit", "key": "painting", "value": "painting", "operation": "REFINE"}
+      ],
+      "graph_after": {
+        "still_active": ["habit/painting=painting"],
+        "attributes_on": {"habit/painting=painting": [
+          {"name": "genre", "value": "watercolor"},
+          {"name": "topic", "value": "landscapes"}
+        ]}
+      }
+    },
+    {
+      "id": "test-open-answer",
+      "category": "open-slot-answer",
+      "split": "test",
+      "history": [
+        {"role": "assistant", "text": "how do you like to relax on weekends?"}
+      ],
+      "message": "swimming",
+      "expect": [
+        {"dimension": "habit", "key": "swimming", "value": "swimming", "operation": "ADD"}
+      ],
+      "graph_after": {"still_active": ["habit/swimming=swimming"]}
+    }
+  ]
+}

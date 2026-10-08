@@ -262,6 +262,22 @@ def _find_duplicate(conn, user_id, dimension, key, value):
     return best, best_sim
 
 
+def _cross_dimension_match(conn, user_id, dimension, value):
+    """fix step 4: an active node with the SAME normalised value under a
+    DIFFERENT dimension. Returns the node, unless the two dimensions are allowed
+    to coexist (a language that is both a preference and a skill)."""
+    v = ontology.normalize_value(value)
+    for n in _active_nodes(conn, user_id):
+        if n["dimension"] == dimension:
+            continue
+        if ontology.normalize_value(n["value"]) != v:
+            continue
+        if ontology.may_coexist_cross_dim(dimension, n["dimension"]):
+            continue
+        return n
+    return None
+
+
 def merge_nodes(conn, user_id, keep_id, dup_id) -> bool:
     """Collapse dup_id into keep_id: move attributes, evidence, edges, then mark
     the source `merged` (kept for audit, hidden from the graph)."""
@@ -466,6 +482,14 @@ def apply_assertion(
         _write_attributes(conn, dup["id"], dup["dimension"], assertion, session_id, message_id)
         return _change("reinforced", dup["id"], assertion, dup["previous_node_id"], conf,
                        matched_label=_label(dup), similarity=sim)
+    # fix step 4: the same value under another dimension is a duplicate (unless
+    # the dimensions may coexist) — refine the existing node, don't create anew.
+    xdup = _cross_dimension_match(conn, user_id, dim, value)
+    if xdup is not None:
+        conf = _reinforce(conn, xdup, assertion, model=model)
+        _add_evidence(conn, xdup["id"], session_id, message_id, quote)
+        return _change("reinforced", xdup["id"], assertion, xdup["previous_node_id"], conf,
+                       reason_code="dimension_conflict", matched_label=_label(xdup), similarity=1.0)
     node_id = _create_node(conn, user_id, assertion, model=model)
     _add_evidence(conn, node_id, session_id, message_id, quote)
     _write_attributes(conn, node_id, dim, assertion, session_id, message_id)
