@@ -1,16 +1,18 @@
 // Colour per dimension. Keep the keys in sync with backend constants.DIMENSIONS.
 // Brightened (Tailwind ~400) shades tuned for contrast on a dark canvas.
+// Harmonised ~Tailwind-400 family: one consistent lightness/saturation band so
+// the set reads as a palette, with hues spread for categorical distinctness.
 export const DIMENSION_COLORS: Record<string, string> = {
-  identity: "#f4f4f6",            // near-white — the core of "you"
-  preference: "#60a5fa",          // blue
-  interest: "#38bdf8",            // sky
-  goal: "#f87171",                // red
-  skill: "#34d399",               // emerald
-  project: "#fbbf24",             // amber
-  habit: "#a78bfa",               // violet
-  belief: "#f472b6",              // pink
-  relationship: "#2dd4bf",        // teal
-  communication_style: "#94a3b8", // slate
+  identity: "#eceef3",            // near-white — the core of "you"
+  preference: "#7aa2ff",          // indigo-blue (accent family)
+  interest: "#38c7e8",            // cyan
+  goal: "#fb8a8a",                // coral
+  skill: "#5cd39a",               // emerald
+  project: "#f2c558",             // amber
+  habit: "#b197fc",               // violet
+  belief: "#f58cc0",              // pink
+  relationship: "#34d6be",        // teal
+  communication_style: "#9aa6b8", // slate
 };
 
 export const DIMENSION_ORDER = Object.keys(DIMENSION_COLORS);

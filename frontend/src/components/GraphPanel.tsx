@@ -25,10 +25,10 @@ interface Palette {
 
 function palette(theme: Theme): Palette {
   return theme === "dark"
-    ? { nodeText: "#e8e9ee", outline: "#0a0b0d", edge: "#3a3d44", edgeStrong: "#4a4d55",
-        userBg: "#f4f4f6", userInk: "#0a0b0d", hubInk: "#0a0b0d", labelBg: "#0a0b0d", edgeLabel: "#6b7280", userRing: "rgba(244,244,246,0.24)" }
-    : { nodeText: "#1f2937", outline: "#ffffff", edge: "#cbd0d8", edgeStrong: "#b4bac4",
-        userBg: "#202123", userInk: "#ffffff", hubInk: "#0d0d0d", labelBg: "#ffffff", edgeLabel: "#8a8f98", userRing: "rgba(32,33,35,0.18)" };
+    ? { nodeText: "#e8e9ee", outline: "#0b0d12", edge: "#3a3d44", edgeStrong: "#4a4d55",
+        userBg: "#eceef3", userInk: "#0b0d12", hubInk: "#0b0d12", labelBg: "#0b0d12", edgeLabel: "#6b7280", userRing: "rgba(236,238,243,0.22)" }
+    : { nodeText: "#242a36", outline: "#ffffff", edge: "#cbd0d8", edgeStrong: "#b4bac4",
+        userBg: "#14161d", userInk: "#ffffff", hubInk: "#0b0d12", labelBg: "#ffffff", edgeLabel: "#8a8f98", userRing: "rgba(20,22,29,0.18)" };
 }
 
 // A deliberately quiet three-tier graph: YOU is the visual anchor, category
