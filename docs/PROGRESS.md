@@ -337,3 +337,33 @@ Known gap still open (design choice, not a bug): the graph CANVAS payload
 (`/me/graph`) omits node attributes — "cat (name: mochi)" renders as "pet: cat".
 Every other surface (inspector, Memory page, the LLM's own profile) carries the
 attributes; only the canvas drops them. Awaiting a decision on how to show them.
+
+---
+
+## 2026-10-08 (cont.) — Multi-turn real battery + fragment-classification fix
+
+Funded key in; re-verified fix #6 against the real model (skill keys now
+canonical: "fluent french" / "learning french" / "i know french" all ->
+skill/french with the qualifier in attributes). Ran a full-pipeline multi-turn
+battery through process_turn (chat model + reconciliation):
+
+- PASS cross-session recall (vegetarian+thai recalled in a new chat), END across
+  turns (gym -> ended), reinforcement (pizza stays one node).
+- Offline reconciliation battery (no API): SINGLE supersession, inflection
+  dedup, MULTI coexistence, cross-dimension folding, no-fabrication END — all
+  correct.
+
+**High-severity bug found & fixed:** a new fact stated right after the assistant
+asked a question was swallowed by the slot/refine path. "actually, call me
+johnny now" left the name unchanged; "his name is rocky" lost the name. Cause:
+`_is_fragment` only looked for a narrow first-person pronoun set, so complete
+clauses with no "i"/"my" ("call me X", "his name is X") were treated as fragment
+answers and force-attached as attributes, skipping extraction entirely. Fix:
+`_is_fragment` now returns False for complete clauses (call me / name is /
+my|his|her \w+ is). Verified: name change now supersedes; "his name is rocky"
+attaches name=rocky to the dog. Regression test added
+(`tests/test_fragment_classification.py`). 97 backend tests pass.
+
+Still open before benchmarks: goal/project completion (achieved/abandoned never
+assigned); budget_usd=0; the 45-case labelled eval set; PII + graph-attribute
+policy.

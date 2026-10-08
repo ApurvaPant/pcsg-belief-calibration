@@ -99,11 +99,24 @@ def _tokenize(text: str) -> list[str]:
     return re.findall(r"[a-z0-9']+", text.lower())
 
 
+# A reply that forms a complete clause of its own — states a fact, names someone,
+# or gives an imperative ("call me X") — is NOT a fragment answer, even without a
+# first-person pronoun. Without this, a new fact stated right after the assistant
+# asked a question ("actually, call me johnny now", "his name is rocky") gets
+# swallowed by the slot/refine machinery instead of being extracted and applied.
+_COMPLETE_CLAUSE = re.compile(
+    r"\b(call me|name'?s|name is|i'?m\b|i am\b|"
+    r"(?:my|his|her|its|their|our)\s+\w+\s+(?:is|are|was|were|name))\b", re.I)
+
+
 def _is_fragment(text: str) -> bool:
     """A reply that does not stand alone: it lacks a first-person subject
     ("8 months", "reading books", "technical"). A reply that already carries its
-    own first-person subject ("i switched to rust") is a full statement, not a
-    fragment answer, even when short — so it is handled normally."""
+    own subject or a complete clause ("i switched to rust", "call me johnny",
+    "his name is rocky") is a full statement, not a fragment answer, even when
+    short — so it is extracted normally rather than attached to a slot."""
+    if _COMPLETE_CLAUSE.search(text):
+        return False
     return not _FIRST_PERSON_SV.search(text)
 
 
