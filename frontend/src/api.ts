@@ -1,0 +1,146 @@
+import type {
+  ChatResponse,
+  GraphPayload,
+  NodeDetail,
+  Session,
+  StoredMessage,
+  User,
+} from "./types";
+
+const BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
+const TOKEN_KEY = "pcsg_token";
+
+let token: string | null = localStorage.getItem(TOKEN_KEY);
+
+export function setAuthToken(t: string | null) {
+  token = t;
+  if (t) localStorage.setItem(TOKEN_KEY, t);
+  else localStorage.removeItem(TOKEN_KEY);
+}
+
+export function getAuthToken(): string | null {
+  return token;
+}
+
+// Invoked when the server rejects our token (e.g. the account was removed).
+let onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(fn: (() => void) | null) {
+  onUnauthorized = fn;
+}
+
+function headers(extra: Record<string, string> = {}): Record<string, string> {
+  const h: Record<string, string> = { ...extra };
+  if (token) h.Authorization = `Bearer ${token}`;
+  return h;
+}
+
+async function json<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    let detail = `${res.status} ${res.statusText}`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = `${res.status}: ${body.detail}`;
+    } catch {
+      /* ignore */
+    }
+    // Stale / invalid token: drop it and bounce back to login.
+    if (res.status === 401) {
+      setAuthToken(null);
+      onUnauthorized?.();
+    }
+    throw new Error(detail);
+  }
+  return (await res.json()) as T;
+}
+
+export const API_BASE = BASE;
+
+export function describeApiError(e: unknown): string {
+  if (e instanceof TypeError) {
+    return `Cannot reach the backend at ${BASE} — it looks down (connection refused) or is blocking this origin (CORS). Start it: uvicorn app.main:app --port 8000`;
+  }
+  if (e instanceof Error) {
+    if (/^5\d\d/.test(e.message)) return `Backend error — ${e.message}`;
+    return e.message;
+  }
+  return String(e);
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────── #
+interface AuthResult {
+  token: string;
+  user: User;
+}
+
+export async function register(username: string, password: string): Promise<AuthResult> {
+  const res = await fetch(`${BASE}/auth/register`, {
+    method: "POST",
+    headers: headers({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ username, password }),
+  });
+  const out = await json<AuthResult>(res);
+  setAuthToken(out.token);
+  return out;
+}
+
+export async function login(username: string, password: string): Promise<AuthResult> {
+  const res = await fetch(`${BASE}/auth/login`, {
+    method: "POST",
+    headers: headers({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ username, password }),
+  });
+  const out = await json<AuthResult>(res);
+  setAuthToken(out.token);
+  return out;
+}
+
+export async function me(): Promise<User> {
+  return json<User>(await fetch(`${BASE}/auth/me`, { headers: headers() }));
+}
+
+export async function logout(): Promise<void> {
+  try {
+    await fetch(`${BASE}/auth/logout`, { method: "POST", headers: headers() });
+  } finally {
+    setAuthToken(null);
+  }
+}
+
+// ── App data ──────────────────────────────────────────────────────────── #
+export async function fetchSessions(): Promise<Session[]> {
+  return json<Session[]>(await fetch(`${BASE}/me/sessions`, { headers: headers() }));
+}
+
+export async function createSession(title?: string): Promise<Session> {
+  return json<Session>(
+    await fetch(`${BASE}/me/sessions`, {
+      method: "POST",
+      headers: headers({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ title: title ?? null }),
+    }),
+  );
+}
+
+export async function fetchSessionMessages(sessionId: string): Promise<StoredMessage[]> {
+  return json<StoredMessage[]>(
+    await fetch(`${BASE}/sessions/${sessionId}/messages`, { headers: headers() }),
+  );
+}
+
+export async function sendChat(message: string, sessionId: string | null): Promise<ChatResponse> {
+  return json<ChatResponse>(
+    await fetch(`${BASE}/chat`, {
+      method: "POST",
+      headers: headers({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ message, session_id: sessionId }),
+    }),
+  );
+}
+
+export async function fetchUserGraph(): Promise<GraphPayload> {
+  return json<GraphPayload>(await fetch(`${BASE}/me/graph`, { headers: headers() }));
+}
+
+export async function fetchNode(nodeId: string): Promise<NodeDetail> {
+  return json<NodeDetail>(await fetch(`${BASE}/node/${nodeId}`, { headers: headers() }));
+}

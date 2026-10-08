@@ -1,0 +1,22 @@
+[
+  {"message": "my name is apurva", "expect": {"kind": "node", "dimension": "identity", "key": "name", "value": "apurva"}},
+  {"message": "my dog name is herald", "expect": {"kind": "attribute", "node_dimension": "relationship", "node_key": "pet", "attr": "name", "attr_value": "herald"}},
+  {"message": "what is my name", "expect": {"kind": "none"}},
+  {"message": "what is my girlfriend name", "expect": {"kind": "none"}},
+  {"message": "my girlfriend is hailey", "expect": {"kind": "node", "dimension": "relationship", "key": "girlfriend", "value": "hailey"}},
+  {"message": "for last 6 months", "setup": ["my girlfriend is hailey"], "expect": {"kind": "attribute", "node_dimension": "relationship", "node_key": "girlfriend", "attr": "duration", "attr_value": "6"}},
+  {"message": "i am doing great", "expect": {"kind": "none"}},
+  {"message": "as of now no nothing such i am working with", "expect": {"kind": "none"}},
+  {"message": "i drank beer", "expect": {"kind": "none"}},
+  {"message": "i love momo as a food", "expect": {"kind": "node", "dimension": "preference", "key": "food_likes", "value": "momo", "edges": 0}},
+  {"message": "i hate momos", "expect": {"kind": "node", "dimension": "preference", "key": "food_dislikes", "value": "momos"}},
+  {"message": "i started drinking wine", "expect": {"kind": "node", "dimension": "habit", "key": "drinking_wine"}},
+  {"message": "my favorite wine is grape wine with fermentation over 1 year", "expect": {"kind": "attribute", "node_dimension": "preference", "node_key": "favourite_wine", "attr": "fermentation_duration", "attr_value": "1", "value": "grape wine"}},
+  {"message": "i stopped doing machine learning", "setup": ["i love machine learning"], "expect": {"kind": "end", "dimension": "interest", "key": "topic", "value": "machine learning"}},
+  {"message": "i broke up with hailey", "setup": ["my girlfriend is hailey"], "expect": {"kind": "end", "dimension": "relationship", "key": "girlfriend", "value": "hailey"}},
+  {"message": "i have been coding in python for 3 years", "expect": {"kind": "attribute", "node_dimension": "skill", "node_key": "python", "attr": "years_experience", "attr_value": "3"}},
+  {"message": "machine learning is part of my cs degree", "expect": {"kind": "edge", "relation": "part_of", "from": "machine learning", "to": "cs degree"}},
+  {"message": "my brother is a doctor", "expect": {"kind": "attribute", "node_dimension": "relationship", "node_key": "brother", "attr": "occupation", "attr_value": "doctor"}},
+  {"message": "my name is ujjwal", "setup": ["my name is apurva"], "expect": {"kind": "supersede", "dimension": "identity", "key": "name", "value": "ujjwal", "old": "apurva"}},
+  {"message": "thanks that helps", "expect": {"kind": "none"}}
+]

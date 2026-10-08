@@ -1,0 +1,472 @@
+"""Update policy — applies extraction operations to the temporal graph.
+
+Reconciliation is driven by slot **identity** and **cardinality**:
+
+    SINGLE slot identity : (scope, dimension, key)
+    MULTI  slot identity : (scope, dimension, key, value_normalized)
+
+`scope` is the graph owner. Today that is the conversation id; Part 5 swaps it
+for a user id so state carries across sessions — the signature already takes a
+`scope_id` so that change is local.
+
+Operations:
+    ADD/UPDATE, identity exists            -> reinforce (Noisy-OR), add evidence
+    ADD, SINGLE, identity exists, new value-> supersede old, create linked new
+    ADD, MULTI, new value                  -> create new node (siblings untouched)
+    END                                    -> close the matching node only
+    replaces_value set                     -> end the named node, add linked new
+"""
+from __future__ import annotations
+
+import difflib
+import sqlite3
+from typing import Any
+
+from . import ontology
+from .config import settings
+from .db import now_iso
+from .ontology import (
+    DETAIL_ENDED,
+    STATUS_ACTIVE,
+    STATUS_SUPERSEDED,
+)
+from .utils import new_id
+
+
+# ── confidence maths ────────────────────────────────────────────────────── #
+def calibrate(raw: float) -> float:
+    """Shrink a raw confidence toward a prior to avoid overconfidence."""
+    prior = settings.pipeline.calibration_prior
+    shrink = settings.pipeline.calibration_shrink
+    calibrated = prior + shrink * (raw - prior)
+    return round(max(0.0, min(1.0, calibrated)), 4)
+
+
+def noisy_or(a: float, b: float) -> float:
+    """Combine two independent evidence confidences: 1 - (1-a)(1-b)."""
+    return round(1.0 - (1.0 - a) * (1.0 - b), 4)
+
+
+# ── low-level helpers ───────────────────────────────────────────────────── #
+def _add_evidence(conn, node_id, session_id, message_id, quote) -> None:
+    conn.execute(
+        "INSERT INTO evidence (id, node_id, session_id, message_id, quote, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (new_id("ev"), node_id, session_id, message_id, quote, now_iso()),
+    )
+
+
+def _add_attr_evidence(conn, attribute_id, session_id, message_id, quote) -> None:
+    conn.execute(
+        "INSERT INTO evidence (id, attribute_id, session_id, message_id, quote, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (new_id("ev"), attribute_id, session_id, message_id, quote, now_iso()),
+    )
+
+
+def _active_attribute(conn, node_id, name):
+    return conn.execute(
+        "SELECT * FROM attributes WHERE node_id = ? AND name = ? AND status = 'active' "
+        "ORDER BY created_at DESC LIMIT 1",
+        (node_id, name),
+    ).fetchone()
+
+
+def apply_attribute(conn, node_id, dimension, attr, confidence, session_id, message_id, quote) -> None:
+    """Write one qualifier onto a node. A new value for (node_id, name)
+    supersedes the old one (SINGLE-style) and links via previous_attribute_id.
+    confidence_raw is never modified after insert."""
+    name = ontology.normalize_key(attr.get("name"))
+    value = str(attr.get("value", "")).strip()
+    if not name or not value or not ontology.allowed_attribute(dimension, name):
+        return
+    unit = attr.get("unit")
+    ts = now_iso()
+    existing = _active_attribute(conn, node_id, name)
+    if existing is not None and ontology.normalize_value(str(existing["value"])) == ontology.normalize_value(value) and (existing["unit"] or None) == (unit or None):
+        return  # identical — nothing to do (attribute confidence is immutable)
+    prev_id = None
+    if existing is not None:
+        conn.execute(
+            "UPDATE attributes SET status = 'superseded', valid_to = ?, updated_at = ? WHERE id = ?",
+            (ts, ts, existing["id"]),
+        )
+        prev_id = existing["id"]
+    aid = new_id("attr")
+    conn.execute(
+        "INSERT INTO attributes (id, node_id, name, value, unit, confidence_raw, "
+        "confidence_calibrated, valid_from, valid_to, status, previous_attribute_id, "
+        "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)",
+        (aid, node_id, name, value, unit, confidence, calibrate(confidence), ts, None, prev_id, ts, ts),
+    )
+    _add_attr_evidence(conn, aid, session_id, message_id, quote)
+
+
+def _write_attributes(conn, node_id, dimension, assertion, session_id, message_id) -> None:
+    conf = float(assertion["confidence"])
+    quote = assertion.get("quote", assertion.get("value", ""))
+    for attr in assertion.get("attributes") or []:
+        apply_attribute(conn, node_id, dimension, attr, conf, session_id, message_id, quote)
+
+
+def _active_single(conn, user_id, dimension, key):
+    return conn.execute(
+        "SELECT * FROM nodes WHERE user_id = ? AND dimension = ? "
+        "AND key = ? AND status = ? ORDER BY created_at DESC LIMIT 1",
+        (user_id, dimension, key, STATUS_ACTIVE),
+    ).fetchone()
+
+
+def _active_by_value(conn, user_id, dimension, key, value):
+    return conn.execute(
+        "SELECT * FROM nodes WHERE user_id = ? AND dimension = ? "
+        "AND key = ? AND value = ? AND status = ? ORDER BY created_at DESC LIMIT 1",
+        (user_id, dimension, key, value, STATUS_ACTIVE),
+    ).fetchone()
+
+
+def _close_node(conn, node_id, detail=None) -> None:
+    """Close a node (supersede + set valid_to). If `detail` is given it also
+    records *why* (ended/achieved/abandoned); otherwise status_detail is left
+    as-is — a plain value replacement is not a user-driven cessation."""
+    if detail is None:
+        conn.execute(
+            "UPDATE nodes SET status = ?, valid_to = ? WHERE id = ?",
+            (STATUS_SUPERSEDED, now_iso(), node_id),
+        )
+    else:
+        conn.execute(
+            "UPDATE nodes SET status = ?, status_detail = ?, valid_to = ? WHERE id = ?",
+            (STATUS_SUPERSEDED, detail, now_iso(), node_id),
+        )
+
+
+def _create_node(conn, user_id, assertion, previous_id=None, model=None) -> str:
+    node_id = new_id("node")
+    raw = float(assertion["confidence"])
+    ts = now_iso()
+    conn.execute(
+        "INSERT INTO nodes (id, user_id, dimension, key, value, "
+        "confidence_raw, confidence_calibrated, valid_from, valid_to, status, "
+        "status_detail, previous_node_id, model, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            node_id, user_id, assertion["dimension"], assertion["key"],
+            assertion["value"], raw, calibrate(raw), ts, None, STATUS_ACTIVE,
+            ontology.DETAIL_ACTIVE, previous_id, model, ts,
+        ),
+    )
+    return node_id
+
+
+def _reinforce(conn, node, assertion, model=None) -> float:
+    new_raw = noisy_or(node["confidence_raw"], float(assertion["confidence"]))
+    conn.execute(
+        "UPDATE nodes SET confidence_raw = ?, confidence_calibrated = ?, model = ? WHERE id = ?",
+        (new_raw, calibrate(new_raw), model, node["id"]),
+    )
+    return calibrate(new_raw)
+
+
+# ── resolver helpers (PARTS 3/4/5/8) ────────────────────────────────────── #
+_STOP = {"a", "an", "the", "my", "of", "and", "or", "with", "for", "to", "in",
+         "on", "is", "are", "i", "favourite", "favorite"}
+
+
+def _head_tokens(value: str) -> set[str]:
+    return {w for w in ontology.normalize_value(value).split() if w not in _STOP and len(w) > 2}
+
+
+def _active_nodes(conn, user_id):
+    return conn.execute(
+        "SELECT * FROM nodes WHERE user_id = ? AND status = 'active'", (user_id,)
+    ).fetchall()
+
+
+def resolve_by_value(conn, user_id, value, dimension=None, key=None):
+    """Active nodes whose value matches (dimension/key optional filters)."""
+    v = ontology.normalize_value(value)
+    out = []
+    for n in _active_nodes(conn, user_id):
+        if ontology.normalize_value(n["value"]) != v:
+            continue
+        if dimension and n["dimension"] != dimension:
+            continue
+        if key and n["key"] != key:
+            continue
+        out.append(n)
+    return out
+
+
+def resolve_end(conn, user_id, dim, key, value):
+    """Find the single node an END refers to. Returns (node, reason_code).
+    Matches full identity; if the extractor's key is uncertain, falls back to a
+    unique value match within the dimension. Never key alone."""
+    if ontology.is_single(dim, key):
+        node = _active_single(conn, user_id, dim, key)
+        return (node, None) if node else (None, "no_matching_node")
+    exact = resolve_by_value(conn, user_id, value, dim, key)
+    if len(exact) == 1:
+        return exact[0], None
+    by_val = resolve_by_value(conn, user_id, value, dim)
+    if len(by_val) == 1:
+        return by_val[0], None
+    if len(by_val) > 1:
+        return None, "ambiguous_match"
+    # Cross-dimension value-only fallback (tier-0 forced END may guess dimension).
+    anywhere = resolve_by_value(conn, user_id, value)
+    if len(anywhere) == 1:
+        return anywhere[0], None
+    if len(anywhere) > 1:
+        return None, "ambiguous_match"
+    return None, "no_matching_node"
+
+
+def _head_noun(value: str) -> str:
+    toks = [t for t in value.split() if t not in _STOP] or value.split()
+    return toks[-1] if toks else value
+
+
+def _inflection(a: str, b: str) -> bool:
+    """b is a plural/inflection of a (or vice versa): momo/momos, degree/degrees."""
+    lo, hi = sorted((a, b), key=len)
+    return bool(lo) and hi.startswith(lo) and hi[len(lo):] in ("s", "es", "ing", "ed", "d")
+
+
+def _same_entity(v1: str, v2: str, threshold: float) -> tuple[bool, float]:
+    """(merge?, similarity). Requires a shared head noun or an inflection —
+    lexical proximity alone is not enough unless it clears the threshold."""
+    if v1 == v2:
+        return True, 1.0
+    sim = round(difflib.SequenceMatcher(None, v1, v2).ratio(), 3)
+    if _head_noun(v1) == _head_noun(v2) or _inflection(v1, v2):
+        return True, max(sim, threshold)
+    if sim >= threshold:
+        return True, sim
+    return False, sim
+
+
+def _find_duplicate(conn, user_id, dimension, key, value):
+    """The best matching active node in the SAME (dimension, key) slot — NEVER
+    across different keys. Returns (node|None, similarity)."""
+    v = ontology.normalize_value(value)
+    thr = settings.pipeline.resolve_similarity
+    best, best_sim = None, 0.0
+    for n in conn.execute(
+        "SELECT * FROM nodes WHERE user_id = ? AND dimension = ? AND key = ? AND status = 'active'",
+        (user_id, dimension, key),
+    ).fetchall():
+        ok, sim = _same_entity(ontology.normalize_value(n["value"]), v, thr)
+        if ok and sim > best_sim:
+            best, best_sim = n, sim
+    return best, best_sim
+
+
+def merge_nodes(conn, user_id, keep_id, dup_id) -> bool:
+    """Collapse dup_id into keep_id: move attributes, evidence, edges, then mark
+    the source `merged` (kept for audit, hidden from the graph)."""
+    keep = conn.execute("SELECT * FROM nodes WHERE id = ? AND user_id = ?", (keep_id, user_id)).fetchone()
+    dup = conn.execute("SELECT * FROM nodes WHERE id = ? AND user_id = ?", (dup_id, user_id)).fetchone()
+    if not keep or not dup or keep_id == dup_id:
+        return False
+    conn.execute("UPDATE attributes SET node_id = ? WHERE node_id = ?", (keep_id, dup_id))
+    conn.execute("UPDATE evidence SET node_id = ? WHERE node_id = ?", (keep_id, dup_id))
+    conn.execute("UPDATE edges SET source_node_id = ? WHERE source_node_id = ?", (keep_id, dup_id))
+    conn.execute("UPDATE edges SET target_node_id = ? WHERE target_node_id = ?", (keep_id, dup_id))
+    conn.execute("UPDATE nodes SET previous_node_id = ? WHERE previous_node_id = ?", (keep_id, dup_id))
+    conn.execute("UPDATE nodes SET status = 'merged', valid_to = ? WHERE id = ?", (now_iso(), dup_id))
+    return True
+
+
+def _resolve_target(conn, user_id, target):
+    """Resolve an extractor target_node to an existing node, loosening filters."""
+    val = str(target.get("value", ""))
+    dim = str(target.get("dimension")).lower() if target.get("dimension") else None
+    key = ontology.normalize_key(target.get("key")) if target.get("key") else None
+    for d, k in ((dim, key), (dim, None), (None, None)):
+        matches = resolve_by_value(conn, user_id, val, d, k)
+        if matches:
+            return matches[0]
+    return None
+
+
+def create_edge(conn, user_id, source_id, relation, target_id, quote) -> bool:
+    if not ontology.is_valid_relation(relation) or source_id == target_id:
+        return False
+    try:
+        conn.execute(
+            "INSERT OR IGNORE INTO edges (id, user_id, source_node_id, relation, "
+            "target_node_id, quote, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (new_id("edge"), user_id, source_id, relation, target_id, quote, now_iso()),
+        )
+        return True
+    except sqlite3.IntegrityError:
+        return False
+
+
+def _named_in(value: str, message: str) -> bool:
+    """Every significant token of `value` appears in the source message."""
+    toks = [t for t in ontology.normalize_value(value).split() if len(t) > 2]
+    low = message.lower()
+    return bool(toks) and all(t in low for t in toks)
+
+
+def apply_relations(conn, user_id, relations, message: str):
+    """Create an edge ONLY when the source message explicitly names BOTH
+    endpoints (bug 2) and both resolve to existing nodes. The message is the
+    justifying quote; no naming quote -> no edge. No similarity/recency linking.
+
+    Returns (made, rejected): rejected carries a reason_code for logging."""
+    made, rejected = [], []
+    for rel in relations or []:
+        if not isinstance(rel, dict):
+            continue
+        relation = str(rel.get("relation", "")).strip().lower()
+        frm, to = str(rel.get("from_value", "")), str(rel.get("to_value", ""))
+        if not ontology.is_valid_relation(relation):
+            rejected.append({"relation": relation, "from": frm, "to": to, "reason": "invalid_relation"})
+            continue
+        # Both endpoints must be named in the message that produced the relation.
+        if not (_named_in(frm, message) and _named_in(to, message)):
+            rejected.append({"relation": relation, "from": frm, "to": to, "reason": "edge_unjustified"})
+            continue
+        src = resolve_by_value(conn, user_id, frm)
+        tgt = resolve_by_value(conn, user_id, to)
+        if len(src) == 1 and len(tgt) == 1 and create_edge(
+            conn, user_id, src[0]["id"], relation, tgt[0]["id"], message
+        ):
+            made.append({"from": src[0]["value"], "relation": relation, "to": tgt[0]["value"]})
+        else:
+            rejected.append({"relation": relation, "from": frm, "to": to, "reason": "endpoint_missing"})
+    return made, rejected
+
+
+def _change(action, node, assertion, previous_id=None, conf=None, reason_code=None,
+            matched_label=None, similarity=None) -> dict[str, Any]:
+    return {
+        "action": action,
+        "node_id": node,
+        "dimension": assertion["dimension"],
+        "key": assertion["key"],
+        "value": assertion["value"],
+        "previous_node_id": previous_id,
+        "confidence_calibrated": conf,
+        "reason_code": reason_code,
+        "matched_label": matched_label,
+        "similarity": similarity,
+    }
+
+
+def _label(n) -> str:
+    return f"{n['dimension']}/{n['key']}={n['value']}"
+
+
+# ── main entry point ────────────────────────────────────────────────────── #
+def apply_assertion(
+    conn: sqlite3.Connection,
+    user_id: str,
+    session_id: str,
+    message_id: str,
+    assertion: dict[str, Any],
+    model: str | None = None,
+) -> dict[str, Any]:
+    """Apply one assertion to the user's graph. Returns a change record.
+
+    `model` is the resolved extractor model that produced the assertion; it is
+    recorded on any node created or reinforced.
+    """
+    dim = assertion["dimension"]
+    key = assertion["key"]
+    value = assertion["value"]
+    op = assertion.get("operation", "ADD")
+    replaces = assertion.get("replaces_value")
+    quote = assertion.get("quote", value)
+    single = ontology.is_single(dim, key)
+
+    # ── PART 2: entity subject — the fact belongs to a related entity, not the
+    # user. Resolve the entity (create it if absent), attach attributes to it. ── #
+    subject = assertion.get("subject")
+    if isinstance(subject, dict) and assertion.get("attributes"):
+        ent = _resolve_target(conn, user_id, subject)
+        if ent is None:
+            ent_assertion = {
+                "dimension": subject["dimension"], "key": subject["key"],
+                "value": subject.get("value") or subject["key"],
+                "confidence": assertion.get("confidence", 0.7),
+            }
+            ent_id = _create_node(conn, user_id, ent_assertion, model=model)
+            _add_evidence(conn, ent_id, session_id, message_id, quote)
+            ent_dim, action = subject["dimension"], "created"
+        else:
+            ent_id, ent_dim, action = ent["id"], ent["dimension"], "refined"
+        _write_attributes(conn, ent_id, ent_dim, assertion, session_id, message_id)
+        return _change(action, ent_id, {
+            "dimension": ent_dim, "key": subject["key"],
+            "value": subject.get("value") or subject["key"],
+        })
+
+    # ── PART 4: assertion attaches an attribute to an existing node ──────── #
+    target = assertion.get("target_node")
+    if target and isinstance(target, dict) and assertion.get("attributes"):
+        tnode = _resolve_target(conn, user_id, target)
+        if tnode is None:
+            return _change("ignored", None, assertion, reason_code="attribute_orphaned")
+        _write_attributes(conn, tnode["id"], tnode["dimension"], assertion, session_id, message_id)
+        return _change("refined", tnode["id"], assertion)
+
+    # ── END: close the matching node, create nothing ────────────────────── #
+    if op == "END":
+        node, rc = resolve_end(conn, user_id, dim, key, value)
+        if node is None:
+            return _change("ignored", None, assertion, reason_code=rc)
+        _close_node(conn, node["id"], DETAIL_ENDED)
+        return _change("ended", node["id"], assertion, node["previous_node_id"])
+
+    # ── explicit replacement: end the named old value, add the new ──────── #
+    if replaces:
+        old = (
+            _active_single(conn, user_id, dim, key)
+            if single
+            else _active_by_value(conn, user_id, dim, key, replaces)
+        )
+        prev_id = None
+        if old is not None:
+            _close_node(conn, old["id"], DETAIL_ENDED)
+            prev_id = old["id"]
+        node_id = _create_node(conn, user_id, assertion, previous_id=prev_id, model=model)
+        _add_evidence(conn, node_id, session_id, message_id, quote)
+        _write_attributes(conn, node_id, dim, assertion, session_id, message_id)
+        return _change("superseded" if prev_id else "created", node_id, assertion, prev_id)
+
+    # ── SINGLE slot ─────────────────────────────────────────────────────── #
+    if single:
+        existing = _active_single(conn, user_id, dim, key)
+        if existing is not None and ontology.normalize_value(existing["value"]) == value:
+            conf = _reinforce(conn, existing, assertion, model=model)
+            _add_evidence(conn, existing["id"], session_id, message_id, quote)
+            _write_attributes(conn, existing["id"], dim, assertion, session_id, message_id)
+            return _change("reinforced", existing["id"], assertion, existing["previous_node_id"], conf,
+                           matched_label=_label(existing), similarity=1.0)
+        prev_id = None
+        if existing is not None:  # conflict — supersede (not a cessation)
+            _close_node(conn, existing["id"])
+            prev_id = existing["id"]
+        node_id = _create_node(conn, user_id, assertion, previous_id=prev_id, model=model)
+        _add_evidence(conn, node_id, session_id, message_id, quote)
+        _write_attributes(conn, node_id, dim, assertion, session_id, message_id)
+        return _change("superseded" if prev_id else "created", node_id, assertion, prev_id)
+
+    # ── MULTI slot ─────────────────────────────────────────────────────── #
+    # Resolve ONLY within the same (dimension, key), and only on a shared head
+    # noun / inflection above resolve_similarity. Never merge across keys (bug 1).
+    dup, sim = _find_duplicate(conn, user_id, dim, key, value)
+    if dup is not None:
+        conf = _reinforce(conn, dup, assertion, model=model)
+        _add_evidence(conn, dup["id"], session_id, message_id, quote)
+        _write_attributes(conn, dup["id"], dup["dimension"], assertion, session_id, message_id)
+        return _change("reinforced", dup["id"], assertion, dup["previous_node_id"], conf,
+                       matched_label=_label(dup), similarity=sim)
+    node_id = _create_node(conn, user_id, assertion, model=model)
+    _add_evidence(conn, node_id, session_id, message_id, quote)
+    _write_attributes(conn, node_id, dim, assertion, session_id, message_id)
+    return _change("created", node_id, assertion)

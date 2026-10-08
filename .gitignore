@@ -1,0 +1,36 @@
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# SQLite
+backend/*.db
+backend/*.db-wal
+backend/*.db-shm
+
+# Env / secrets
+backend/.env
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Research artifacts (large / reproducible from the LLM cache + configs)
+backend/eval_results/
+backend/results/
+backend/.llm_cache/
+backend/datasets/
+# Human-review exports are generated; keep them out of version control
+backend/pcsg/datagen/verify_sample.csv
+backend/eval/judge_check.csv
+
+# Stray dev logs
+frontend/*.log
+backend/*.out.log

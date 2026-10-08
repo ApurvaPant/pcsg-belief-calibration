@@ -1,0 +1,72 @@
+# Provider-agnostic LLM configuration.
+# Everything vendor-specific lives here or in .env. Swap `base_url` alone to
+# retarget OpenAI, Anthropic (compatible endpoint), Groq, OpenRouter, or a
+# local vLLM / Ollama server. See .env.example for secrets/overrides.
+
+llm:
+  # LLM_PROVIDER in .env overrides this. Use "mock" for deterministic,
+  # zero-cost, no-network operation. "openrouter" / "openai" hit an
+  # OpenAI-compatible endpoint via httpx (no vendor SDK).
+  provider: mock            # mock | openrouter | openai
+
+  # OpenAI-compatible endpoint. OPENAI_BASE_URL in .env overrides this.
+  # OpenRouter: https://openrouter.ai/api/v1
+  base_url: https://openrouter.ai/api/v1
+
+  # Version-pinned models per role. Cheap+fast for the classifier (runs on
+  # most messages); a stronger model for extraction (runs rarely, quality
+  # matters most). Verify these slugs exist for YOUR OpenRouter account and
+  # adjust if access differs — they are pinned examples, not guaranteed grants.
+  models:
+    chat:       openai/gpt-4o-mini-2024-07-18        # mid-tier instruct, user replies
+    classifier: meta-llama/llama-3.1-8b-instruct     # cheapest/fast salience routing
+    extractor:  openai/gpt-4o-mini-2024-07-18        # structured extraction (affordable; swap to anthropic/claude-sonnet-4.5 with credits)
+    # OpenRouter has no /embeddings endpoint; embed() falls back to a local
+    # deterministic vector (embeddings are unused by the pipeline today).
+    embedding:  openai/text-embedding-3-small
+
+  # Request defaults (per-call overrides allowed in code).
+  timeout_seconds: 60
+  temperature: 0.2
+  max_tokens: 1024
+
+pipeline:
+  # Turns below this salience score are dropped before extraction.
+  salience_threshold: 0.5
+  # Confidence calibration: shrink raw model confidence toward this prior.
+  # calibrated = prior + shrink * (raw - prior)
+  calibration_prior: 0.5
+  calibration_shrink: 0.8
+  # A confirming re-observation nudges an existing node's confidence up by this.
+  reinforce_step: 0.1
+  # Two assertions resolve to the same node only above this lexical similarity
+  # AND with a shared head noun / inflection — never across different keys.
+  resolve_similarity: 0.92
+
+storage:
+  # Relative to the backend/ directory. Overridable via DB_PATH in .env.
+  db_path: userstate.db
+
+experiment:
+  # HARD SPEND CEILING for any paid (non-mock) evaluation or sweep. Both specs
+  # require: pilot -> project cost -> refuse to run if projection > budget_usd.
+  # 0 means UNSET: the eval harness refuses every paid run until you set a real
+  # ceiling here (e.g. 10.0 for USD 10). The mock provider is always free.
+  budget_usd: 0.0
+  # Approximate OpenRouter prices (USD per 1,000,000 tokens), used ONLY to
+  # PROJECT cost before a run. Actual spend is governed by your OpenRouter
+  # dashboard and the budget guard above. Keyed by model slug; "default" is the
+  # fallback for an unlisted model. Update if your account's pricing differs.
+  prices_per_mtok:
+    "openai/gpt-4o-mini-2024-07-18": {input: 0.15, output: 0.60}
+    "openai/gpt-4o-mini": {input: 0.15, output: 0.60}
+    "meta-llama/llama-3.1-8b-instruct": {input: 0.02, output: 0.03}
+    "default": {input: 0.50, output: 1.50}
+
+server:
+  host: 127.0.0.1
+  port: 8000
+  # Frontend origins allowed by CORS.
+  cors_origins:
+    - http://localhost:5173
+    - http://127.0.0.1:5173
