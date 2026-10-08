@@ -144,8 +144,8 @@ def normalize_key(text: str | None) -> str | None:
 # rather than stored as a free-form key. `preference` also permits open-ended
 # type-specific qualifiers (e.g. fermentation_duration on a wine).
 ATTRIBUTES_BY_DIMENSION: dict[str, set[str]] = {
-    "relationship": {"duration", "since", "relation_type", "status",
-                     "name", "occupation", "birthday", "age", "location"},
+    "relationship": {"duration", "since", "relation_type", "status", "count",
+                     "name", "occupation", "birthday", "age", "location", "species"},
     "skill": {"proficiency", "years_experience", "learning_status"},
     "habit": {"frequency", "duration", "time_of_day", "status",
               "genre", "topic", "detail"},  # refinement answers qualify the habit

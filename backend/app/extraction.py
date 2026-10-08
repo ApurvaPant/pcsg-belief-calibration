@@ -93,9 +93,23 @@ def _fill_system() -> str:
         "- value: a SHORT noun phrase (<=4 words, NO preposition phrase "
         "with/over/from/for/about/that). Never a sentence.\n"
         "- attributes: qualifiers (duration, years_experience, name, occupation, "
-        "birthday, frequency, proficiency, ...) go in 'attributes' [{name,value,"
-        "unit}] — NOT in the value. 'grape wine with fermentation over 1 year' -> "
-        "value 'grape wine' + attribute fermentation_duration=1 (years).\n"
+        "birthday, frequency, proficiency, count, ...) go in 'attributes' [{name,"
+        "value,unit}] — NOT in the value. 'grape wine with fermentation over 1 "
+        "year' -> value 'grape wine' + attribute fermentation_duration=1 (years).\n"
+        "- preference keys: food_likes / food_dislikes are ONLY for food & drink; "
+        "music_genre ONLY for music. For any other favourite or preference (a "
+        "film, book, show, sport, place, brand...), use a descriptive key such as "
+        "favourite_movie / favourite_book — NEVER force a non-food item into "
+        "food_likes. 'i prefer X over Y' states a liking for X; do NOT invent a "
+        "dislike of Y.\n"
+        "- relationship: key = the relation type (pet, child, sibling, parent, "
+        "friend, spouse, partner); value = the person/animal's NAME when stated, "
+        "else the relation word. A COUNT ('two kids') is attribute count — never "
+        "the value; never store a bare number as the value.\n"
+        "- a ONE-OFF past action ('i drank a beer last night', 'i watched a movie "
+        "yesterday', 'i went for a run this morning') is NOT a durable fact — "
+        "return no assertion for it. A habit needs recurrence ('every morning', "
+        "'usually', 'i always').\n"
         "- target_node 'dimension/key=value': set when attaching an attribute to "
         "an EXISTING node (e.g. an elliptical answer 'for 6 months').\n"
         "- the FRAMES are a HINT from a cheap planner. You are authoritative: "
@@ -121,6 +135,9 @@ Examples:
 "i started drinking wine" -> {"assertions":[{"subject":"self","dimension":"habit","key":"drinking_wine","value":"wine","operation":"ADD","quote":"i started drinking wine","confidence":0.85}],"relations":[]}
 "hey, i'm kiran. i'm studying computer science in my third year. i live in a hostel near campus" -> {"assertions":[{"subject":"self","dimension":"identity","key":"name","value":"kiran","operation":"ADD","quote":"i'm kiran","confidence":0.95},{"subject":"self","dimension":"identity","key":"occupation","value":"student","operation":"ADD","attributes":[{"name":"field","value":"computer science"},{"name":"year","value":"third"}],"quote":"i'm studying computer science in my third year","confidence":0.9},{"subject":"self","dimension":"identity","key":"location","value":"hostel","operation":"ADD","quote":"i live in a hostel near campus","confidence":0.85}],"relations":[]}
 "i have a cat" -> {"assertions":[{"subject":"relationship/pet=cat","dimension":"relationship","key":"pet","value":"cat","operation":"ADD","quote":"i have a cat","confidence":0.9}],"relations":[]}
+"my favorite movie is interstellar" -> {"assertions":[{"subject":"self","dimension":"preference","key":"favourite_movie","value":"interstellar","operation":"ADD","quote":"my favorite movie is interstellar","confidence":0.9}],"relations":[]}
+"i have two kids" -> {"assertions":[{"subject":"relationship/child=children","dimension":"relationship","key":"child","value":"children","operation":"ADD","attributes":[{"name":"count","value":"2"}],"quote":"i have two kids","confidence":0.9}],"relations":[]}
+"i drank a beer last night" -> {"assertions":[],"relations":[]}
 "in my free time i mostly watch movies" -> {"assertions":[{"subject":"self","dimension":"habit","key":"watching_movies","value":"movies","operation":"ADD","quote":"in my free time i mostly watch movies","confidence":0.85}],"relations":[]}
 "machine learning is part of my cs degree" -> {"assertions":[{"subject":"self","dimension":"interest","key":"topic","value":"machine learning","operation":"ADD","quote":"machine learning","confidence":0.8},{"subject":"self","dimension":"interest","key":"topic","value":"cs degree","operation":"ADD","quote":"cs degree","confidence":0.8}],"relations":[{"from_value":"machine learning","relation":"part_of","to_value":"cs degree"}]}
 "what is my name" -> {"assertions":[],"relations":[]}

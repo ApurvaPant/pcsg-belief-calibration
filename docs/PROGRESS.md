@@ -302,3 +302,38 @@ Real-model smoke + full API E2E: "i'm kiran / studying CS / hostel" now creates
 identity/name + occupation + location, and a NEW chat replies "your name is
 Kiran, you're a student, staying in a hostel." "her name is hailey" still lands
 on the girlfriend, not the user.
+
+---
+
+## 2026-10-08 — Rigorous extractor bug-hunt (real model) + fixes
+
+Ran a 38-case labelled battery through the REAL extractor (frame+fill) and
+triaged. Pipeline-level behaviour was mostly correct; found and fixed three
+genuine extractor-quality bugs. (Negation "i don't like X anymore" is handled:
+salience.detect_end forces END in the full turn — the direct-extractor probe
+only looked like a miss because it bypasses force_end.)
+
+- **Non-food favourites routed to food_likes.** `preference` has a closed key
+  list (food_likes/food_dislikes/music_genre/...), so "my favorite movie is
+  interstellar" landed in **food_likes**. Fix: FILL rule — food_likes/dislikes
+  are food/drink ONLY, music_genre music ONLY; any other favourite uses a
+  descriptive key (favourite_movie/book/team). Also "prefer X over Y" no longer
+  fabricates a dislike of Y. Now: favourite_movie / favourite_book /
+  favourite_team.
+- **One-off actions became habits.** "i drank a beer last night" created
+  habit/drinking_beer. Fix: FILL rule + examples — a one-off past action is not
+  durable; a habit needs recurrence. Now returns nothing; real habits
+  ("every morning") still extract.
+- **Counts stored as the value.** "i have two kids" -> relationship/kids=**two**.
+  Fix: added `count` (and `species`) to relationship attributes + a FILL rule
+  "a count is an attribute, never the value; never store a bare number". Now:
+  relationship/child=children + count=2.
+
+Verified against the real model (all three corrected, no regression to real
+habits / dog-name / identity). Deterministic regressions added:
+`tests/test_extractor_slots.py` (3). **95 backend tests pass.**
+
+Known gap still open (design choice, not a bug): the graph CANVAS payload
+(`/me/graph`) omits node attributes — "cat (name: mochi)" renders as "pet: cat".
+Every other surface (inspector, Memory page, the LLM's own profile) carries the
+attributes; only the canvas drops them. Awaiting a decision on how to show them.
