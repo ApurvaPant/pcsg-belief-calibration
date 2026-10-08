@@ -43,8 +43,17 @@ def _slot_reference() -> str:
 
 
 _FRAME_SYSTEM = (
-    "[[TASK:FRAME]] You PLAN what durable facts a USER's message states. For "
-    "each fact output a frame {subject, dimension, operation}.\n\n"
+    "[[TASK:FRAME]] You PLAN what durable facts a USER's message states. Output "
+    "one frame {subject, dimension, operation} for EVERY durable fact.\n\n"
+    "A message often states SEVERAL facts — emit a frame for each. A greeting or "
+    "filler at the start ('hey', 'so', 'btw') never cancels the facts that "
+    "follow; extract those facts.\n\n"
+    "DURABLE facts to capture (not exhaustive):\n"
+    "  - who the user is: name, age, where they live, what they study or do, "
+    "their job/employer (dimension identity)\n"
+    "  - what they like/dislike/prefer (preference), what they're into (interest)\n"
+    "  - goals, skills, projects, habits/routines, beliefs (those dimensions)\n"
+    "  - people/pets/things related to them (relationship)\n\n"
     "SUBJECT — whose fact is it?\n"
     "  'self' = about the user.\n"
     "  'dimension/key=value' = about a related entity.\n"
@@ -58,9 +67,16 @@ _FRAME_SYSTEM = (
     "  \"hailey's birthday is in may\" -> subject relationship/girlfriend=hailey\n\n"
     f"DIMENSION — one of: {', '.join(ontology.DIMENSIONS)}.\n"
     f"OPERATION — ADD | UPDATE | REFINE | END (END synonyms: {END_SYNONYMS}).\n\n"
-    "Output NOTHING (empty frames) for: questions, transient mood ('i am doing "
-    "great'), non-statements ('as of now no nothing such i am working with'), "
-    "one-off actions ('i drank beer'), pleasantries ('thanks').\n"
+    "Output NOTHING (empty frames) ONLY for a message that states no durable "
+    "fact at all: a pure question, a momentary mood ('i am doing great'), a "
+    "pleasantry ('thanks'), or a one-off action ('i drank a beer last night').\n\n"
+    "Examples:\n"
+    "  \"hey, i'm kiran. i'm studying computer science in my third year. i live "
+    "in a hostel near campus\" -> frames: identity/ADD (name), identity/ADD "
+    "(studies), identity/ADD (where they live)\n"
+    "  \"i have a cat\" -> frames: relationship/ADD (pet)\n"
+    "  \"in my free time i mostly watch movies\" -> frames: habit/ADD\n"
+    "  \"what do you know about me?\" -> frames: []\n\n"
     'Respond ONLY with JSON: {"frames": [{"subject": "...", "dimension": "...", "operation": "..."}]}'
 )
 
@@ -103,6 +119,9 @@ Examples:
 "i love momo as a food" -> {"assertions":[{"subject":"self","dimension":"preference","key":"food_likes","value":"momo","operation":"ADD","quote":"i love momo","confidence":0.85}],"relations":[]}
 "my favorite wine is grape wine with fermentation over 1 year" -> {"assertions":[{"subject":"self","dimension":"preference","key":"favourite_wine","value":"grape wine","operation":"ADD","attributes":[{"name":"fermentation_duration","value":"1","unit":"years"}],"quote":"grape wine with fermentation over 1 year","confidence":0.85}],"relations":[]}
 "i started drinking wine" -> {"assertions":[{"subject":"self","dimension":"habit","key":"drinking_wine","value":"wine","operation":"ADD","quote":"i started drinking wine","confidence":0.85}],"relations":[]}
+"hey, i'm kiran. i'm studying computer science in my third year. i live in a hostel near campus" -> {"assertions":[{"subject":"self","dimension":"identity","key":"name","value":"kiran","operation":"ADD","quote":"i'm kiran","confidence":0.95},{"subject":"self","dimension":"identity","key":"occupation","value":"student","operation":"ADD","attributes":[{"name":"field","value":"computer science"},{"name":"year","value":"third"}],"quote":"i'm studying computer science in my third year","confidence":0.9},{"subject":"self","dimension":"identity","key":"location","value":"hostel","operation":"ADD","quote":"i live in a hostel near campus","confidence":0.85}],"relations":[]}
+"i have a cat" -> {"assertions":[{"subject":"relationship/pet=cat","dimension":"relationship","key":"pet","value":"cat","operation":"ADD","quote":"i have a cat","confidence":0.9}],"relations":[]}
+"in my free time i mostly watch movies" -> {"assertions":[{"subject":"self","dimension":"habit","key":"watching_movies","value":"movies","operation":"ADD","quote":"in my free time i mostly watch movies","confidence":0.85}],"relations":[]}
 "machine learning is part of my cs degree" -> {"assertions":[{"subject":"self","dimension":"interest","key":"topic","value":"machine learning","operation":"ADD","quote":"machine learning","confidence":0.8},{"subject":"self","dimension":"interest","key":"topic","value":"cs degree","operation":"ADD","quote":"cs degree","confidence":0.8}],"relations":[{"from_value":"machine learning","relation":"part_of","to_value":"cs degree"}]}
 "what is my name" -> {"assertions":[],"relations":[]}
 "i am doing great" -> {"assertions":[],"relations":[]}
@@ -175,10 +194,17 @@ def _clean(a: Any) -> tuple[dict[str, Any] | None, str | None]:
         operation = "ADD"
     quote = quote or value
 
-    # PART 2 hard guard: a SELF identity write must be a genuine self-reference
-    # ("my name is X"), never "my <noun> name is X" or a third-person statement.
-    if not entity and dimension == "identity" and not ontology.is_self_identity_quote(quote):
-        return None, "subject_mismatch"
+    # PART 2 hard guard: a SELF identity write must genuinely be about the user.
+    # identity/name is strict ("my name is X", never "her name is X" or
+    # "my dog's name is X"); other identity keys (location, occupation, age_range,
+    # employer) only need a first-person reference, so "i live in a hostel" and
+    # "i work at google" are kept while a third-person statement is rejected.
+    if not entity and dimension == "identity":
+        if key == "name":
+            if not ontology.is_self_identity_quote(quote):
+                return None, "subject_mismatch"
+        elif not ontology.mentions_self(quote):
+            return None, "subject_mismatch"
 
     replaces_raw = a.get("replaces_value")
     replaces_value = (ontology.normalize_value(str(replaces_raw)) if replaces_raw else None) or None
@@ -334,32 +360,37 @@ def extract_assertions(user_message, context=None, pending_slot=None,
 
     # ── Real: FRAME then FILL, each structured + logged. ── #
     frame_model = llm.resolve_model("classifier")  # cheap
+    frame_tokens = 0
     try:
         fr = llm.complete(
             messages=[{"role": "system", "content": _FRAME_SYSTEM},
                       {"role": "user", "content": f"{ctx}\nTARGET message: {user_message}{hint}"}],
             model=frame_model, temperature=0.0, response_schema=_FRAME_SCHEMA, schema_name="frames")
         frames = (parse_json(fr["text"]) or {}).get("frames", [])
-    except Exception as e:  # noqa: BLE001
-        return ExtractionResult([], [], model, f"<frame error: {e}>")
-    if not frames and not force_end:
-        return _finalize([], [], model, raw=fr["text"], frame_output=[], fill_output=[],
-                         frame_tokens=_tokens(fr))
+        frame_tokens = _tokens(fr)
+    except Exception:  # noqa: BLE001
+        frames = []  # planner unreachable — fall through to the authoritative FILL
 
+    # The frame step is a cheap HINT, not a gate. A weak planner that returns no
+    # frames must NOT abort extraction: the stronger FILL model is authoritative
+    # and runs on every salient turn, deciding for itself whether a durable fact
+    # exists (it returns [] for genuine non-facts). Only a tier-0 forced END with
+    # neither frames nor an end object has nothing to do.
+    frame_hint = f"\n\nPLANNER FRAMES (hint): {frames}" if frames else ""
     try:
         fl = llm.complete(
             messages=[{"role": "system", "content": _fill_system()},
                       {"role": "user", "content":
-                       f"{ctx}\nTARGET message: {user_message}{hint}\n\nPLANNER FRAMES (hint): {frames}"}],
+                       f"{ctx}\nTARGET message: {user_message}{hint}{frame_hint}"}],
             model=model, temperature=0.0, response_schema=_FILL_SCHEMA, schema_name="fill")
     except Exception as e:  # noqa: BLE001
         return ExtractionResult([], [], model, f"<fill error: {e}>", frame_output=frames,
-                                frame_tokens=_tokens(fr))
+                                frame_tokens=frame_tokens)
     parsed = parse_json(fl["text"]) or {}
     assertions = parsed.get("assertions", []) if isinstance(parsed, dict) else []
     relations = parsed.get("relations", []) if isinstance(parsed, dict) else []
     res = _finalize(assertions, relations, model, raw=fl["text"], frame_output=frames,
-                    fill_output=assertions, frame_tokens=_tokens(fr), fill_tokens=_tokens(fl))
+                    fill_output=assertions, frame_tokens=frame_tokens, fill_tokens=_tokens(fl))
     return _apply_forced_end(res, force_end, end_object, user_message)
 
 

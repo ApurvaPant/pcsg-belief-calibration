@@ -267,3 +267,38 @@ User-facing additions (frontend) + three small read/write backend routes.
 **Verification**: 87 backend tests pass (84 → 87); `tsc --noEmit` clean. Both
 servers relaunched detached on fresh code (backend `0.0.0.0:8000`, Vite
 `[::1]:5173`); `/openapi.json` confirms the three new routes are live.
+
+---
+
+## 2026-10-08 — Critical extraction bug: durable facts silently dropped
+
+**Symptom** (reported by user1): "hey, i'm kiran / i'm studying CS / i live in a
+hostel" was marked salient ("extracted") but created NO nodes, and a new chat
+recalled nothing. Same for "i have a cat" and "in my free time i watch movies".
+
+**Root cause** (from gate_log + extraction_log): the FRAME planner — the cheap
+`llama-3.1-8b-instruct` classifier model — returned empty frames for clear
+durable facts, and `extract_assertions` *bailed whenever frames were empty*
+(`extraction.py`). One weak model's false negatives silently killed all
+downstream extraction. Only "My cat's name is Mochi" (which the planner happened
+to frame) ever persisted.
+
+**Fix 1 — frame is a hint, not a gate.** Removed the empty-frame early return.
+On a salient turn the authoritative FILL model (`gpt-4o-mini`) now always runs;
+frames are passed only as an optional hint. FILL returns [] for genuine
+non-facts, so precision holds. Strengthened the FRAME prompt (lead with what to
+capture, greetings don't cancel following facts, multi-fact → multi-frame) and
+added positive FILL examples (greeting+name, multi-fact intro, pet, hobby).
+
+**Fix 2 — identity guard scoped to name.** `is_self_identity_quote` ("my name
+is X", never "her name is X") was applied to EVERY identity key, so
+`identity/location=hostel` from "i live in a hostel" was dropped as
+subject_mismatch. Now: identity/name stays strict; other identity keys
+(location, occupation, age_range, employer) only require a first-person
+reference (`ontology.mentions_self`). Third-person still rejected.
+
+**Verification**: new `tests/test_identity_guard.py` (5); 92 backend tests pass.
+Real-model smoke + full API E2E: "i'm kiran / studying CS / hostel" now creates
+identity/name + occupation + location, and a NEW chat replies "your name is
+Kiran, you're a student, staying in a hostel." "her name is hailey" still lands
+on the girlfriend, not the user.

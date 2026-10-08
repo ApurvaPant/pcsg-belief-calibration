@@ -237,6 +237,17 @@ def is_self_identity_quote(quote: str) -> bool:
     return bool(_SELF_ID_RE.search(q))
 
 
+# A first-person reference anywhere in the quote. Used to gate non-name identity
+# facts ("i live in X", "i work at Y", "i'm 25") — those are legitimate self
+# statements that are NOT name-style self-identifications, so the strict
+# name guard above would wrongly reject them.
+_FIRST_PERSON_RE = re.compile(r"\b(i|i'?m|i'?ve|my|me|myself|we|we'?re|our)\b", re.I)
+
+
+def mentions_self(quote: str) -> bool:
+    return bool(_FIRST_PERSON_RE.search(quote or ""))
+
+
 def strip_key_from_value(key: str, value: str) -> str:
     """Drop a leading/trailing relation word that duplicates the key
     (key=girlfriend, value='girlfriend hailey' -> 'hailey')."""
