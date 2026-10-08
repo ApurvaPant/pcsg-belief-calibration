@@ -19,6 +19,17 @@ function day(ts: string | null): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+// Full timestamp (date + time) — the node's stored valid_from / valid_to /
+// created_at, shown precisely rather than just the day.
+function stamp(ts: string | null): string {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return ts;
+  return d.toLocaleString(undefined, {
+    month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
+  });
+}
+
 function statusWord(n: UserNode): string {
   if (n.status === "active") return "current";
   if (n.status_detail === "ended") return "no longer";
@@ -70,6 +81,12 @@ export default function NodeDetail({ detail, loading, onClose, onRestore, onForg
                 : `${day(detail.valid_from)} – ${day(detail.valid_to)}`}
             </span>
           </div>
+
+          <dl className="d-stamp">
+            <div><dt>valid from</dt><dd>{stamp(detail.valid_from)}</dd></div>
+            {detail.valid_to && <div><dt>valid to</dt><dd>{stamp(detail.valid_to)}</dd></div>}
+            <div><dt>recorded</dt><dd>{stamp(detail.created_at)}</dd></div>
+          </dl>
 
           {detail.status !== "active" && onRestore && (
             <div className="d-restore">
