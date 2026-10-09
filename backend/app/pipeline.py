@@ -146,6 +146,10 @@ def _resolve_qa(history: list[dict[str, str]], message: str) -> str:
 def _attr_name_from_question(question: str) -> str:
     """Derive the qualifier name an OPEN-slot answer fills, from the question."""
     q = (question or "").lower()
+    if "name" in q:                       # "what's your cat's name?" -> name
+        return "name"
+    if "how old" in q or "their age" in q or "your age" in q:
+        return "age"
     if any(p in q for p in ("what kind of", "what type of", "what sort of", "what genre")):
         return "genre"
     if any(p in q for p in ("topic", "subject", "area", "specific")):

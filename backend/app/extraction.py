@@ -179,6 +179,7 @@ Examples:
 "i'm feeling really anxious these days" -> {"assertions":[],"relations":[]}
 "in my free time i mostly watch movies" -> {"assertions":[{"subject":"self","dimension":"habit","key":"watching_movies","value":"movies","operation":"ADD","quote":"in my free time i mostly watch movies","confidence":0.85}],"relations":[]}
 "machine learning is part of my cs degree" -> {"assertions":[{"subject":"self","dimension":"interest","key":"topic","value":"machine learning","operation":"ADD","quote":"machine learning","confidence":0.8},{"subject":"self","dimension":"interest","key":"topic","value":"cs degree","operation":"ADD","quote":"cs degree","confidence":0.8}],"relations":[{"from_value":"machine learning","relation":"part_of","to_value":"cs degree"}]}
+"actually, it's spelled aaryan not aryan" -> {"assertions":[{"subject":"self","dimension":"identity","key":"name","value":"aaryan","operation":"UPDATE","replaces_value":"aryan","quote":"actually, it's spelled aaryan not aryan","confidence":0.9}],"relations":[]}
 "what is my name" -> {"assertions":[],"relations":[]}
 "i am doing great" -> {"assertions":[],"relations":[]}
 "thanks that helps" -> {"assertions":[],"relations":[]}
@@ -237,7 +238,12 @@ def _clean(a: Any) -> tuple[dict[str, Any] | None, str | None]:
         value = ontology.normalize_value(str(a.get("value", "")))
     if not value:
         return None, "validation_failed"
-    value = ontology.strip_key_from_value(key, value)
+    # Strip a role word that duplicates the key only for relationships
+    # ("girlfriend hailey" -> "hailey"). Descriptive keys like favourite_wine or
+    # food_likes legitimately share a token with their content ("grape wine"),
+    # so stripping there would corrupt the value.
+    if dimension == "relationship":
+        value = ontology.strip_key_from_value(key, value)
     if not ontology.is_valid_value(value):
         head = ontology.decompose_value(value)
         if head and ontology.is_valid_value(head):

@@ -83,3 +83,25 @@ Root cause: no rule distinguishing third-party reported wishes or dreams/hypothe
 Fix: FILL prompt rules for reported-wish ownership and dream/hypothetical.
 Regression tests: scenarios D2 (S0), G6 (real).
 Verified: real 1/1 each green.
+
+## BUG-008  [S1]  [validation]  status: fixed
+Found by: robustness/R06 (real)
+Repro: `runner.py --case R06 --provider real`
+Expected: "my favourite wine is grape wine ..." stores value "grape wine".
+Actual: value became "grape" — `strip_key_from_value("favourite_wine", "grape wine")` stripped the "wine" token because it appears in the key.
+Root cause: the role-word stripping (for "girlfriend hailey" -> "hailey") was applied to all dimensions; a descriptive key like favourite_wine shares a token with its content.
+Fix: `_clean` applies `strip_key_from_value` only for the relationship dimension.
+Regression tests: scenario R06 (real); R01 (relationship strip still works).
+Verified: real 1/1 green.
+
+## BUG-009  [S2]  [qa_resolution]  status: fixed
+Found by: robustness/B1, B8
+Repro: `runner.py --case B1,B8 --provider real`
+Expected: a bare answer to "what's your cat's name?"/"how old is mochi?" attaches name/age; a Q-A-resolved identity fragment is self-referential.
+Actual: B1 mapped the open-slot answer to a `detail` attribute (rejected by relationship) so the name was lost; B8 flagged INV-13 because the raw fragment "not at all" isn't self-referential.
+Fix: `_attr_name_from_question` maps "...name?" -> name and "how old" -> age; INV-13 also accepts a self-referential resolved utterance (consistent with INV-08).
+Regression tests: scenarios B1, B8 (real).
+Verified: real 1/1 each green.
+
+## capability-limit? items
+- **F3** ("actually spell it kiren" -> supersede name to kiren): the real extractor returns no assertion for this spelling-correction phrasing even with a (differently-worded) prompt example; the name stays `kiran`. No state corruption. Raw: extract_assertions("actually spell it kiren", ctx=[name=kiran]) -> []. Left as an S1 capability limit; explicit "my name is X" / "call me X" corrections work.

@@ -151,15 +151,22 @@ def check_all(prev: Snapshot, curr: Snapshot, turn: dict | None = None) -> list[
             seen_ids.add(cur["id"])
             cur = node_by_id.get(cur["previous_node_id"])
 
-    # INV-13: active identity node evidence looks like a self-reference.
+    # INV-13: active identity node evidence looks like a self-reference. A
+    # Q-A-resolved fragment is checked against its message's resolved utterance
+    # too (consistent with INV-08), so "not at all" -> "i'm not a morning person"
+    # counts as self-referential.
     for r in _active(curr, "nodes"):
         if r["dimension"] == "identity":
-            quotes = [e["quote"] for e in curr.get("evidence", [])
-                      if e.get("node_id") == r["id"]]
-            ok = any(ontology.is_self_identity_quote(q) if r["key"] == "name"
-                     else ontology.mentions_self(q) for q in quotes)
-            if quotes and not ok:
-                v.append(f"INV-13 identity/{r['key']} evidence not self-referential: {quotes!r}")
+            evs = [e for e in curr.get("evidence", []) if e.get("node_id") == r["id"]]
+            texts = []
+            for e in evs:
+                texts.append(e["quote"])
+                m = msg_by_id.get(e.get("message_id"))
+                if m and m.get("resolved_content"):
+                    texts.append(m["resolved_content"])
+            check = ontology.is_self_identity_quote if r["key"] == "name" else ontology.mentions_self
+            if evs and not any(check(t) for t in texts):
+                v.append(f"INV-13 identity/{r['key']} evidence not self-referential: {[e['quote'] for e in evs]!r}")
 
     # INV-16: each user message has exactly one gate_log row.
     gate_by_msg: dict[str, int] = {}
