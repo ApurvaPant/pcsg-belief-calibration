@@ -423,3 +423,23 @@ were "not stored"); verified true fabrication rate ~0. Read-path fixes: BUG-010
 historical detection). Judge iterated 3x (strict -> lenient -> balanced) and moved to
 the chat model; residual judge noise documented as a cheap-judge capability-limit
 (model strings not changed per ground rule 3).
+
+## 2026-10-09 — Phase 3 (S3 metamorphic) complete + pcsg-v2-rc2
+
+Implemented tests/robustness/metamorphic.py (MT-1 paraphrase x10 families x5,
+MT-6 idempotency, MT-7 negation discrimination, MT-8 subject discrimination).
+Per-family table saved to results/consistency/.
+
+Results (real): MT-6 idempotency PASS (1 node, no supersession, conf<1);
+MT-7 negation 3/3 distinct outcomes; MT-8 subject 4/4 (only "my name is X" touches
+identity). MT-1 paraphrase: strict mean 0.72 (5/10 >=0.90), value-level mean 0.82
+(6/10 >=0.90). The MT-1 gap is dominated by open-key synonymy (gym ->
+going_to_gym / working_out / gym_session; girlfriend/partner; pet/dog) where the
+dimension+value agree, plus minor value morphology ("game designer"/"game design")
+and two over/under-extractions (a spurious home node; "partner's name is hailey"
+losing the name). Below the 0.90 target; documented, not forced (open-key
+canonicalisation is out of scope for the freeze).
+
+Final freeze state: mock suite 19/19 (3/3), unit 98, 0 invariant violations; S0 set
+3/3 (mock + real). 0 open S0 bugs (BUG-004/005/007/010 fixed; N1 disputed-by-design,
+F3 capability-limit). Tag: pcsg-v2-rc2.

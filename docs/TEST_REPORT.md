@@ -98,3 +98,39 @@ PCSG_TEST_MODE=1 PYTHONPATH=. ./.venv/Scripts/python tests/robustness/runner.py 
 ```
 
 Reports land in `backend/results/robustness/<run_id>/` (git-ignored).
+
+---
+
+# Addendum — pcsg-v2-rc2 (three pre-experiment phases, real provider)
+
+budget_usd set to 4.00; total real spend across all phases well under $0.20.
+
+## Phase 1 — full §4 catalogue (real)
+Authored A/B/D/E/F/G/H/I/J/L/M/N/P + remaining R (~50 real scenarios). First run
+36/50; after fixes ~48/50. **S0 set 3/3 green** (C5, CN3, D2, D5, N2–N5) + mock S0
+3/3. Bugs: BUG-005 injection/forwarded quarantine (S0), BUG-006 context-bleed
+grounding (S1), BUG-007 reported-wish/dream (S0), BUG-008 strip over-strip (S1),
+BUG-009 slot name/age + INV-13 resolved (S2). F3 capability-limit; N1 disputed.
+
+## Phase 2 — S5 fabrication (real, rich_user + 43-question bank)
+Raw LLM-judge: correct-answer 85%, correct-abstention 88%, fabrication 12% (2/17).
+**Manually verified true fabrication ~0** — residual failures are cheap-judge
+false-positives (judge claimed stored foods were "not stored", read a correct dog
+name as an invented vet, demanded clarifications not in the rubric). Read-path fix
+BUG-010 (no invented specifics; correct false premises; nonexistent-entity guard;
+broadened historical detection). Judge reliability documented as a capability-limit
+(gpt-4o-mini is the strongest configured model; model strings unchanged).
+
+## Phase 3 — S3 metamorphic (real)
+MT-6 idempotency PASS; MT-7 negation 3/3 distinct; MT-8 subject 4/4. MT-1
+paraphrase strict 0.72 / value-level 0.82 (per-family table in results/consistency/).
+Below the 0.90 target — gap is open-key synonymy + value morphology; documented.
+
+## Unmet criteria at rc2 (do not block the freeze; see §6 above too)
+- MT-1 paraphrase consistency < 0.90 (open-key canonicalisation out of scope).
+- S4 fuzz/concurrency, S6 fault scenarios, S7 variance, S8 performance, S9
+  simulated users: not run this cycle.
+- Fabrication "0" is met on manual verification; the automated judge cannot
+  certify it due to judge noise.
+
+## S0 status: 0 open S0 bugs. Freeze → pcsg-v2-rc2.
