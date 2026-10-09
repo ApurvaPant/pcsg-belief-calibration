@@ -1,0 +1,41 @@
+{
+  "user": {"id": "rich_user", "label": "Riya"},
+  "nodes": [
+    {"dimension": "identity", "key": "name", "value": "riya", "quote": "my name is riya"},
+    {"dimension": "identity", "key": "age_range", "value": "27", "quote": "i'm 27"},
+    {"dimension": "identity", "key": "location", "value": "bangalore", "quote": "i live in bangalore"},
+    {"dimension": "identity", "key": "occupation", "value": "product designer", "quote": "i'm a product designer"},
+
+    {"dimension": "preference", "key": "food_likes", "value": "ramen", "quote": "i love ramen"},
+    {"dimension": "preference", "key": "food_likes", "value": "dark chocolate", "quote": "i love dark chocolate"},
+    {"dimension": "preference", "key": "food_dislikes", "value": "olives", "quote": "i can't stand olives"},
+    {"dimension": "preference", "key": "diet", "value": "vegetarian", "quote": "i'm vegetarian"},
+    {"dimension": "preference", "key": "music_genre", "value": "lo-fi", "quote": "i listen to lo-fi"},
+
+    {"dimension": "interest", "key": "topic", "value": "astronomy", "quote": "i'm into astronomy"},
+    {"dimension": "interest", "key": "topic", "value": "pottery", "quote": "i'm into pottery", "confidence_raw": 0.4, "confidence_calibrated": 0.32},
+
+    {"dimension": "goal", "key": "fitness", "value": "run a half marathon", "quote": "i want to run a half marathon"},
+    {"dimension": "skill", "key": "python", "value": "python", "quote": "i code in python", "attributes": [{"name": "years_experience", "value": "5", "unit": "years"}]},
+    {"dimension": "skill", "key": "french", "value": "french", "quote": "i speak french", "attributes": [{"name": "proficiency", "value": "intermediate"}]},
+    {"dimension": "project", "key": "mobile_app", "value": "mobile app", "quote": "i'm building a mobile app"},
+    {"dimension": "habit", "key": "yoga", "value": "yoga", "quote": "i do yoga", "attributes": [{"name": "frequency", "value": "daily"}]},
+    {"dimension": "belief", "key": "climate_action", "value": "climate action matters", "quote": "i believe climate action matters"},
+
+    {"dimension": "relationship", "key": "sister", "value": "meera", "quote": "my sister meera", "attributes": [{"name": "occupation", "value": "architect"}]},
+    {"id": "node_mom", "dimension": "relationship", "key": "mom", "value": "mom", "quote": "my mom"},
+    {"id": "node_dog", "dimension": "relationship", "key": "pet", "value": "dog", "quote": "my dog bruno", "attributes": [{"name": "name", "value": "bruno"}]},
+
+    {"dimension": "preference", "key": "tool_choice", "value": "figma", "quote": "i prefer figma", "confidence_raw": 0.38, "confidence_calibrated": 0.3},
+
+    {"dimension": "habit", "key": "smoking", "value": "smoking", "status": "superseded", "status_detail": "ended", "valid_to": "2025-01-01T00:00:00Z", "quote": "i used to smoke"},
+    {"dimension": "relationship", "key": "ex_partner", "value": "sam", "status": "superseded", "status_detail": "ended", "valid_to": "2025-03-01T00:00:00Z", "quote": "my ex sam"},
+    {"dimension": "goal", "key": "learning", "value": "learn violin", "status": "superseded", "status_detail": "abandoned", "valid_to": "2025-02-01T00:00:00Z", "quote": "i wanted to learn violin"},
+
+    {"id": "node_loc_old", "dimension": "identity", "key": "location", "value": "chennai", "status": "superseded", "valid_to": "2024-06-01T00:00:00Z", "quote": "i lived in chennai"},
+    {"id": "node_name_old", "dimension": "identity", "key": "name", "value": "riya k", "status": "superseded", "valid_to": "2024-01-01T00:00:00Z", "quote": "riya k"}
+  ],
+  "edges": [
+    {"source_node_id": "node_mom", "target_node_id": "node_dog", "relation": "gets_along_with", "polarity": "negative", "quote": "my mom and my dog don't get along"}
+  ]
+}

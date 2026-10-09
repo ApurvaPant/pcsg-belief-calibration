@@ -63,3 +63,23 @@ Root cause: no deterministic guard against injection/forwarded content; the mode
 Fix: `salience.is_quarantined()` (general injection / meta-instruction / forwarded-content markers) + a pipeline quarantine on the ORIGINAL message — the turn still gets a chat reply but extraction is skipped (reason_code `quarantined_injection`). Prompt also hardened with distinct-wording examples.
 Regression tests: scenarios N2, N4, N5 (real, 3/3).
 Verified: real 3/3 green, 0 invariant violations.
+
+## BUG-006  [S1]  [structuring]  status: fixed
+Found by: robustness/A1,A2,E1,F1,I1,J1,R18 (real; INV-08 violations)
+Repro: `runner.py --case A1,A2,E1,F1,I1,J1,R18 --provider real`
+Expected: an assertion's evidence quote is a substring of the message it is attached to (INV-08); no duplicate nodes from earlier turns.
+Actual: with conversation context, the real extractor re-extracted earlier-turn facts and attached them to the CURRENT message with a quote from the earlier turn (context bleed) — INV-08 violations and latent duplicates.
+Root cause: the model does not perfectly honour "extract only from the TARGET message".
+Fix: `extraction._ground_to_target` — every kept assertion must be grounded in the target message; if the quote is not a substring, keep it only when the value appears in the target (regrounding the quote), else drop it as `context_bleed`.
+Regression tests: scenarios A1,A2,E1,F1,I1,J1,R18 (real) + INV-08 every turn.
+Verified: 9/9 green incl. D2/G6, 0 invariant violations.
+
+## BUG-007  [S0]  [structuring]  status: fixed
+Found by: robustness/D2 (real); also G6 (modality)
+Repro: `runner.py --case D2,G6 --provider real`
+Expected: a wish attributed to someone else ("my mom thinks i should become a doctor") is not the user's goal; a dream ("in my dream i was a pilot") writes nothing.
+Actual: D2 created goal/career=doctor for the user; G6 created a pilot node.
+Root cause: no rule distinguishing third-party reported wishes or dreams/hypotheticals from the user's own durable facts.
+Fix: FILL prompt rules for reported-wish ownership and dream/hypothetical.
+Regression tests: scenarios D2 (S0), G6 (real).
+Verified: real 1/1 each green.

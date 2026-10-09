@@ -90,7 +90,7 @@
   expect_final:
     - node_count: {status: active, gte: 5}
     - node: {dim: skill, key_any: [guitar], status: active}
-      attributes: {years_experience_any: ["6", "6 months"], duration_any: ["6 months", "6"]}
+      attributes: {years_experience_any: ["6", "6 months", "0.5"]}
 
 - id: J3
   category: dense
