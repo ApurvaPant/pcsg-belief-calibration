@@ -367,3 +367,31 @@ attaches name=rocky to the dog. Regression test added
 Still open before benchmarks: goal/project completion (achieved/abandoned never
 assigned); budget_usd=0; the 45-case labelled eval set; PII + graph-attribute
 policy.
+
+---
+
+## 2026-10-09 — Robustness test system (technical_testing_spec.md) + pcsg-v2-rc1
+
+Built the automated robustness harness (§1-2) against the real routes and ran it.
+
+- Infra: test-mode `/debug/*` endpoints (reset/seed/snapshot/inject_assistant/
+  wait/fault, gated by PCSG_TEST_MODE), a fault hook in llm.py (inert in prod),
+  the HTTP runner (FastAPI TestClient, in-process), the YAML scenario format, the
+  assertion library, and 18 applicable global invariants (4 documented N/A for
+  this synchronous build).
+- Suites: unit 98 passing; mock scenario suite 19/19 green 3/3 `--no-cache`
+  (regressions R, negation C, state D/E/O); real pilot 5/5 (budget-limited to
+  --runs 1). 0 invariant violations across all turns.
+- Bugs found + fixed, each with a regression test and a committed fix:
+  BUG-001 (S1) confidence_raw mutated on reinforce; BUG-002 (S2) attributes left
+  active on an ended node; BUG-003 (S2) "i do coding" gated out; BUG-004 (S0)
+  negated interpersonal relation not extracted + edges absent from the chat
+  state block, causing a fabricated reply.
+- Docs: docs/BUGS.md (ledger), docs/TEST_REPORT.md (suite results, N/A
+  invariants, unmet/deferred criteria), docs/MANUAL_TEST_HANDOFF.md. Tag:
+  pcsg-v2-rc1.
+
+Deferred before benchmarking (documented in TEST_REPORT §6): full §4 catalogue
+(A/B/F/G/H/I/J/K/L/M/N/P), S3 metamorphic, S4 fuzz/concurrency, S6 fault
+scenarios, S7 variance, S8 performance baseline, S9 simulated users; real runs at
+--runs 3 on a funded key; the paid extraction eval (needs budget_usd > 0).
