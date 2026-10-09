@@ -3,6 +3,7 @@ import ChatPanel from "./components/ChatPanel";
 import GraphPanel from "./components/GraphPanel";
 import NodeDetailView from "./components/NodeDetail";
 import MemoryPage from "./components/MemoryPage";
+import ResultsPanel from "./components/ResultsPanel";
 import Sidebar from "./components/Sidebar";
 import Login from "./components/Login";
 import { IconGraph } from "./components/icons";
@@ -91,6 +92,7 @@ function Workspace({ user, theme, onToggleTheme, onLogout }: WorkspaceProps) {
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [memory, setMemory] = useState<MemoryPayload | null>(null);
   const [memoryLoading, setMemoryLoading] = useState(false);
+  const [resultsOpen, setResultsOpen] = useState(false);
 
   const refreshGraph = useCallback(async () => {
     try {
@@ -297,12 +299,14 @@ function Workspace({ user, theme, onToggleTheme, onLogout }: WorkspaceProps) {
       <Sidebar
         sessions={sessions}
         activeId={activeSession}
-        onSelect={(id) => { setActiveSession(id); setSelectedId(null); setDetail(null); setMemoryOpen(false); }}
-        onNewChat={() => { handleNewChat(); setMemoryOpen(false); }}
+        onSelect={(id) => { setActiveSession(id); setSelectedId(null); setDetail(null); setMemoryOpen(false); setResultsOpen(false); }}
+        onNewChat={() => { handleNewChat(); setMemoryOpen(false); setResultsOpen(false); }}
         onDeleteSession={handleDeleteSession}
         onRenameSession={handleRenameSession}
-        onOpenMemory={() => (memoryOpen ? setMemoryOpen(false) : openMemory())}
+        onOpenMemory={() => { setResultsOpen(false); memoryOpen ? setMemoryOpen(false) : openMemory(); }}
         memoryOpen={memoryOpen}
+        onOpenResults={() => { setMemoryOpen(false); setResultsOpen((v) => !v); }}
+        resultsOpen={resultsOpen}
         busy={busy}
         user={user}
         onLogout={onLogout}
@@ -310,7 +314,9 @@ function Workspace({ user, theme, onToggleTheme, onLogout }: WorkspaceProps) {
         onToggleTheme={onToggleTheme}
       />
 
-      {memoryOpen ? (
+      {resultsOpen ? (
+        <ResultsPanel onClose={() => setResultsOpen(false)} />
+      ) : memoryOpen ? (
         <MemoryPage
           memory={memory}
           loading={memoryLoading}

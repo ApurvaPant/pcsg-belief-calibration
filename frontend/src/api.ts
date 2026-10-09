@@ -190,6 +190,17 @@ export async function fetchMemory(): Promise<MemoryPayload> {
   return json<MemoryPayload>(await fetch(`${BASE}/me/memory`, { headers: headers() }));
 }
 
+// ── Experiment results (read-only; no auth needed) ──────────────────────── #
+export interface ResultRun { run_id: string; mode: string; date: string; has_dashboard: boolean; }
+
+export async function fetchResultsRuns(): Promise<ResultRun[]> {
+  return json<ResultRun[]>(await fetch(`${BASE}/results/runs`));
+}
+
+export async function fetchDashboard(runId: string): Promise<any> {
+  return json<any>(await fetch(`${BASE}/results/${encodeURIComponent(runId)}/dashboard`));
+}
+
 export async function forgetNode(nodeId: string): Promise<{ forgotten: boolean; removed_nodes: number }> {
   return json<{ forgotten: boolean; removed_nodes: number }>(
     await fetch(`${BASE}/nodes/${nodeId}`, { method: "DELETE", headers: headers() }),

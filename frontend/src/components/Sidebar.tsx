@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Session, User } from "../types";
 import type { Theme } from "../useTheme";
-import { IconMemory, IconPencil, IconTrash } from "./icons";
+import { IconChart, IconMemory, IconPencil, IconTrash } from "./icons";
 
 interface Props {
   sessions: Session[];
@@ -12,6 +12,8 @@ interface Props {
   onRenameSession: (id: string, title: string) => void | Promise<void>;
   onOpenMemory: () => void;
   memoryOpen: boolean;
+  onOpenResults: () => void;
+  resultsOpen: boolean;
   busy: boolean;
   user: User;
   onLogout: () => void;
@@ -27,7 +29,7 @@ function when(ts: string): string {
 
 export default function Sidebar({
   sessions, activeId, onSelect, onNewChat, onDeleteSession, onRenameSession,
-  onOpenMemory, memoryOpen, busy, user, onLogout, theme, onToggleTheme,
+  onOpenMemory, memoryOpen, onOpenResults, resultsOpen, busy, user, onLogout, theme, onToggleTheme,
 }: Props) {
   const name = user.username || user.label || "You";
   const [confirm, setConfirm] = useState<Session | null>(null);
@@ -94,6 +96,15 @@ export default function Sidebar({
       >
         <span className="nav-ico"><IconMemory size={17} /></span>
         <span>Your memory</span>
+      </button>
+
+      <button
+        className={`nav-item ${resultsOpen ? "active" : ""}`}
+        onClick={onOpenResults}
+        title="Experiment results — read-only charts from results/"
+      >
+        <span className="nav-ico"><IconChart size={17} /></span>
+        <span>Results</span>
       </button>
 
       <div className="sidebar-label eyebrow">Chats</div>

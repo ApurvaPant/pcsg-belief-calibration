@@ -67,6 +67,15 @@ export const IconGraph = (p: IconProps) => (
   </Base>
 );
 
+// Bar-chart mark for the experiment results view.
+export const IconChart = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M4 20V4" />
+    <path d="M4 20h16" />
+    <path d="M8 20v-6M13 20V9M18 20v-9" />
+  </Base>
+);
+
 // Compact brand mark for avatars/logos (filled nodes read better small).
 export const IconMark = ({ size = 16, ...rest }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden {...rest}>

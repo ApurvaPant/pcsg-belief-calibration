@@ -648,3 +648,73 @@ button { font-family: inherit; }
   .history-toggle { padding: 7px 8px; font-size: 0; gap: 0; }
   .history-toggle input { margin: 0; }
 }
+
+/* ═══ Results / experiment visualizer ═══ */
+.results { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; background: var(--bg); }
+.rv-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;
+  padding: 24px 34px 18px; border-bottom: 1px solid var(--line); flex: none;
+}
+.rv-head h1 { margin: 0; font-size: 22px; letter-spacing: -0.025em; }
+.rv-sub { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
+.rv-sub code, .rv-meta code, .rv-kpi code { font-family: var(--mono); font-size: 0.92em; }
+.rv-pick { display: flex; align-items: center; gap: 10px; }
+.rv-pick select {
+  background: var(--panel); color: var(--text); border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm); padding: 7px 10px; font-size: 12.5px; font-family: var(--mono);
+}
+.rv-banner {
+  background: rgba(239, 68, 68, 0.12); color: #f1a1a1; border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 9px 34px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; font-family: var(--mono); flex: none;
+}
+.rv-empty, .rv-note { padding: 18px 34px; color: var(--muted); font-size: 13px; }
+.rv-note { padding: 14px 16px; font-style: italic; }
+.rv-body { flex: 1; overflow-y: auto; padding: 22px 34px 60px; }
+.rv-meta {
+  display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 11.5px; color: var(--muted);
+  font-family: var(--mono); padding-bottom: 16px; border-bottom: 1px solid var(--line); margin-bottom: 20px;
+}
+.rv-meta b { color: var(--strong); font-weight: 700; }
+
+.rv-section { margin-bottom: 30px; }
+.rv-shead { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+.rv-shead h3 { margin: 0; font-size: 14px; font-weight: 800; letter-spacing: -0.01em; }
+.rv-shead span { font-size: 12px; color: var(--faint); }
+
+.rv-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.rv-kpi { padding: 15px 16px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--panel); }
+.rv-kpi-v { font-size: 22px; font-weight: 800; color: var(--strong); letter-spacing: -0.02em; }
+.rv-kpi-l { font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+.rv-kpi-s { font-size: 11px; color: var(--dim); font-family: var(--mono); margin-top: 4px; }
+
+.rv-chart {
+  position: relative; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel);
+  padding: 14px 10px 6px; font-size: 11px;
+}
+.rv-wm {
+  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 2;
+  font-size: 30px; font-weight: 900; color: rgba(239, 68, 68, 0.14); letter-spacing: 0.12em;
+  transform: rotate(-18deg); font-family: var(--mono);
+}
+.rv-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-bottom: 12px; font-size: 12px; color: var(--muted); }
+.rv-controls label { display: inline-flex; align-items: center; gap: 8px; }
+.rv-controls input[type="range"] { accent-color: var(--dim); }
+.rv-selnum { font-family: var(--mono); font-size: 11px; color: var(--text); }
+.rv-tog {
+  margin-left: 6px; padding: 3px 9px; border: 1px solid var(--line-strong); border-radius: 999px;
+  background: transparent; color: var(--muted); font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.rv-tog.on { background: var(--raise); color: var(--strong); border-color: var(--dim); }
+
+.rv-replay { display: flex; gap: 16px; align-items: stretch; }
+.rv-turn { flex: 0 0 300px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); padding: 14px; overflow-y: auto; max-height: 240px; }
+.rv-turn-msg { font-size: 13px; font-style: italic; color: var(--text); line-height: 1.5; margin-bottom: 12px; }
+.rv-assert {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11.5px;
+  padding: 6px 9px; border-radius: var(--r-sm); margin-bottom: 6px; border: 1px solid var(--line);
+}
+.rv-assert.ok { border-left: 3px solid #5cd39a; }
+.rv-assert.bad { border-left: 3px solid #fb8a8a; }
+.rv-conf { font-family: var(--mono); color: var(--muted); flex: none; }
+
+@media (max-width: 900px) { .rv-replay { flex-direction: column; } .rv-turn { flex: none; } }
