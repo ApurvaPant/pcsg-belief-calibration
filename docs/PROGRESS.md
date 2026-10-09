@@ -468,3 +468,16 @@ Phase C (S7): mock catalogue 3x = 19/19, 0 flaky (deterministic layer); real var
 credit-deferred.
 Freeze: 102 unit tests, mock suite 19/19 (3/3), 0 invariant violations, 0 open S0 bugs.
 Tag pcsg-v2-rc3.
+
+## 2026-10-09 — Experiments program start: CREDIT BLOCKER on paid steps
+
+The user reports credits added, but the key in backend/.env is UNCHANGED (tail
+e24f7e, .env mtime 22:59 yesterday) and still returns 402 "Insufficient credits —
+this account never purchased credits" on even a 32-token gpt-4o-mini call. The added
+credits reached a different account/org than this key. => All paid steps (STEP -1
+simulator real run, STEP 2 extraction eval, STEP 3 100-persona replay, STEP 5/6/8 QA
+& baselines) are BLOCKED until .env carries a key on the funded account.
+
+Proceeding with credit-FREE, correctly-ordered work: STEP 0 (confidence signals +
+freeze tag pcsg-v2-exp) and the STEP 9 reproducibility harness (scripts/make_figures.py,
+results/ scaffolding). Paid steps will run unchanged once a working key is in.
