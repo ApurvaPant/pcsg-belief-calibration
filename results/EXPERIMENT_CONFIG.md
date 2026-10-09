@@ -1,6 +1,6 @@
-# PCSG v2 — Experiment Configuration (frozen at pcsg-v2-exp)
+# PCSG v2 - Experiment Configuration (frozen at pcsg-v2-exp)
 
-- git sha: `1a30cb18ebfb4882e672eea66b00557dff06708b`
+- git sha: `720a27c64e15e934da6f519da9de1fc84b5a9f84`
 - provider: `openrouter`  base_url: `https://openrouter.ai/api/v1`
 - temperature (default): 0.2   max_tokens (COMMITTED): 1024
 - timeout_seconds: 60
@@ -19,7 +19,7 @@
 - reinforce_step: 0.1
 - resolve_similarity: 0.92
 - destructive_min_conf: 0.8
-- FILL self-consistency temperature: 0.7 (k=3)   verbalized=extractor conf; evidence=NoisyOR(verbalized, explicitness prior 0.70/0.40)
+- FILL self-consistency: k=3 @ temp 0.7; verbalized=extractor conf; evidence=NoisyOR(verbalized, explicitness prior 0.70 explicit / 0.40 implicit)
 
 ## Prompt hashes (sha256[:16])
 - FRAME:  `39339f174c1d5248`
@@ -30,5 +30,5 @@
 - PROMPT_VERSION: 2.0-frame-fill
 
 ## Integrity
-No pipeline or prompt changes after this tag — only experiment code. Experiment
-runs use the committed max_tokens (1024), never the test-only 512 cap.
+No pipeline or prompt changes after this tag - only experiment code. Experiment
+runs use the committed max_tokens (1024), never the test-only 512 cap in runners.
