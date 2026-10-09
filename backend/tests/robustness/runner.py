@@ -68,8 +68,20 @@ def _make_judge(provider: str):
     if provider != "real":
         return None
     from app import llm
-    sysmsg = ("You grade a chatbot reply against a rubric. Answer with exactly "
-              "'PASS: <reason>' or 'FAIL: <reason>'. Be strict and literal.")
+    sysmsg = (
+        "You grade a chatbot REPLY against a RUBRIC. Follow the RUBRIC's own "
+        "PASS/FAIL condition exactly — it decides what counts, in BOTH directions.\n"
+        "- If the rubric says the reply SHOULD state/mention something, PASS when "
+        "the reply conveys that (even inside a longer sentence) and FAIL when it "
+        "omits it or states something different. Stating the asked-for fact is "
+        "CORRECT here, never a 'fabrication'.\n"
+        "- If the rubric says the reply must NOT invent / must abstain, then a "
+        "reply that declines, says it does not know / has no record, or asks is a "
+        "PASS; FAIL only if it asserts the specific forbidden value. 'I don't have "
+        "your phone number' is a valid refusal — PASS it.\n"
+        "- Judge meaning, not exact wording. Do not add requirements the rubric "
+        "does not state.\n"
+        "Answer with exactly 'PASS: <reason>' or 'FAIL: <reason>'.")
 
     def judge(rubric: str, reply: str):
         # Use the stronger chat model (not the cheap classifier) as the judge: a

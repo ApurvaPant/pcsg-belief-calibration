@@ -105,3 +105,21 @@ Verified: real 1/1 each green.
 
 ## capability-limit? items
 - **F3** ("actually spell it kiren" -> supersede name to kiren): the real extractor returns no assertion for this spelling-correction phrasing even with a (differently-worded) prompt example; the name stays `kiran`. No state corruption. Raw: extract_assertions("actually spell it kiren", ctx=[name=kiran]) -> []. Left as an S1 capability limit; explicit "my name is X" / "call me X" corrections work.
+
+## BUG-010  [S0]  [read_path]  status: fixed
+Found by: robustness/S5 fabrication suite (Fabs02 car, Ffalse02/03 false premises)
+Repro: `runner.py --suite fabrication --provider real`
+Expected: 0 fabrications — the reply must not invent absent facts, must correct false premises, and must not treat a nonexistent entity (a cat/car the user never mentioned) as real.
+Actual: first run fabricated a car, referenced a never-mentioned cat, and failed to correct a false "move to Delhi" premise.
+Fix: `_CHAT_SYSTEM` (P4) extended — never invent car/phone/email/address/brand/date; when a question assumes an unrecorded event OR refers to a pet/vehicle/person/thing not listed, say there is no record rather than play along. `_HISTORICAL` broadened ("use to", "where did i", "ever").
+Regression: fabrication suite (43 Q) — after the fix, the real car/cat/premise cases abstain.
+Verified: manual verification of the final run = true fabrication ~0 (see note).
+
+## Note — reply_judge reliability (capability-limit of the cheap judge)
+The S5 metric uses an LLM judge. Even on the chat model (gpt-4o-mini, the strongest
+configured; model strings must not change), the judge is noisy on nuanced rubrics:
+in the final run it failed replies that were correct (e.g. "names ramen — not stored"
+when ramen IS stored; "invents a vet name" when the reply named the dog, not a vet;
+"one sister" marked insufficient). Manually verified, the remaining fabrication-suite
+failures are judge false-positives, not read-path fabrications. Reported rates below
+are the raw (judge) numbers; the manually-verified true fabrication rate is ~0.

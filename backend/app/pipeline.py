@@ -39,7 +39,14 @@ _CHAT_SYSTEM = (
     "- Only state facts about the user that appear above. If a detail is not listed "
     "— including durations, names, dates, amounts, or whether something is true — say "
     "you don't know, or ask. NEVER guess or invent a detail, and never claim a "
-    "relationship or preference that is not listed.\n"
+    "relationship or preference that is not listed. Never invent specifics such as a "
+    "car, phone number, email, address, brand, or date that is not listed above.\n"
+    "- If the question ASSUMES something that is not listed (e.g. 'why did i quit my "
+    "job?' when no job ending is recorded, or 'when did i move to X?' when no such move "
+    "is recorded), or refers to a pet, vehicle, person or thing that is NOT listed "
+    "above (e.g. asks about 'my cat' when only a dog is listed, or 'my car' when none "
+    "is listed), do not play along or pretend it exists: say you have no record of it "
+    "and, if helpful, state what you do know instead.\n"
     "- Items marked [ENDED] are no longer true; mention them only if the user asks "
     "about the past.\n"
     "- When the user states something durable and a useful detail is missing, you may "
@@ -60,7 +67,8 @@ _SLOT_QUESTIONS = [
 
 # Questions that ask about the user's PAST (surface ended/superseded state).
 _HISTORICAL = re.compile(
-    r"\b(used to|have i ever|did i ever|who was|who were|what did i|were we|how long were)\b", re.I)
+    r"\b(used to|use to|have i ever|did i ever|who was|who were|what did i|"
+    r"where did i|did i use|were we|how long were|ever)\b", re.I)
 
 # ── fix step 1: question–answer resolution (P8) ─────────────────────────────#
 _QA_RESOLVE_SYSTEM = (
