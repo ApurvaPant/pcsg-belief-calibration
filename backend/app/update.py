@@ -197,7 +197,7 @@ def _close_node(conn, node_id, detail=None) -> None:
         "WHERE node_id = ? AND status = 'active'", (ts, node_id))
 
 
-def _create_node(conn, user_id, assertion, previous_id=None, model=None) -> str:
+def _create_node(conn, user_id, assertion, previous_id=None, model=None, message_id=None) -> str:
     node_id = new_id("node")
     raw = float(assertion["confidence"])
     ts = now_iso()
@@ -212,10 +212,12 @@ def _create_node(conn, user_id, assertion, previous_id=None, model=None) -> str:
             ontology.DETAIL_ACTIVE, previous_id, model, ts,
         ),
     )
+    from . import signals  # lazy: avoids an import cycle (signals imports update)
+    signals.write_signals(conn, node_id, message_id, assertion)
     return node_id
 
 
-def _reinforce(conn, node, assertion, model=None) -> float:
+def _reinforce(conn, node, assertion, model=None, message_id=None) -> float:
     # confidence_raw is the first observation's raw signal and is IMMUTABLE after
     # insert (INV-01 / the project's hard rule). Repeated evidence accumulates
     # into the CALIBRATED confidence via Noisy-OR, so it grows toward — but never
@@ -226,6 +228,8 @@ def _reinforce(conn, node, assertion, model=None) -> float:
         "UPDATE nodes SET confidence_calibrated = ?, model = ? WHERE id = ?",
         (new_cal, model, node["id"]),
     )
+    from . import signals  # lazy: avoids an import cycle
+    signals.write_signals(conn, node["id"], message_id, assertion)
     return new_cal
 
 
@@ -630,7 +634,7 @@ def apply_assertion(
                 "value": subject.get("value") or subject["key"],
                 "confidence": assertion.get("confidence", 0.7),
             }
-            ent_id = _create_node(conn, user_id, ent_assertion, model=model)
+            ent_id = _create_node(conn, user_id, ent_assertion, model=model, message_id=message_id)
             _add_evidence(conn, ent_id, session_id, message_id, quote)
             ent_dim, action = subject["dimension"], "created"
         else:
@@ -679,7 +683,7 @@ def apply_assertion(
                                matched_label=_label(old))
             _close_node(conn, old["id"], DETAIL_ENDED)
             prev_id = old["id"]
-        node_id = _create_node(conn, user_id, assertion, previous_id=prev_id, model=model)
+        node_id = _create_node(conn, user_id, assertion, previous_id=prev_id, model=model, message_id=message_id)
         _add_evidence(conn, node_id, session_id, message_id, quote)
         _write_attributes(conn, node_id, dim, assertion, session_id, message_id)
         return _change("superseded" if prev_id else "created", node_id, assertion, prev_id)
@@ -688,7 +692,7 @@ def apply_assertion(
     if single:
         existing = _active_single(conn, user_id, dim, key)
         if existing is not None and ontology.normalize_value(existing["value"]) == value:
-            conf = _reinforce(conn, existing, assertion, model=model)
+            conf = _reinforce(conn, existing, assertion, model=model, message_id=message_id)
             _add_evidence(conn, existing["id"], session_id, message_id, quote)
             _write_attributes(conn, existing["id"], dim, assertion, session_id, message_id)
             return _change("reinforced", existing["id"], assertion, existing["previous_node_id"], conf,
@@ -702,7 +706,7 @@ def apply_assertion(
                                matched_label=_label(existing))
             _close_node(conn, existing["id"])
             prev_id = existing["id"]
-        node_id = _create_node(conn, user_id, assertion, previous_id=prev_id, model=model)
+        node_id = _create_node(conn, user_id, assertion, previous_id=prev_id, model=model, message_id=message_id)
         _add_evidence(conn, node_id, session_id, message_id, quote)
         _write_attributes(conn, node_id, dim, assertion, session_id, message_id)
         return _change("superseded" if prev_id else "created", node_id, assertion, prev_id)
@@ -712,7 +716,7 @@ def apply_assertion(
     # noun / inflection above resolve_similarity. Never merge across keys (bug 1).
     dup, sim = _find_duplicate(conn, user_id, dim, key, value)
     if dup is not None:
-        conf = _reinforce(conn, dup, assertion, model=model)
+        conf = _reinforce(conn, dup, assertion, model=model, message_id=message_id)
         _add_evidence(conn, dup["id"], session_id, message_id, quote)
         _write_attributes(conn, dup["id"], dup["dimension"], assertion, session_id, message_id)
         return _change("reinforced", dup["id"], assertion, dup["previous_node_id"], conf,
@@ -721,11 +725,11 @@ def apply_assertion(
     # the dimensions may coexist) — refine the existing node, don't create anew.
     xdup = _cross_dimension_match(conn, user_id, dim, value)
     if xdup is not None:
-        conf = _reinforce(conn, xdup, assertion, model=model)
+        conf = _reinforce(conn, xdup, assertion, model=model, message_id=message_id)
         _add_evidence(conn, xdup["id"], session_id, message_id, quote)
         return _change("reinforced", xdup["id"], assertion, xdup["previous_node_id"], conf,
                        reason_code="dimension_conflict", matched_label=_label(xdup), similarity=1.0)
-    node_id = _create_node(conn, user_id, assertion, model=model)
+    node_id = _create_node(conn, user_id, assertion, model=model, message_id=message_id)
     _add_evidence(conn, node_id, session_id, message_id, quote)
     _write_attributes(conn, node_id, dim, assertion, session_id, message_id)
     return _change("created", node_id, assertion)

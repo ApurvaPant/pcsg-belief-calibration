@@ -184,6 +184,24 @@ CREATE TABLE IF NOT EXISTS pending_slots (
     created_at          TEXT NOT NULL
 );
 
+-- Append-only per-assertion confidence signals (STEP 0). Never updated/deleted
+-- (INV-02). One row per stored assertion: the raw signals the calibration study
+-- consumes. self_consistency is null unless resampling was enabled for that run.
+CREATE TABLE IF NOT EXISTS confidence_signals (
+    id               TEXT PRIMARY KEY,
+    node_id          TEXT,
+    message_id       TEXT,
+    dimension        TEXT,
+    key              TEXT,
+    value            TEXT,
+    explicitness     TEXT,
+    verbalized       REAL,          -- extractor confidence (0-1)
+    self_consistency REAL,          -- agreement over k resamples, null if not computed
+    evidence         REAL,          -- Noisy-OR of verbalized with an explicitness prior
+    intensity        REAL,          -- null unless an intensity was extracted
+    created_at       TEXT NOT NULL
+);
+
 -- Evidence attaches to EXACTLY one of a node or an attribute.
 CREATE TABLE IF NOT EXISTS evidence (
     id           TEXT PRIMARY KEY,

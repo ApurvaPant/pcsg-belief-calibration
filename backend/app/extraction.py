@@ -408,7 +408,7 @@ def _tokens(res: dict) -> int:
 
 
 def extract_assertions(user_message, context=None, pending_slot=None,
-                       force_end=False, end_object=None) -> ExtractionResult:
+                       force_end=False, end_object=None, fill_temperature=0.0) -> ExtractionResult:
     model = llm.resolve_model("extractor")
     ctx = _context_block(context)
     hint = _slot_hint(pending_slot)
@@ -450,7 +450,7 @@ def extract_assertions(user_message, context=None, pending_slot=None,
             messages=[{"role": "system", "content": _fill_system()},
                       {"role": "user", "content":
                        f"{ctx}\nTARGET message: {user_message}{hint}{frame_hint}"}],
-            model=model, temperature=0.0, response_schema=_FILL_SCHEMA, schema_name="fill")
+            model=model, temperature=fill_temperature, response_schema=_FILL_SCHEMA, schema_name="fill")
     except Exception as e:  # noqa: BLE001
         return ExtractionResult([], [], model, f"<fill error: {e}>", frame_output=frames,
                                 frame_tokens=frame_tokens, failed=True, error=f"fill:{type(e).__name__}")

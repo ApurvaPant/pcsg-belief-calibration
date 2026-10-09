@@ -23,7 +23,6 @@ _KEY_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _WRITE_ACTIONS = {"created", "superseded", "reinforced", "ended", "refined", "linked"}
 
 NOT_APPLICABLE = {
-    "INV-02": "no confidence_signals table in this build",
     "INV-17": "chat-call token logging is partial; extraction calls are logged",
     "INV-19": "chat prompt is not persisted, so the state block cannot be re-read",
     "INV-22": "pipeline is synchronous; the reply is produced after reconciliation",
@@ -51,6 +50,14 @@ def check_all(prev: Snapshot, curr: Snapshot, turn: dict | None = None) -> list[
             p = prev_by.get(r["id"])
             if p is not None and p.get("confidence_raw") != r.get("confidence_raw"):
                 v.append(f"INV-01 {tbl} {r['id']} confidence_raw changed {p['confidence_raw']}->{r['confidence_raw']}")
+
+    # INV-02: confidence_signals append-only (never updated or deleted).
+    ps, cs = _by_id(prev.get("confidence_signals", [])), _by_id(curr.get("confidence_signals", []))
+    if len(curr.get("confidence_signals", [])) < len(prev.get("confidence_signals", [])):
+        v.append("INV-02 confidence_signals count decreased")
+    for sid, row in ps.items():
+        if sid in cs and cs[sid] != row:
+            v.append(f"INV-02 confidence_signal {sid} mutated")
 
     # INV-03: events append-only (count non-decreasing; existing rows identical).
     pe, ce = _by_id(prev.get("events", [])), _by_id(curr.get("events", []))

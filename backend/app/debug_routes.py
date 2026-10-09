@@ -21,13 +21,13 @@ router = APIRouter(prefix="/debug", tags=["debug"])
 # Tables dumped by /snapshot and cleared by /reset, in FK-safe delete order.
 _SNAPSHOT_TABLES = [
     "nodes", "attributes", "edges", "evidence", "events", "gate_log",
-    "extraction_log", "pending_slots", "pending_confirmation", "messages",
-    "sessions", "users",
+    "extraction_log", "confidence_signals", "pending_slots", "pending_confirmation",
+    "messages", "sessions", "users",
 ]
 _DELETE_ORDER = [
     "evidence", "attributes", "edges", "events", "gate_log", "extraction_log",
-    "pending_slots", "pending_confirmation", "nodes", "messages", "auth_tokens",
-    "sessions", "users",
+    "confidence_signals", "pending_slots", "pending_confirmation", "nodes",
+    "messages", "auth_tokens", "sessions", "users",
 ]
 
 

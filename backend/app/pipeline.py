@@ -24,7 +24,7 @@ from typing import Any
 # so the before/after can be measured on identical cases.
 _QA_FIX = os.getenv("PCSG_DISABLE_QA_FIX") != "1"
 
-from . import extraction, llm, ontology, salience
+from . import extraction, llm, ontology, salience, signals
 from .db import get_conn, now_iso
 from .update import apply_assertion, apply_relations
 from .utils import new_id
@@ -445,6 +445,15 @@ def process_turn(message: str, session_id: str | None, user_id: str) -> dict[str
             if rewritten:  # evidence quote stays the user's ORIGINAL words
                 for a in ext.kept:
                     a["quote"] = original_message
+            # STEP 0: self-consistency signal — k extra FILL samples at temp 0.7
+            # (paid; only when enabled, never cached). Attached per assertion so
+            # apply_assertion can persist it to confidence_signals.
+            if signals.self_consistency_enabled() and ext.kept:
+                def _resample(m, c, temp):
+                    return extraction.extract_assertions(m, context=c, fill_temperature=temp).kept
+                scores = signals.compute_self_consistency(_resample, extract_text, history, ext.kept)
+                for a in ext.kept:
+                    a["self_consistency"] = scores.get(signals.assertion_sig(a))
         else:
             ext = extraction.ExtractionResult([], [], None, None)
 
