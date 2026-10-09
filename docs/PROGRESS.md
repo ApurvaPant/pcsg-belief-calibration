@@ -528,3 +528,17 @@ Projected live cost ~$4.81 (17.5k calls; extractor gemini-2.5-flash) > budget 4.
 -> raise budget_usd or shrink n_personas; prices in config.yaml are TODO estimates.
 Also TODO: working provider key (Gemini project billing OR funded OpenRouter), the
 judge model slug, and a verified LongMemEval revision (adapter ready).
+
+## 2026-10-09 — Experiment visualizer: STEP 1 (contract) + STEP 2 (new series)
+
+Analysis/UI only (pipeline frozen at pcsg-v2-exp). pcsg/viz/schema.py (dashboard
+data contract + validator, fixed system/signal colours), pcsg/viz/build.py
+(build dashboard.json from a run's results artefacts ONLY — no model calls).
+STEP 2 offline series: token-growth vs conversation length (tiktoken) at turns
+5/10/15/20/25 (raw history vs PCSG state block, mean+IQR over test personas) and
+the gate funnel (tier0/tier1/structured counts + tokens). make_figures.py now builds
+dashboard.json and renders T1-T4/F1-F3 FROM it (figures + UI share one source).
+Backend: GET /results/runs, GET /results/{run_id}/dashboard (read-only).
+Verified on the dry-run: dashboard.json validates; 57.8% token saving at turn 25;
+ece_before 0.159 -> after 0.009. test_dashboard_schema (3) green. recharts + tiktoken
+installed.

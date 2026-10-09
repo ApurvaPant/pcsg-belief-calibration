@@ -1,26 +1,23 @@
 #!/usr/bin/env python
-"""STEP 9 — regenerate every paper table/figure from results/ alone.
+"""STEP 9 / viz STEP 1 — regenerate every paper table/figure from results/ alone.
 
-NO model calls. Pure stdlib; matplotlib is used only if importable (figures fall
-back to CSV data + a note otherwise). Each artifact has a declared input file
-under results/; when the input is missing (a paid step hasn't run yet) the script
-writes a PENDING placeholder so the harness always runs and states what is absent.
+NO model calls. Builds results/<run_id>/dashboard.json (the single data contract)
+from the latest run, copies it to results/dashboard.json, and renders T1-T4 / F1-F3
+FROM dashboard.json so the paper figures and the Results tab can never disagree.
+matplotlib is optional (figures fall back to CSV). Dry-run artefacts are watermarked.
 
-Artifacts:
-  T1 extraction (results/extraction_eval.json)      T2 calibration table (results/calibration.json)
-  T3 baselines  (results/baselines.json)            T4 paraphrase consistency (results/consistency/*/metamorphic.json)
-  F1 reliability diagrams (results/calibration.json) F2 abstention AURC (results/abstention.json)
-  F3 accuracy-vs-cost (results/cost_curve.json)
-
-Usage:  python scripts/make_figures.py
+Usage:  python scripts/make_figures.py [run_id]
 """
 from __future__ import annotations
 
 import csv
 import json
 import pathlib
+import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+BACKEND = ROOT / "backend"
+sys.path.insert(0, str(BACKEND))
 RES = ROOT / "results"
 TAB = RES / "tables"
 FIG = RES / "figures"
@@ -36,157 +33,120 @@ except Exception:  # noqa: BLE001
     HAVE_MPL = False
 
 
-def _load(path: pathlib.Path):
+def _load(p):
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(p.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         return None
 
 
-def _watermark() -> str | None:
-    """A visible watermark if any result was produced in dry-run (synthetic)."""
-    for f in ("calibration.json", "abstention.json", "cost_curve.json"):
-        d = _load(RES / f)
-        if d and d.get("watermark"):
-            return d["watermark"]
-    return None
+def _latest_run():
+    runs = sorted((RES / "runs").glob("*/config.json")) if (RES / "runs").exists() else []
+    return runs[-1].parent if runs else None
 
 
-WM = _watermark()
+def _build_dashboard(run_id=None):
+    from pcsg.viz.build import write_dashboard
+    run_dir = (RES / "runs" / run_id) if run_id else _latest_run()
+    if run_dir is None:
+        return None, []
+    out, errs = write_dashboard(run_dir)
+    (RES / "dashboard.json").write_text(out.read_text(encoding="utf-8"), encoding="utf-8")
+    return _load(RES / "dashboard.json"), errs
 
 
-def _banner(md: str) -> str:
-    return (f"> ⚠️ **{WM}** — not real results.\n\n" + md) if WM else md
+def _md(rows, header):
+    return "\n".join(["| " + " | ".join(header) + " |", "|" + "|".join(["---"] * len(header)) + "|",
+                      *["| " + " | ".join(str(c) for c in r) + " |" for r in rows]])
 
 
-def _md_table(rows: list[list], header: list[str]) -> str:
-    out = ["| " + " | ".join(header) + " |", "|" + "|".join(["---"] * len(header)) + "|"]
-    for r in rows:
-        out.append("| " + " | ".join(str(c) for c in r) + " |")
-    return "\n".join(out)
+def _banner(md, wm):
+    return (f"> ⚠️ **{wm}** — not real results.\n\n" + md) if wm else md
 
 
-def _pending(name: str, inp: str, why: str) -> str:
-    return f"# {name}\n\n**PENDING** — input `{inp}` not found ({why}). Run the producing step, then re-run make_figures.py.\n"
-
-
-def _latest_consistency() -> pathlib.Path | None:
-    cands = sorted((RES / "consistency").glob("*/metamorphic.json")) if (RES / "consistency").exists() else []
-    return cands[-1] if cands else None
-
-
-def t1_extraction():
-    d = _load(RES / "extraction_eval.json")
-    if not d:
-        return _pending("T1 — Extraction", "results/extraction_eval.json", "STEP 2 not run")
-    rows = []
-    for split in ("dev", "test"):
-        s = d.get(split, {})
-        rows.append([split, s.get("pass_rate"), s.get("precision"), s.get("recall"),
-                     s.get("f1"), s.get("false_write_rate"), s.get("end_precision")])
-    return "# T1 — Extraction\n\n" + _md_table(
-        rows, ["split", "pass", "P", "R", "F1", "false-write", "END-prec"])
-
-
-def t4_consistency():
-    path = _latest_consistency()
-    d = _load(path) if path else None
-    if not d:
-        return _pending("T4 — Paraphrase consistency", "results/consistency/*/metamorphic.json", "STEP -1/metamorphic not run")
-    strict = d.get("MT1", {})
-    val = d.get("MT1_value_level", {})
-    rows = [[fam, info.get("consistency"), val.get(fam, "—")] for fam, info in strict.items()]
-    sm = [r[1] for r in rows if isinstance(r[1], (int, float))]
-    vm = [v for v in val.values() if isinstance(v, (int, float))]
-    foot = f"\n\nmean strict={sum(sm)/len(sm):.3f}  mean value-level={sum(vm)/len(vm):.3f}" if sm and vm else ""
-    return "# T4 — Paraphrase consistency (MT-1)\n\n" + _md_table(
-        rows, ["family", "strict", "value-level"]) + foot
-
-
-def t2_calibration():
-    d = _load(RES / "calibration.json")
-    if not d:
-        return _pending("T2 — Calibration", "results/calibration.json", "STEP 4 not run")
-    rows = []
-    for sig, recs in d.get("by_signal_recalibrator", {}).items():
-        for rec, m in recs.items():
-            rows.append([sig, rec, m.get("ece"), m.get("brier"), m.get("auroc"), m.get("ci")])
-    return "# T2 — Calibration (signal x recalibrator)\n\n" + _md_table(
-        rows, ["signal", "recalibrator", "ECE", "Brier", "AUROC", "95% CI"])
-
-
-def t3_baselines():
-    d = _load(RES / "baselines.json")
-    if not d:
-        return _pending("T3 — Baselines", "results/baselines.json", "STEP 8 not run")
-    rows = [[b, m.get("accuracy"), m.get("fabrication_rate"), m.get("tokens_per_q")]
-            for b, m in d.items()]
-    return "# T3 — Baselines\n\n" + _md_table(rows, ["system", "accuracy", "fabrication", "tokens/Q"])
-
-
-def f_generic(name, inp, why, plotter):
-    d = _load(RES / inp)
-    if not d:
-        (FIG / f"{name}.md").write_text(_pending(name, f"results/{inp}", why), encoding="utf-8")
-        return f"{name}: PENDING ({inp} missing)"
-    # always emit the underlying data as CSV so the figure is reproducible w/o mpl
-    csv_path = FIG / f"{name}.csv"
-    plotter(d, csv_path)
-    return f"{name}: data -> {csv_path.name}" + ("" if HAVE_MPL else "  (PNG skipped: matplotlib not installed)")
-
-
-def _f1(d, csv_path):
-    with open(csv_path, "w", newline="", encoding="utf-8") as fh:
-        w = csv.writer(fh); w.writerow(["signal", "stage", "bin", "confidence", "accuracy"])
-        for sig, series in d.get("reliability", {}).items():
-            for stage in ("before", "after"):
-                for b in series.get(stage, []):
-                    w.writerow([sig, stage, b.get("bin"), b.get("conf"), b.get("acc")])
-    if HAVE_MPL:
-        for sig, series in d.get("reliability", {}).items():
-            plt.figure(figsize=(4, 4))
-            for stage in ("before", "after"):
-                pts = series.get(stage, [])
-                if pts:
-                    plt.plot([p["conf"] for p in pts], [p["acc"] for p in pts], marker="o", label=stage)
-            plt.plot([0, 1], [0, 1], "k--", lw=0.8)
-            plt.xlabel("confidence"); plt.ylabel("accuracy"); plt.title(f"F1 reliability — {sig}"); plt.legend()
-            if WM:
-                plt.figtext(0.5, 0.5, WM, fontsize=22, color="red", alpha=0.25,
-                            ha="center", va="center", rotation=30, weight="bold")
-            plt.savefig(FIG / f"F1_{sig}.png", dpi=120, bbox_inches="tight"); plt.close()
-
-
-def _f2(d, csv_path):
-    with open(csv_path, "w", newline="", encoding="utf-8") as fh:
-        w = csv.writer(fh); w.writerow(["signal", "tau", "coverage", "accuracy", "fabrication"])
-        for sig, series in d.get("sweep", {}).items():
-            for pt in series:
-                w.writerow([sig, pt.get("tau"), pt.get("coverage"), pt.get("accuracy"), pt.get("fabrication")])
-
-
-def _f3(d, csv_path):
-    with open(csv_path, "w", newline="", encoding="utf-8") as fh:
-        w = csv.writer(fh); w.writerow(["cell", "tier1", "write_tau", "accuracy", "cost_tokens", "ece", "pareto"])
-        for c in d.get("cells", []):
-            w.writerow([c.get("cell"), c.get("tier1"), c.get("write_tau"), c.get("accuracy"),
-                        c.get("cost_tokens"), c.get("ece"), c.get("pareto")])
+def _pending(name, why):
+    return f"# {name}\n\n**PENDING** — {why}.\n"
 
 
 def main():
-    tables = {"T1": t1_extraction(), "T2": t2_calibration(), "T3": t3_baselines(), "T4": t4_consistency()}
-    for name, md in tables.items():
-        (TAB / f"{name}.md").write_text(_banner(md) + "\n", encoding="utf-8")
-        print(f"table {name} -> results/tables/{name}.md" + ("  [WATERMARKED]" if WM else ""))
-    for line in (
-        f_generic("F1", "calibration.json", "STEP 4 not run", _f1),
-        f_generic("F2", "abstention.json", "STEP 6 not run", _f2),
-        f_generic("F3", "cost_curve.json", "STEP 7 not run", _f3),
-    ):
-        print(line)
-    print(f"\nmatplotlib: {'available' if HAVE_MPL else 'NOT installed (CSV emitted; install to render PNGs)'}")
-    print("Done — no model calls were made.")
+    run_id = sys.argv[1] if len(sys.argv) > 1 else None
+    dash, errs = _build_dashboard(run_id)
+    if dash is None:
+        print("No run found under results/runs/. Run `python -m pcsg.run experiments/all.yaml --dry-run` first.")
+        return 1
+    if errs:
+        print("dashboard.json schema errors:", errs)
+    wm = dash.get("watermark")
+
+    # T2 calibration (from dashboard)
+    rows = []
+    for sig, s in dash.get("calibration", {}).get("signals", {}).items():
+        for rec, m in s["recalibrators"].items():
+            rows.append([sig, rec, m["ece"], m["brier"], m["auroc"], m.get("ci", {}).get("ece", "")])
+    t2 = ("# T2 — Calibration\n\n" + _md(rows, ["signal", "recalibrator", "ECE", "Brier", "AUROC", "95% CI"])) \
+        if rows else _pending("T2 — Calibration", "no calibration in dashboard")
+    (TAB / "T2.md").write_text(_banner(t2, wm) + "\n", encoding="utf-8")
+
+    # T3 baselines (from dashboard)
+    bl = dash.get("baselines", [])
+    t3 = ("# T3 — Baselines\n\n" + _md([[b["system"], b.get("accuracy"), b.get("fabrication"), b.get("tokens_per_q")] for b in bl],
+                                       ["system", "accuracy", "fabrication", "tokens/Q"])) if bl \
+        else _pending("T3 — Baselines", "STEP 8 baselines not run (live)")
+    (TAB / "T3.md").write_text(_banner(t3, wm) + "\n", encoding="utf-8")
+
+    # T1 extraction (own file; live)
+    ee = _load(RES / "extraction_eval.json")
+    t1 = _pending("T1 — Extraction", "STEP 2 extraction eval not run (live)") if not ee else \
+        "# T1 — Extraction\n\n" + _md([[s, ee.get(s, {}).get("f1")] for s in ("dev", "test")], ["split", "F1"])
+    (TAB / "T1.md").write_text(_banner(t1, wm) + "\n", encoding="utf-8")
+
+    # T4 consistency (separate metamorphic artefact)
+    cons = sorted((RES / "consistency").glob("*/metamorphic.json")) if (RES / "consistency").exists() else []
+    if cons:
+        d = _load(cons[-1])
+        vl = d.get("MT1_value_level", {})
+        t4 = "# T4 — Paraphrase consistency\n\n" + _md(
+            [[f, i["consistency"], vl.get(f, "—")] for f, i in d["MT1"].items()], ["family", "strict", "value"])
+    else:
+        t4 = _pending("T4 — Paraphrase consistency", "metamorphic not run")
+    (TAB / "T4.md").write_text(_banner(t4, wm) + "\n", encoding="utf-8")
+
+    # F1 reliability (per signal) from dashboard
+    for sig, s in dash.get("calibration", {}).get("signals", {}).items():
+        with open(FIG / f"F1_{sig}.csv", "w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh); w.writerow(["stage", "conf", "acc", "n"])
+            for stage in ("before", "after"):
+                for b in s["reliability"].get(stage, []):
+                    w.writerow([stage, b["conf"], b["acc"], b["n"]])
+        if HAVE_MPL:
+            plt.figure(figsize=(4, 4))
+            for stage in ("before", "after"):
+                pts = s["reliability"].get(stage, [])
+                if pts:
+                    plt.plot([p["conf"] for p in pts], [p["acc"] for p in pts], marker="o", label=stage)
+            plt.plot([0, 1], [0, 1], "k--", lw=0.8)
+            plt.xlabel("confidence"); plt.ylabel("accuracy"); plt.title(f"F1 — {sig}"); plt.legend()
+            if wm:
+                plt.figtext(0.5, 0.5, wm, fontsize=16, color="red", alpha=0.25, ha="center", va="center", rotation=30)
+            plt.savefig(FIG / f"F1_{sig}.png", dpi=110, bbox_inches="tight"); plt.close()
+
+    # F2 abstention + F3 cost: emit CSV from dashboard
+    abn = dash.get("abstention", {}).get("sweep", {})
+    with open(FIG / "F2.csv", "w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh); w.writerow(["variant", "tau", "coverage", "accuracy", "fabrication"])
+        for variant, series in abn.items():
+            for pt in series:
+                w.writerow([variant, pt["tau"], pt["coverage"], pt["accuracy"], pt["fabrication"]])
+    with open(FIG / "F3.csv", "w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh); w.writerow(["cell", "tier1", "write_tau", "accuracy", "cost_tokens", "pareto"])
+        for c in dash.get("cost_curve", {}).get("cells", []):
+            w.writerow([c["cell"], c["tier1"], c["write_tau"], c["accuracy"], c["cost_tokens"], c.get("pareto")])
+
+    print(f"dashboard: results/dashboard.json  (run {dash['meta']['run_id']}, mode={dash['meta']['mode']})")
+    print(f"tables -> results/tables/  figures -> results/figures/  {'[WATERMARKED]' if wm else ''}")
+    print(f"matplotlib: {'available' if HAVE_MPL else 'absent (CSV only)'}; no model calls.")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

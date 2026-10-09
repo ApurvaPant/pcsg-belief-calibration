@@ -60,6 +60,43 @@ def health() -> dict:
     return {"status": "ok", "provider": settings.llm.provider}
 
 
+# ── Experiment results (read-only; analysis/UI only — NOT a pipeline change) ─ #
+import json as _json
+import pathlib as _pathlib
+
+_RESULTS_DIR = _pathlib.Path(__file__).resolve().parent.parent.parent / "results"
+
+
+@app.get("/results/runs")
+def list_results_runs() -> list[dict]:
+    """List experiment runs (most recent first) with mode + date for the picker."""
+    runs = []
+    rd = _RESULTS_DIR / "runs"
+    if rd.exists():
+        for cfg in rd.glob("*/config.json"):
+            try:
+                c = _json.loads(cfg.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001
+                c = {}
+            runs.append({"run_id": c.get("run_id", cfg.parent.name),
+                         "mode": c.get("mode", "dry-run"), "date": c.get("run_id", cfg.parent.name),
+                         "has_dashboard": (cfg.parent / "dashboard.json").exists()})
+    return sorted(runs, key=lambda r: r["run_id"], reverse=True)
+
+
+@app.get("/results/{run_id}/dashboard")
+def get_results_dashboard(run_id: str) -> dict:
+    """Serve a run's dashboard.json (built on demand if absent). Reads results/ only."""
+    run_dir = _RESULTS_DIR / "runs" / run_id
+    if not run_dir.exists() or ".." in run_id or "/" in run_id or "\\" in run_id:
+        raise HTTPException(status_code=404, detail="run not found")
+    dash = run_dir / "dashboard.json"
+    if not dash.exists():
+        from pcsg.viz.build import write_dashboard
+        write_dashboard(run_dir)
+    return _json.loads(dash.read_text(encoding="utf-8"))
+
+
 # ── Auth ────────────────────────────────────────────────────────────────── #
 @app.post("/auth/register", response_model=AuthResponse)
 def register(req: AuthRequest) -> AuthResponse:

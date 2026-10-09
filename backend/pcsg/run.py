@@ -208,6 +208,9 @@ def main(argv=None):
     stored = _collect_signals(personas)
     from pcsg.analysis import labelling, calibration, costcurve
     records = labelling.label_run(stored, truth, split_by)
+    with open(outdir / "labelled.jsonl", "w", encoding="utf-8") as lf:
+        for r in records:
+            lf.write(json.dumps(r) + "\n")
     cal = calibration.study(records)
     cal["watermark"] = args.watermark
     (outdir / "calibration.json").write_text(json.dumps(cal, indent=2), encoding="utf-8")

@@ -1,0 +1,1814 @@
+{
+  "meta": {
+    "run_id": "20261009_231042",
+    "git_sha": "86b7b5f66fb28c4cc3b7efea26900796eca9f2b2",
+    "tag": "",
+    "mode": "dry-run",
+    "date": "20261009_231042",
+    "models": {
+      "chat": "gemini-2.5-flash",
+      "classifier": "gemini-2.5-flash-lite",
+      "extractor": "gemini-2.5-flash",
+      "simulator": "gemini-2.0-flash",
+      "judge": "gemini-2.5-pro",
+      "embedding": "gemini-embedding-001"
+    },
+    "tokenizer": "tiktoken/cl100k_base",
+    "sample_sizes": {
+      "personas": 8,
+      "test_personas": 3,
+      "labelled_assertions": 144,
+      "failed_extractions": 0
+    }
+  },
+  "watermark": "DRY RUN \u2014 SYNTHETIC DATA, NOT RESULTS",
+  "kpi": {
+    "tokens_per_q_full": 274.7,
+    "tokens_per_q_pcsg": 116,
+    "pct_saved": 57.8,
+    "ece_before": 0.1593,
+    "ece_after": 0.0093,
+    "baselines": {}
+  },
+  "baselines": [],
+  "token_growth": [
+    {
+      "turn": 5,
+      "raw": {
+        "mean": 50,
+        "iqr": [
+          50,
+          50
+        ]
+      },
+      "pcsg": {
+        "mean": 41.7,
+        "iqr": [
+          40,
+          43
+        ]
+      }
+    },
+    {
+      "turn": 10,
+      "raw": {
+        "mean": 94.7,
+        "iqr": [
+          92,
+          96
+        ]
+      },
+      "pcsg": {
+        "mean": 72,
+        "iqr": [
+          71,
+          74
+        ]
+      }
+    },
+    {
+      "turn": 15,
+      "raw": {
+        "mean": 152,
+        "iqr": [
+          148,
+          154
+        ]
+      },
+      "pcsg": {
+        "mean": 102.3,
+        "iqr": [
+          101,
+          104
+        ]
+      }
+    },
+    {
+      "turn": 20,
+      "raw": {
+        "mean": 224,
+        "iqr": [
+          218,
+          228
+        ]
+      },
+      "pcsg": {
+        "mean": 116,
+        "iqr": [
+          115,
+          118
+        ]
+      }
+    },
+    {
+      "turn": 25,
+      "raw": {
+        "mean": 274.7,
+        "iqr": [
+          268,
+          278
+        ]
+      },
+      "pcsg": {
+        "mean": 116,
+        "iqr": [
+          115,
+          118
+        ]
+      }
+    }
+  ],
+  "gate_funnel": {
+    "stages": [
+      {
+        "stage": "tier0_gate",
+        "count": 24,
+        "tokens": 480,
+        "cost": 0.0
+      },
+      {
+        "stage": "tier1_salience",
+        "count": 26,
+        "tokens": 1560,
+        "cost": 0.0
+      },
+      {
+        "stage": "structured_extraction",
+        "count": 150,
+        "tokens": 45000,
+        "cost": 0.0
+      }
+    ],
+    "total_messages": 200
+  },
+  "cost_curve": {
+    "cells": [
+      {
+        "cell": "0/off",
+        "tier1": 0,
+        "write_tau": "off",
+        "accuracy": 1.0667,
+        "cost_tokens": 60000,
+        "ece": null,
+        "pareto": false
+      },
+      {
+        "cell": "0/0.6",
+        "tier1": 0,
+        "write_tau": "0.6",
+        "accuracy": 1.0667,
+        "cost_tokens": 60000,
+        "ece": null,
+        "pareto": false
+      },
+      {
+        "cell": "0/0.8",
+        "tier1": 0,
+        "write_tau": "0.8",
+        "accuracy": 1.0667,
+        "cost_tokens": 60000,
+        "ece": null,
+        "pareto": false
+      },
+      {
+        "cell": "20/off",
+        "tier1": 20,
+        "write_tau": "off",
+        "accuracy": 1.0667,
+        "cost_tokens": 52800,
+        "ece": null,
+        "pareto": false
+      },
+      {
+        "cell": "20/0.6",
+        "tier1": 20,
+        "write_tau": "0.6",
+        "accuracy": 1.0667,
+        "cost_tokens": 52800,
+        "ece": null,
+        "pareto": false
+      },
+      {
+        "cell": "20/0.8",
+        "tier1": 20,
+        "write_tau": "0.8",
+        "accuracy": 1.0667,
+        "cost_tokens": 52800,
+        "ece": null,
+        "pareto": false
+      },
+      {
+        "cell": "40/off",
+        "tier1": 40,
+        "write_tau": "off",
+        "accuracy": 1.0667,
+        "cost_tokens": 52800,
+        "ece": null,
+        "pareto": false
+      },
+      {
+        "cell": "40/0.6",
+        "tier1": 40,
+        "write_tau": "0.6",
+        "accuracy": 1.0667,
+        "cost_tokens": 52800,
+        "ece": null,
+        "pareto": false
+      },
+      {
+        "cell": "40/0.8",
+        "tier1": 40,
+        "write_tau": "0.8",
+        "accuracy": 1.0667,
+        "cost_tokens": 52800,
+        "ece": null,
+        "pareto": false
+      },
+      {
+        "cell": "60/off",
+        "tier1": 60,
+        "write_tau": "off",
+        "accuracy": 1.0667,
+        "cost_tokens": 52800,
+        "ece": null,
+        "pareto": false
+      },
+      {
+        "cell": "60/0.6",
+        "tier1": 60,
+        "write_tau": "0.6",
+        "accuracy": 1.0667,
+        "cost_tokens": 52800,
+        "ece": null,
+        "pareto": false
+      },
+      {
+        "cell": "60/0.8",
+        "tier1": 60,
+        "write_tau": "0.8",
+        "accuracy": 1.0667,
+        "cost_tokens": 52800,
+        "ece": null,
+        "pareto": false
+      },
+      {
+        "cell": "70/off",
+        "tier1": 70,
+        "write_tau": "off",
+        "accuracy": 1.0667,
+        "cost_tokens": 48000,
+        "ece": null,
+        "pareto": true
+      },
+      {
+        "cell": "70/0.6",
+        "tier1": 70,
+        "write_tau": "0.6",
+        "accuracy": 1.0667,
+        "cost_tokens": 48000,
+        "ece": null,
+        "pareto": true
+      },
+      {
+        "cell": "70/0.8",
+        "tier1": 70,
+        "write_tau": "0.8",
+        "accuracy": 1.0667,
+        "cost_tokens": 48000,
+        "ece": null,
+        "pareto": true
+      }
+    ],
+    "tier1_levels": [
+      0,
+      20,
+      40,
+      60,
+      70
+    ],
+    "write_tau_levels": [
+      "off",
+      "0.6",
+      "0.8"
+    ],
+    "watermark": "DRY RUN \u2014 SYNTHETIC"
+  },
+  "calibration": {
+    "signals": {
+      "verbalized": {
+        "recalibrators": {
+          "raw": {
+            "ece": 0.1593,
+            "brier": 0.2174,
+            "auroc": 0.5,
+            "ci": {
+              "ece": [
+                0.0667,
+                0.2333
+              ]
+            }
+          },
+          "temperature": {
+            "ece": 0.0093,
+            "brier": 0.1921,
+            "auroc": 0.5,
+            "ci": {
+              "ece": [
+                0.0093,
+                0.0833
+              ]
+            }
+          },
+          "platt": {
+            "ece": 0.0093,
+            "brier": 0.1921,
+            "auroc": 0.5,
+            "ci": {
+              "ece": [
+                0.0093,
+                0.0833
+              ]
+            }
+          },
+          "isotonic": {
+            "ece": 0.0093,
+            "brier": 0.1921,
+            "auroc": 0.5,
+            "ci": {
+              "ece": [
+                0.0093,
+                0.0833
+              ]
+            }
+          }
+        },
+        "reliability": {
+          "before": [
+            {
+              "bin": 9,
+              "conf": 0.8999999999999999,
+              "acc": 0.7407407407407407,
+              "n": 54
+            }
+          ],
+          "after": [
+            {
+              "bin": 7,
+              "conf": 0.7499999861887658,
+              "acc": 0.7407407407407407,
+              "n": 54
+            }
+          ]
+        },
+        "histogram": [
+          {
+            "bin": 0.0,
+            "count": 0
+          },
+          {
+            "bin": 0.1,
+            "count": 0
+          },
+          {
+            "bin": 0.2,
+            "count": 0
+          },
+          {
+            "bin": 0.3,
+            "count": 0
+          },
+          {
+            "bin": 0.4,
+            "count": 0
+          },
+          {
+            "bin": 0.5,
+            "count": 0
+          },
+          {
+            "bin": 0.6,
+            "count": 0
+          },
+          {
+            "bin": 0.7,
+            "count": 0
+          },
+          {
+            "bin": 0.8,
+            "count": 0
+          },
+          {
+            "bin": 0.9,
+            "count": 144
+          }
+        ]
+      },
+      "self_consistency": {
+        "recalibrators": {
+          "raw": {
+            "ece": 0.2916,
+            "brier": 0.1806,
+            "auroc": 0.9559,
+            "ci": {
+              "ece": [
+                0.2082,
+                0.3541
+              ]
+            }
+          },
+          "temperature": {
+            "ece": 0.2976,
+            "brier": 0.1786,
+            "auroc": 0.9559,
+            "ci": {
+              "ece": [
+                0.2284,
+                0.3642
+              ]
+            }
+          },
+          "platt": {
+            "ece": 0.0271,
+            "brier": 0.0534,
+            "auroc": 0.9559,
+            "ci": {
+              "ece": [
+                0.0183,
+                0.038
+              ]
+            }
+          },
+          "isotonic": {
+            "ece": 0.0271,
+            "brier": 0.0535,
+            "auroc": 0.9559,
+            "ci": {
+              "ece": [
+                0.0188,
+                0.0375
+              ]
+            }
+          }
+        },
+        "reliability": {
+          "before": [
+            {
+              "bin": 0,
+              "conf": 1e-06,
+              "acc": 0.17647058823529413,
+              "n": 17
+            },
+            {
+              "bin": 3,
+              "conf": 0.333,
+              "acc": 1.0,
+              "n": 9
+            },
+            {
+              "bin": 6,
+              "conf": 0.6669999999999999,
+              "acc": 1.0,
+              "n": 15
+            },
+            {
+              "bin": 9,
+              "conf": 0.999999,
+              "acc": 1.0,
+              "n": 7
+            }
+          ],
+          "after": [
+            {
+              "bin": 0,
+              "conf": 0.049351332985109284,
+              "acc": 0.17647058823529413,
+              "n": 17
+            },
+            {
+              "bin": 4,
+              "conf": 0.462883881669035,
+              "acc": 1.0,
+              "n": 9
+            },
+            {
+              "bin": 5,
+              "conf": 0.537116118330965,
+              "acc": 1.0,
+              "n": 15
+            },
+            {
+              "bin": 9,
+              "conf": 0.9506486670146019,
+              "acc": 1.0,
+              "n": 7
+            }
+          ]
+        },
+        "histogram": [
+          {
+            "bin": 0.0,
+            "count": 43
+          },
+          {
+            "bin": 0.1,
+            "count": 0
+          },
+          {
+            "bin": 0.2,
+            "count": 0
+          },
+          {
+            "bin": 0.3,
+            "count": 18
+          },
+          {
+            "bin": 0.4,
+            "count": 0
+          },
+          {
+            "bin": 0.5,
+            "count": 0
+          },
+          {
+            "bin": 0.6,
+            "count": 39
+          },
+          {
+            "bin": 0.7,
+            "count": 0
+          },
+          {
+            "bin": 0.8,
+            "count": 0
+          },
+          {
+            "bin": 0.9,
+            "count": 28
+          }
+        ]
+      },
+      "evidence": {
+        "recalibrators": {
+          "raw": {
+            "ece": 0.2293,
+            "brier": 0.2446,
+            "auroc": 0.5,
+            "ci": {
+              "ece": [
+                0.1367,
+                0.3033
+              ]
+            }
+          },
+          "temperature": {
+            "ece": 0.0093,
+            "brier": 0.1921,
+            "auroc": 0.5,
+            "ci": {
+              "ece": [
+                0.0093,
+                0.0833
+              ]
+            }
+          },
+          "platt": {
+            "ece": 0.0093,
+            "brier": 0.1921,
+            "auroc": 0.5,
+            "ci": {
+              "ece": [
+                0.0093,
+                0.0833
+              ]
+            }
+          },
+          "isotonic": {
+            "ece": 0.0093,
+            "brier": 0.1921,
+            "auroc": 0.5,
+            "ci": {
+              "ece": [
+                0.0093,
+                0.0833
+              ]
+            }
+          }
+        },
+        "reliability": {
+          "before": [
+            {
+              "bin": 9,
+              "conf": 0.9699999999999998,
+              "acc": 0.7407407407407407,
+              "n": 54
+            }
+          ],
+          "after": [
+            {
+              "bin": 7,
+              "conf": 0.7499999449426936,
+              "acc": 0.7407407407407407,
+              "n": 54
+            }
+          ]
+        },
+        "histogram": [
+          {
+            "bin": 0.0,
+            "count": 0
+          },
+          {
+            "bin": 0.1,
+            "count": 0
+          },
+          {
+            "bin": 0.2,
+            "count": 0
+          },
+          {
+            "bin": 0.3,
+            "count": 0
+          },
+          {
+            "bin": 0.4,
+            "count": 0
+          },
+          {
+            "bin": 0.5,
+            "count": 0
+          },
+          {
+            "bin": 0.6,
+            "count": 0
+          },
+          {
+            "bin": 0.7,
+            "count": 0
+          },
+          {
+            "bin": 0.8,
+            "count": 0
+          },
+          {
+            "bin": 0.9,
+            "count": 144
+          }
+        ]
+      }
+    }
+  },
+  "abstention": {
+    "watermark": "DRY RUN \u2014 SYNTHETIC",
+    "sweep": {
+      "calibrated": [
+        {
+          "tau": 0.0,
+          "coverage": 1.0,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 1.0
+        },
+        {
+          "tau": 0.05,
+          "coverage": 1.0,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 1.0
+        },
+        {
+          "tau": 0.1,
+          "coverage": 1.0,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 1.0
+        },
+        {
+          "tau": 0.15,
+          "coverage": 1.0,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 1.0
+        },
+        {
+          "tau": 0.2,
+          "coverage": 1.0,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 1.0
+        },
+        {
+          "tau": 0.25,
+          "coverage": 0.8182,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.3,
+          "coverage": 0.8182,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.35,
+          "coverage": 0.8182,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.4,
+          "coverage": 0.8182,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.45,
+          "coverage": 0.8182,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.5,
+          "coverage": 0.8182,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.55,
+          "coverage": 0.8182,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.6,
+          "coverage": 0.8182,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.65,
+          "coverage": 0.8182,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.7,
+          "coverage": 0.8182,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.75,
+          "coverage": 0.8182,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.8,
+          "coverage": 0.8182,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.85,
+          "coverage": 0.8182,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.9,
+          "coverage": 0.8182,
+          "accuracy": 0.8889,
+          "risk": 0.1111,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.95,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 1.0,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        }
+      ]
+    },
+    "aurc": 0.11247822177385004,
+    "n": 33
+  },
+  "persona_replay": [
+    {
+      "persona": 4,
+      "turns": [
+        {
+          "turn": 1,
+          "text": "hey, i'm rohan",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "name",
+              "value": "rohan",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 12,
+          "cum_tokens_pcsg": 5
+        },
+        {
+          "turn": 2,
+          "text": "i live in kochi",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "location",
+              "value": "kochi",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 24,
+          "cum_tokens_pcsg": 11
+        },
+        {
+          "turn": 3,
+          "text": "i work as a journalist",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "occupation",
+              "value": "unknown",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 34,
+          "cum_tokens_pcsg": 17
+        },
+        {
+          "turn": 4,
+          "text": "i'm 46",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "age_range",
+              "value": "46",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 42,
+          "cum_tokens_pcsg": 23
+        },
+        {
+          "turn": 5,
+          "text": "i speakgerman",
+          "assertions": [
+            {
+              "dimension": "skill",
+              "key": "german",
+              "value": "german",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 50,
+          "cum_tokens_pcsg": 30
+        },
+        {
+          "turn": 6,
+          "text": "i love biryani",
+          "assertions": [
+            {
+              "dimension": "preference",
+              "key": "food_likes",
+              "value": "biryani",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 60,
+          "cum_tokens_pcsg": 38
+        },
+        {
+          "turn": 7,
+          "text": "i also really like pho",
+          "assertions": [
+            {
+              "dimension": "preference",
+              "key": "food_likes",
+              "value": "misc",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 72,
+          "cum_tokens_pcsg": 37
+        },
+        {
+          "turn": 8,
+          "text": "i started hiking",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "hiking",
+              "value": "hiking",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 78,
+          "cum_tokens_pcsg": 43
+        },
+        {
+          "turn": 9,
+          "text": "i do chess regularly",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "chess",
+              "value": "chess",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 86,
+          "cum_tokens_pcsg": 50
+        },
+        {
+          "turn": 10,
+          "text": "i'm good at guitar",
+          "assertions": [
+            {
+              "dimension": "skill",
+              "key": "guitar",
+              "value": "other",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 96,
+          "cum_tokens_pcsg": 56
+        },
+        {
+          "turn": 11,
+          "text": "what can you help me with?",
+          "assertions": [],
+          "cum_tokens_full": 110,
+          "cum_tokens_pcsg": 56
+        },
+        {
+          "turn": 12,
+          "text": "my dog's name is max",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "pet",
+              "value": "dog",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 122,
+          "cum_tokens_pcsg": 61
+        },
+        {
+          "turn": 13,
+          "text": "my brother is a pilot",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "brother",
+              "value": "brother",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 132,
+          "cum_tokens_pcsg": 69
+        },
+        {
+          "turn": 14,
+          "text": "i believe work-life balance",
+          "assertions": [
+            {
+              "dimension": "belief",
+              "key": "work_life_balance",
+              "value": "work-life balance",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 142,
+          "cum_tokens_pcsg": 78
+        },
+        {
+          "turn": 15,
+          "text": "i'm working on a startup",
+          "assertions": [
+            {
+              "dimension": "project",
+              "key": "startup",
+              "value": "startup",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 154,
+          "cum_tokens_pcsg": 84
+        },
+        {
+          "turn": 16,
+          "text": "i want to run a half marathon",
+          "assertions": [
+            {
+              "dimension": "goal",
+              "key": "fitness",
+              "value": "misc",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 168,
+          "cum_tokens_pcsg": 90
+        },
+        {
+          "turn": 17,
+          "text": "i think i'm kind of into astronomy",
+          "assertions": [
+            {
+              "dimension": "interest",
+              "key": "topic",
+              "value": "placeholder",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 184,
+          "cum_tokens_pcsg": 95
+        },
+        {
+          "turn": 18,
+          "text": "ugh i'm so tired today",
+          "assertions": [],
+          "cum_tokens_full": 196,
+          "cum_tokens_pcsg": 95
+        },
+        {
+          "turn": 19,
+          "text": "actually i moved to nagpur",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "location",
+              "value": "nagpur",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 208,
+          "cum_tokens_pcsg": 95
+        },
+        {
+          "turn": 20,
+          "text": "i switched jobs, now i'm a electrician",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "occupation",
+              "value": "electrician",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 228,
+          "cum_tokens_pcsg": 96
+        },
+        {
+          "turn": 21,
+          "text": "i stopped hiking",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "hiking",
+              "value": "hiking",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 234,
+          "cum_tokens_pcsg": 96
+        },
+        {
+          "turn": 22,
+          "text": "anyway, how are you?",
+          "assertions": [],
+          "cum_tokens_full": 248,
+          "cum_tokens_pcsg": 96
+        },
+        {
+          "turn": 23,
+          "text": "my brother visited yesterday",
+          "assertions": [],
+          "cum_tokens_full": 256,
+          "cum_tokens_pcsg": 96
+        },
+        {
+          "turn": 24,
+          "text": "what do you know about me?",
+          "assertions": [],
+          "cum_tokens_full": 270,
+          "cum_tokens_pcsg": 96
+        },
+        {
+          "turn": 25,
+          "text": "cool, thanks!",
+          "assertions": [],
+          "cum_tokens_full": 278,
+          "cum_tokens_pcsg": 96
+        }
+      ]
+    },
+    {
+      "persona": 5,
+      "turns": [
+        {
+          "turn": 1,
+          "text": "hey, i'm jaya",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "name",
+              "value": "misc",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 12,
+          "cum_tokens_pcsg": 4
+        },
+        {
+          "turn": 2,
+          "text": "i live in kolkata",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "location",
+              "value": "kolkata",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 22,
+          "cum_tokens_pcsg": 9
+        },
+        {
+          "turn": 3,
+          "text": "i work as a architect",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "occupation",
+              "value": "architect",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 32,
+          "cum_tokens_pcsg": 16
+        },
+        {
+          "turn": 4,
+          "text": "i'm 21",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "age_range",
+              "value": "unknown",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 40,
+          "cum_tokens_pcsg": 22
+        },
+        {
+          "turn": 5,
+          "text": "i speak apanese",
+          "assertions": [
+            {
+              "dimension": "skill",
+              "key": "japanese",
+              "value": "japanese",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 50,
+          "cum_tokens_pcsg": 28
+        },
+        {
+          "turn": 6,
+          "text": "i love pho",
+          "assertions": [
+            {
+              "dimension": "preference",
+              "key": "food_likes",
+              "value": "misc",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 58,
+          "cum_tokens_pcsg": 35
+        },
+        {
+          "turn": 7,
+          "text": "i also really like sushi",
+          "assertions": [
+            {
+              "dimension": "preference",
+              "key": "food_likes",
+              "value": "sushi",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 68,
+          "cum_tokens_pcsg": 35
+        },
+        {
+          "turn": 8,
+          "text": "i started gardening",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "gardening",
+              "value": "other",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 74,
+          "cum_tokens_pcsg": 42
+        },
+        {
+          "turn": 9,
+          "text": "i do jogging regularly",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "jogging",
+              "value": "other",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 82,
+          "cum_tokens_pcsg": 49
+        },
+        {
+          "turn": 10,
+          "text": "i'm good at welding",
+          "assertions": [
+            {
+              "dimension": "skill",
+              "key": "welding",
+              "value": "welding",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 92,
+          "cum_tokens_pcsg": 57
+        },
+        {
+          "turn": 11,
+          "text": "what can you help me with?",
+          "assertions": [],
+          "cum_tokens_full": 106,
+          "cum_tokens_pcsg": 57
+        },
+        {
+          "turn": 12,
+          "text": "my rabbit's name is coco",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "pet",
+              "value": "rabbit",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 118,
+          "cum_tokens_pcsg": 62
+        },
+        {
+          "turn": 13,
+          "text": "my sister is a lawyer",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "sister",
+              "value": "sister",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 128,
+          "cum_tokens_pcsg": 68
+        },
+        {
+          "turn": 14,
+          "text": "i believe lifelong learning",
+          "assertions": [
+            {
+              "dimension": "belief",
+              "key": "lifelong_learning",
+              "value": "lifelong learning",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 136,
+          "cum_tokens_pcsg": 78
+        },
+        {
+          "turn": 15,
+          "text": "i'm working on a podcast",
+          "assertions": [
+            {
+              "dimension": "project",
+              "key": "podcast",
+              "value": "placeholder",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 148,
+          "cum_tokens_pcsg": 84
+        },
+        {
+          "turn": 16,
+          "text": "i want to learn to code",
+          "assertions": [
+            {
+              "dimension": "goal",
+              "key": "learning",
+              "value": "learn to code",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 160,
+          "cum_tokens_pcsg": 91
+        },
+        {
+          "turn": 17,
+          "text": "i think i'm kind of into jazz",
+          "assertions": [
+            {
+              "dimension": "interest",
+              "key": "topic",
+              "value": "jazz",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 176,
+          "cum_tokens_pcsg": 96
+        },
+        {
+          "turn": 18,
+          "text": "ugh i'm so tired today",
+          "assertions": [],
+          "cum_tokens_full": 188,
+          "cum_tokens_pcsg": 96
+        },
+        {
+          "turn": 19,
+          "text": "actually i moved to lucknow",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "location",
+              "value": "lucknow",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 200,
+          "cum_tokens_pcsg": 97
+        },
+        {
+          "turn": 20,
+          "text": "i switched jobs, now i'm a dentist",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "occupation",
+              "value": "dentist",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 218,
+          "cum_tokens_pcsg": 97
+        },
+        {
+          "turn": 21,
+          "text": "i stopped gardening",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "gardening",
+              "value": "other",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 224,
+          "cum_tokens_pcsg": 97
+        },
+        {
+          "turn": 22,
+          "text": "anyway, how are you?",
+          "assertions": [],
+          "cum_tokens_full": 238,
+          "cum_tokens_pcsg": 97
+        },
+        {
+          "turn": 23,
+          "text": "my sister visited yesterday",
+          "assertions": [],
+          "cum_tokens_full": 246,
+          "cum_tokens_pcsg": 97
+        },
+        {
+          "turn": 24,
+          "text": "what do you know about me?",
+          "assertions": [],
+          "cum_tokens_full": 260,
+          "cum_tokens_pcsg": 97
+        },
+        {
+          "turn": 25,
+          "text": "cool, thanks!",
+          "assertions": [],
+          "cum_tokens_full": 268,
+          "cum_tokens_pcsg": 97
+        }
+      ]
+    },
+    {
+      "persona": 6,
+      "turns": [
+        {
+          "turn": 1,
+          "text": "hey, i'm diya",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "name",
+              "value": "other",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 12,
+          "cum_tokens_pcsg": 4
+        },
+        {
+          "turn": 2,
+          "text": "i live in nagpur",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "location",
+              "value": "nagpur",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 22,
+          "cum_tokens_pcsg": 10
+        },
+        {
+          "turn": 3,
+          "text": "i work as a data analyst",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "occupation",
+              "value": "data analyst",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 34,
+          "cum_tokens_pcsg": 16
+        },
+        {
+          "turn": 4,
+          "text": "i'm 52",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "age_range",
+              "value": "52",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 42,
+          "cum_tokens_pcsg": 22
+        },
+        {
+          "turn": 5,
+          "text": "i speakgerman",
+          "assertions": [
+            {
+              "dimension": "skill",
+              "key": "german",
+              "value": "german",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 50,
+          "cum_tokens_pcsg": 29
+        },
+        {
+          "turn": 6,
+          "text": "i love sushi",
+          "assertions": [
+            {
+              "dimension": "preference",
+              "key": "food_likes",
+              "value": "sushi",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 56,
+          "cum_tokens_pcsg": 36
+        },
+        {
+          "turn": 7,
+          "text": "i also really like biryani",
+          "assertions": [
+            {
+              "dimension": "preference",
+              "key": "food_likes",
+              "value": "biryani",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 70,
+          "cum_tokens_pcsg": 37
+        },
+        {
+          "turn": 8,
+          "text": "i started sketching",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "sketching",
+              "value": "sketching",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 78,
+          "cum_tokens_pcsg": 46
+        },
+        {
+          "turn": 9,
+          "text": "i do baking regularly",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "baking",
+              "value": "baking",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 86,
+          "cum_tokens_pcsg": 52
+        },
+        {
+          "turn": 10,
+          "text": "i'm good at guitar",
+          "assertions": [
+            {
+              "dimension": "skill",
+              "key": "guitar",
+              "value": "other",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 96,
+          "cum_tokens_pcsg": 58
+        },
+        {
+          "turn": 11,
+          "text": "what can you help me with?",
+          "assertions": [],
+          "cum_tokens_full": 110,
+          "cum_tokens_pcsg": 58
+        },
+        {
+          "turn": 12,
+          "text": "my dog's name is bruno",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "pet",
+              "value": "dog",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 124,
+          "cum_tokens_pcsg": 63
+        },
+        {
+          "turn": 13,
+          "text": "my sister is a lawyer",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "sister",
+              "value": "sister",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 134,
+          "cum_tokens_pcsg": 69
+        },
+        {
+          "turn": 14,
+          "text": "i believe lifelong learning",
+          "assertions": [
+            {
+              "dimension": "belief",
+              "key": "lifelong_learning",
+              "value": "lifelong learning",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 142,
+          "cum_tokens_pcsg": 79
+        },
+        {
+          "turn": 15,
+          "text": "i'm working on a startup",
+          "assertions": [
+            {
+              "dimension": "project",
+              "key": "startup",
+              "value": "startup",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 154,
+          "cum_tokens_pcsg": 85
+        },
+        {
+          "turn": 16,
+          "text": "i want to become a manager",
+          "assertions": [
+            {
+              "dimension": "goal",
+              "key": "career",
+              "value": "become a manager",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 166,
+          "cum_tokens_pcsg": 95
+        },
+        {
+          "turn": 17,
+          "text": "i think i'm kind of into philosophy",
+          "assertions": [
+            {
+              "dimension": "interest",
+              "key": "topic",
+              "value": "philosophy",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 182,
+          "cum_tokens_pcsg": 102
+        },
+        {
+          "turn": 18,
+          "text": "ugh i'm so tired today",
+          "assertions": [],
+          "cum_tokens_full": 194,
+          "cum_tokens_pcsg": 102
+        },
+        {
+          "turn": 19,
+          "text": "actually i moved to bhopal",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "location",
+              "value": "unknown",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 208,
+          "cum_tokens_pcsg": 101
+        },
+        {
+          "turn": 20,
+          "text": "i switched jobs, now i'm a teacher",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "occupation",
+              "value": "teacher",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 226,
+          "cum_tokens_pcsg": 101
+        },
+        {
+          "turn": 21,
+          "text": "i stopped sketching",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "sketching",
+              "value": "sketching",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 234,
+          "cum_tokens_pcsg": 101
+        },
+        {
+          "turn": 22,
+          "text": "anyway, how are you?",
+          "assertions": [],
+          "cum_tokens_full": 248,
+          "cum_tokens_pcsg": 101
+        },
+        {
+          "turn": 23,
+          "text": "my sister visited yesterday",
+          "assertions": [],
+          "cum_tokens_full": 256,
+          "cum_tokens_pcsg": 101
+        },
+        {
+          "turn": 24,
+          "text": "what do you know about me?",
+          "assertions": [],
+          "cum_tokens_full": 270,
+          "cum_tokens_pcsg": 101
+        },
+        {
+          "turn": 25,
+          "text": "cool, thanks!",
+          "assertions": [],
+          "cum_tokens_full": 278,
+          "cum_tokens_pcsg": 101
+        }
+      ]
+    }
+  ]
+}
