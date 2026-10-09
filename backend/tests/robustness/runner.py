@@ -68,6 +68,7 @@ def _make_judge(provider: str):
     if provider != "real":
         return None
     from app import llm
+    from app.config import settings
     sysmsg = (
         "You grade a chatbot REPLY against a RUBRIC. Follow the RUBRIC's own "
         "PASS/FAIL condition exactly — it decides what counts, in BOTH directions.\n"
@@ -84,12 +85,15 @@ def _make_judge(provider: str):
         "Answer with exactly 'PASS: <reason>' or 'FAIL: <reason>'.")
 
     def judge(rubric: str, reply: str):
-        # Use the stronger chat model (not the cheap classifier) as the judge: a
-        # flaky judge would invalidate every reply_judge result. Still inexpensive.
+        # STEP 1: the dedicated evaluation judge (a stronger model than the
+        # pipeline's classifier/extractor), falling back to chat if unconfigured.
+        jmodel = llm.resolve_model("judge")
+        if jmodel in (None, "mock") or not settings.llm.models.get("judge"):
+            jmodel = llm.resolve_model("chat")
         r = llm.complete(
             messages=[{"role": "system", "content": sysmsg},
                       {"role": "user", "content": f"RUBRIC: {rubric}\n\nREPLY: {reply}"}],
-            model=llm.resolve_model("chat"), temperature=0.0, max_tokens=120)
+            model=jmodel, temperature=0.0, max_tokens=120)
         t = (r.get("text") or "").strip()
         return t.upper().startswith("PASS"), t[:200]
     return judge

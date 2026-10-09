@@ -22,6 +22,7 @@ llm:
     classifier: meta-llama/llama-3.1-8b-instruct     # cheapest/fast salience routing
     extractor:  openai/gpt-4o-mini-2024-07-18        # structured extraction (affordable; swap to anthropic/claude-sonnet-4.5 with credits)
     simulator:  meta-llama/llama-3.1-8b-instruct     # S9: plays the USER in simulated-user tests; deliberately a DIFFERENT model from the extractor (gpt-4o-mini) so the system is not tested against itself
+    judge:      openai/gpt-4o-2024-08-06             # EVALUATION-ONLY (STEP 1): QA/reply grading. A STRONGER model than the pipeline's classifier/extractor; never used by the pipeline itself.
     # OpenRouter has no /embeddings endpoint; embed() falls back to a local
     # deterministic vector (embeddings are unused by the pipeline today).
     embedding:  openai/text-embedding-3-small

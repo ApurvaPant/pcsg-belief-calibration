@@ -1,0 +1,469 @@
+{
+  "MT1": {
+    "diet_vegetarian": {
+      "consistency": 1.0,
+      "signatures": [
+        [
+          [
+            "preference",
+            "diet",
+            "vegetarian"
+          ]
+        ],
+        [
+          [
+            "preference",
+            "diet",
+            "vegetarian"
+          ]
+        ],
+        [
+          [
+            "preference",
+            "diet",
+            "vegetarian"
+          ]
+        ],
+        [
+          [
+            "preference",
+            "diet",
+            "vegetarian"
+          ]
+        ],
+        [
+          [
+            "preference",
+            "diet",
+            "vegetarian"
+          ]
+        ]
+      ]
+    },
+    "city_residence": {
+      "consistency": 0.6,
+      "signatures": [
+        [
+          [
+            "identity",
+            "location",
+            "pune"
+          ]
+        ],
+        [
+          [
+            "identity",
+            "location",
+            "pune"
+          ]
+        ],
+        [
+          [
+            "identity",
+            "location",
+            "pune"
+          ]
+        ],
+        [
+          [
+            "identity",
+            "location",
+            "pune"
+          ]
+        ],
+        [
+          [
+            "identity",
+            "location",
+            "pune"
+          ],
+          [
+            "relationship",
+            "home",
+            "home"
+          ]
+        ]
+      ]
+    },
+    "occupation": {
+      "consistency": 1.0,
+      "signatures": [
+        [
+          [
+            "identity",
+            "occupation",
+            "data analyst"
+          ]
+        ],
+        [
+          [
+            "identity",
+            "occupation",
+            "data analyst"
+          ]
+        ],
+        [
+          [
+            "identity",
+            "occupation",
+            "data analyst"
+          ]
+        ],
+        [
+          [
+            "identity",
+            "occupation",
+            "data analyst"
+          ]
+        ],
+        [
+          [
+            "identity",
+            "occupation",
+            "data analyst"
+          ]
+        ]
+      ]
+    },
+    "language_skill": {
+      "consistency": 1.0,
+      "signatures": [
+        [
+          [
+            "skill",
+            "french",
+            "french"
+          ]
+        ],
+        [
+          [
+            "skill",
+            "french",
+            "french"
+          ]
+        ],
+        [
+          [
+            "skill",
+            "french",
+            "french"
+          ]
+        ],
+        [
+          [
+            "skill",
+            "french",
+            "french"
+          ]
+        ],
+        [
+          [
+            "skill",
+            "french",
+            "french"
+          ]
+        ]
+      ]
+    },
+    "pet_named": {
+      "consistency": 0.6,
+      "signatures": [
+        [
+          [
+            "relationship",
+            "pet",
+            "dog"
+          ]
+        ],
+        [
+          [
+            "relationship",
+            "pet",
+            "dog"
+          ]
+        ],
+        [
+          [
+            "relationship",
+            "pet",
+            "dog"
+          ]
+        ],
+        [
+          [
+            "relationship",
+            "dog",
+            "dog"
+          ]
+        ],
+        [
+          [
+            "relationship",
+            "pet",
+            "dog"
+          ]
+        ]
+      ]
+    },
+    "liked_food": {
+      "consistency": 1.0,
+      "signatures": [
+        [
+          [
+            "preference",
+            "food_likes",
+            "ramen"
+          ]
+        ],
+        [
+          [
+            "preference",
+            "food_likes",
+            "ramen"
+          ]
+        ],
+        [
+          [
+            "preference",
+            "food_likes",
+            "ramen"
+          ]
+        ],
+        [
+          [
+            "preference",
+            "food_likes",
+            "ramen"
+          ]
+        ],
+        [
+          [
+            "preference",
+            "food_likes",
+            "ramen"
+          ]
+        ]
+      ]
+    },
+    "disliked_activity": {
+      "consistency": 1.0,
+      "signatures": [
+        [
+          [
+            "preference",
+            "food_dislikes",
+            "jogging"
+          ]
+        ],
+        [
+          [
+            "preference",
+            "food_dislikes",
+            "jogging"
+          ]
+        ],
+        [
+          [
+            "preference",
+            "food_dislikes",
+            "jogging"
+          ]
+        ],
+        [
+          [
+            "preference",
+            "food_dislikes",
+            "jogging"
+          ]
+        ],
+        [
+          [
+            "preference",
+            "food_dislikes",
+            "jogging"
+          ]
+        ]
+      ]
+    },
+    "career_goal": {
+      "consistency": 0.4,
+      "signatures": [
+        [
+          [
+            "goal",
+            "career",
+            "game designer"
+          ]
+        ],
+        [
+          [
+            "goal",
+            "career",
+            "game designer"
+          ]
+        ],
+        [
+          [
+            "goal",
+            "career",
+            "game design"
+          ]
+        ],
+        [
+          [
+            "goal",
+            "career",
+            "game designer"
+          ]
+        ],
+        [
+          [
+            "goal",
+            "career",
+            "game design"
+          ]
+        ]
+      ]
+    },
+    "weekly_habit": {
+      "consistency": 0.3,
+      "signatures": [
+        [
+          [
+            "habit",
+            "going_to_gym",
+            "gym"
+          ]
+        ],
+        [
+          [
+            "habit",
+            "going_to_gym",
+            "gym"
+          ]
+        ],
+        [
+          [
+            "habit",
+            "working_out",
+            "gym"
+          ]
+        ],
+        [
+          [
+            "habit",
+            "gym_session",
+            "gym session"
+          ]
+        ],
+        [
+          [
+            "habit",
+            "going_to_gym",
+            "gym"
+          ]
+        ]
+      ]
+    },
+    "relationship_named": {
+      "consistency": 0.3,
+      "signatures": [
+        [
+          [
+            "relationship",
+            "girlfriend",
+            "hailey"
+          ]
+        ],
+        [
+          [
+            "relationship",
+            "partner",
+            "hailey"
+          ]
+        ],
+        [
+          [
+            "relationship",
+            "girlfriend",
+            "hailey"
+          ]
+        ],
+        [
+          [
+            "relationship",
+            "partner",
+            "partner"
+          ]
+        ],
+        [
+          [
+            "relationship",
+            "girlfriend",
+            "hailey"
+          ]
+        ]
+      ]
+    }
+  },
+  "MT6": {
+    "ok": true,
+    "active_chess_nodes": 1,
+    "superseded": 0,
+    "conf": 0.9995
+  },
+  "MT7": {
+    "distinct_outcomes": 3,
+    "by_label": {
+      "affirm": [
+        [
+          "habit",
+          "eating_fish",
+          "fish"
+        ]
+      ],
+      "negate": [
+        [
+          "preference",
+          "food_dislikes",
+          "fish"
+        ]
+      ],
+      "cease": []
+    }
+  },
+  "MT8": {
+    "name": {
+      "touched_identity": true,
+      "expected": true,
+      "ok": true
+    },
+    "dog": {
+      "touched_identity": false,
+      "expected": false,
+      "ok": true
+    },
+    "brother": {
+      "touched_identity": false,
+      "expected": false,
+      "ok": true
+    },
+    "friend": {
+      "touched_identity": false,
+      "expected": false,
+      "ok": true
+    }
+  },
+  "MT1_value_level": {
+    "diet_vegetarian": 1.0,
+    "city_residence": 0.6,
+    "occupation": 1.0,
+    "language_skill": 1.0,
+    "pet_named": 1.0,
+    "liked_food": 1.0,
+    "disliked_activity": 1.0,
+    "career_goal": 0.4,
+    "weekly_habit": 0.6,
+    "relationship_named": 0.6
+  }
+}
