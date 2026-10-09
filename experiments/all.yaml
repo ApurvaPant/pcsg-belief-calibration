@@ -1,0 +1,20 @@
+name: all
+seed: 2026            # experiments seed (NEVER 1000, which is for testing)
+n_personas: 100
+oracle_profile: overconfident   # dry-run calibration profile
+budget_usd: 4.00
+concurrency: 4
+rate_limit_per_min: 120
+mem0: false           # optional final baseline, off by default
+stages:
+  - preflight
+  - extraction_eval      # T1
+  - persona_replay       # gate open; feeds steps below
+  - labelling
+  - calibration          # F1, T2
+  - qa                   # persona QA + LongMemEval
+  - abstention           # F2
+  - cost_replay          # F3 (+ 3 live-validation cells, live only)
+  - baselines            # T3
+  - figures
+  - summary

@@ -1,0 +1,5 @@
+name: smoke
+seed: 2026
+n_personas: 8
+oracle_profile: overconfident
+budget_usd: 4.00

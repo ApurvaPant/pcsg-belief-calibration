@@ -43,6 +43,22 @@ def _load(path: pathlib.Path):
         return None
 
 
+def _watermark() -> str | None:
+    """A visible watermark if any result was produced in dry-run (synthetic)."""
+    for f in ("calibration.json", "abstention.json", "cost_curve.json"):
+        d = _load(RES / f)
+        if d and d.get("watermark"):
+            return d["watermark"]
+    return None
+
+
+WM = _watermark()
+
+
+def _banner(md: str) -> str:
+    return (f"> ⚠️ **{WM}** — not real results.\n\n" + md) if WM else md
+
+
 def _md_table(rows: list[list], header: list[str]) -> str:
     out = ["| " + " | ".join(header) + " |", "|" + "|".join(["---"] * len(header)) + "|"]
     for r in rows:
@@ -135,6 +151,9 @@ def _f1(d, csv_path):
                     plt.plot([p["conf"] for p in pts], [p["acc"] for p in pts], marker="o", label=stage)
             plt.plot([0, 1], [0, 1], "k--", lw=0.8)
             plt.xlabel("confidence"); plt.ylabel("accuracy"); plt.title(f"F1 reliability — {sig}"); plt.legend()
+            if WM:
+                plt.figtext(0.5, 0.5, WM, fontsize=22, color="red", alpha=0.25,
+                            ha="center", va="center", rotation=30, weight="bold")
             plt.savefig(FIG / f"F1_{sig}.png", dpi=120, bbox_inches="tight"); plt.close()
 
 
@@ -157,8 +176,8 @@ def _f3(d, csv_path):
 def main():
     tables = {"T1": t1_extraction(), "T2": t2_calibration(), "T3": t3_baselines(), "T4": t4_consistency()}
     for name, md in tables.items():
-        (TAB / f"{name}.md").write_text(md + "\n", encoding="utf-8")
-        print(f"table {name} -> results/tables/{name}.md")
+        (TAB / f"{name}.md").write_text(_banner(md) + "\n", encoding="utf-8")
+        print(f"table {name} -> results/tables/{name}.md" + ("  [WATERMARKED]" if WM else ""))
     for line in (
         f_generic("F1", "calibration.json", "STEP 4 not run", _f1),
         f_generic("F2", "abstention.json", "STEP 6 not run", _f2),

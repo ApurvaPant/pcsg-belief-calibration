@@ -34,3 +34,6 @@ backend/eval/judge_check.csv
 # Stray dev logs
 frontend/*.log
 backend/*.out.log
+results/runs/
+results/datasets/
+backend/results/
