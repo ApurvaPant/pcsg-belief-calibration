@@ -5,27 +5,25 @@
 
 llm:
   # LLM_PROVIDER in .env overrides this. Use "mock" for deterministic,
-  # zero-cost, no-network operation. "openrouter" / "openai" hit an
-  # OpenAI-compatible endpoint via httpx (no vendor SDK).
-  provider: mock            # mock | openrouter | openai
+  # zero-cost, no-network operation. "gemini" / "openrouter" / "openai" all hit
+  # an OpenAI-compatible endpoint via httpx (no vendor SDK).
+  provider: gemini          # mock | gemini | openrouter | openai
 
   # OpenAI-compatible endpoint. OPENAI_BASE_URL in .env overrides this.
-  # OpenRouter: https://openrouter.ai/api/v1
-  base_url: https://openrouter.ai/api/v1
+  #   Gemini:     https://generativelanguage.googleapis.com/v1beta/openai
+  #   OpenRouter: https://openrouter.ai/api/v1
+  base_url: https://generativelanguage.googleapis.com/v1beta/openai
 
-  # Version-pinned models per role. Cheap+fast for the classifier (runs on
-  # most messages); a stronger model for extraction (runs rarely, quality
-  # matters most). Verify these slugs exist for YOUR OpenRouter account and
-  # adjust if access differs — they are pinned examples, not guaranteed grants.
+  # Version-pinned models per role (Gemini via its OpenAI-compatible layer).
+  # Cheap+fast for the classifier (runs on most messages); a stronger model for
+  # the judge (evaluation only). Adjust slugs if your key's access differs.
   models:
-    chat:       openai/gpt-4o-mini-2024-07-18        # mid-tier instruct, user replies
-    classifier: meta-llama/llama-3.1-8b-instruct     # cheapest/fast salience routing
-    extractor:  openai/gpt-4o-mini-2024-07-18        # structured extraction (affordable; swap to anthropic/claude-sonnet-4.5 with credits)
-    simulator:  meta-llama/llama-3.1-8b-instruct     # S9: plays the USER in simulated-user tests; deliberately a DIFFERENT model from the extractor (gpt-4o-mini) so the system is not tested against itself
-    judge:      openai/gpt-4o-2024-08-06             # EVALUATION-ONLY (STEP 1): QA/reply grading. A STRONGER model than the pipeline's classifier/extractor; never used by the pipeline itself.
-    # OpenRouter has no /embeddings endpoint; embed() falls back to a local
-    # deterministic vector (embeddings are unused by the pipeline today).
-    embedding:  openai/text-embedding-3-small
+    chat:       gemini-2.5-flash           # user replies
+    classifier: gemini-2.5-flash-lite      # cheapest/fast salience routing + frame
+    extractor:  gemini-2.5-flash           # structured extraction (FILL)
+    simulator:  gemini-2.0-flash           # S9: plays the USER; different from the extractor
+    judge:      gemini-2.5-pro             # EVALUATION-ONLY (STEP 1): stronger than pipeline models
+    embedding:  gemini-embedding-001       # unused by the pipeline today
 
   # Request defaults (per-call overrides allowed in code).
   timeout_seconds: 60
@@ -64,8 +62,12 @@ experiment:
   # dashboard and the budget guard above. Keyed by model slug; "default" is the
   # fallback for an unlisted model. Update if your account's pricing differs.
   prices_per_mtok:
+    # Gemini (approx, USD per 1M tokens) — update to your billed rates.
+    "gemini-2.5-flash": {input: 0.30, output: 2.50}
+    "gemini-2.5-flash-lite": {input: 0.10, output: 0.40}
+    "gemini-2.5-pro": {input: 1.25, output: 10.00}
+    "gemini-2.0-flash": {input: 0.10, output: 0.40}
     "openai/gpt-4o-mini-2024-07-18": {input: 0.15, output: 0.60}
-    "openai/gpt-4o-mini": {input: 0.15, output: 0.60}
     "meta-llama/llama-3.1-8b-instruct": {input: 0.02, output: 0.03}
     "default": {input: 0.50, output: 1.50}
 

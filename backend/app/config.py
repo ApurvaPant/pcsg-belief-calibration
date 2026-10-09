@@ -98,11 +98,17 @@ def _load() -> Settings:
         if os.getenv(env):
             models[key] = os.getenv(env)  # type: ignore[assignment]
 
-    # Key resolution: OpenRouter first, then generic OpenAI-compatible.
-    api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY", "")
+    # Key resolution by provider, then generic fallbacks. Gemini is used via its
+    # OpenAI-compatible endpoint, so GEMINI_API_KEY plugs into the same client.
+    provider_name = os.getenv("LLM_PROVIDER", llm_raw.get("provider", "mock"))
+    if provider_name == "gemini":
+        api_key = (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+                   or os.getenv("OPENAI_API_KEY", ""))
+    else:
+        api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY", "")
 
     llm = LLMSettings(
-        provider=os.getenv("LLM_PROVIDER", llm_raw.get("provider", "mock")),
+        provider=provider_name,
         base_url=os.getenv("OPENAI_BASE_URL", llm_raw.get("base_url", "")),
         api_key=api_key,
         models=models,

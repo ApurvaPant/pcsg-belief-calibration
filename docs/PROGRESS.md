@@ -481,3 +481,21 @@ simulator real run, STEP 2 extraction eval, STEP 3 100-persona replay, STEP 5/6/
 Proceeding with credit-FREE, correctly-ordered work: STEP 0 (confidence signals +
 freeze tag pcsg-v2-exp) and the STEP 9 reproducibility harness (scripts/make_figures.py,
 results/ scaffolding). Paid steps will run unchanged once a working key is in.
+
+## 2026-10-09 — Offline experiment build (no paid calls)
+
+STEP 1 (confidence signals): already built + tagged `pcsg-v2-exp` earlier; verified
+intact (confidence_signals table, signals.py, 3 unit tests, INV-02 enforced).
+
+STEP 2 (oracle_mock): added LLM_PROVIDER=oracle_mock (pcsg/oracle.py) — a calibrated,
+deterministic, offline provider. Named profiles with KNOWN miscalibration
+(overconfident: reports 0.9, correct 70%; underconfident: 0.6/90%; perfect:
+report=actual). Drives salience/frame/fill (extraction JSON)/QA-resolve/chat/judge with
+deterministic token counts for cost accounting. Verified end-to-end: oracle creates a
+node with the reported confidence and a confidence_signals row; QA read path + judge
+deterministic. Wired into llm.complete; startup probe skipped for oracle_mock.
+
+Also: configured Gemini as the live provider (config.py key resolution for
+LLM_PROVIDER=gemini via GEMINI_API_KEY; config.yaml base_url + gemini slugs + prices).
+UNVERIFIED LIVE — the supplied Gemini key's project is billing/quota-denied (403/429);
+dry-run uses oracle_mock regardless.

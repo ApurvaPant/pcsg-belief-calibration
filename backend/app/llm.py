@@ -144,6 +144,9 @@ def complete(
                 return injected
             if settings.llm.provider == "mock":
                 return _mock_complete(messages)
+            if settings.llm.provider == "oracle_mock":
+                from pcsg import oracle  # lazy: experiment-only, offline
+                return oracle.oracle_complete(messages)
             return _http_complete(messages, model, temperature, max_tokens, response_schema, schema_name)
         except Exception as e:  # noqa: BLE001
             if _is_retryable(e) and attempt < _MAX_RETRIES:
@@ -189,7 +192,7 @@ def startup_check() -> None:
     """Fail loudly (don't silently fall back to mock) when a real provider is
     configured but unusable: missing key, unreachable endpoint, or 401."""
     provider = settings.llm.provider
-    if provider == "mock":
+    if provider in ("mock", "oracle_mock"):
         return
     if not settings.llm.api_key:
         raise RuntimeError(
