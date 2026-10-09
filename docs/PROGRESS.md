@@ -499,3 +499,32 @@ Also: configured Gemini as the live provider (config.py key resolution for
 LLM_PROVIDER=gemini via GEMINI_API_KEY; config.yaml base_url + gemini slugs + prices).
 UNVERIFIED LIVE — the supplied Gemini key's project is billing/quota-denied (403/429);
 dry-run uses oracle_mock regardless.
+
+## 2026-10-09 — Offline experiment pipeline COMPLETE (pcsg-v2-ready)
+
+Built + verified the entire experiment suite offline (zero paid calls):
+- STEP 1 confidence signals — done, tagged pcsg-v2-exp.
+- STEP 2 oracle_mock — calibrated offline provider (known-miscalibration profiles).
+- STEP 3 pcsg.run — one-command runner (--dry-run/--live), config.json, resumable
+  per-persona checkpoint, budget guard, failed-extraction counting.
+- STEP 4 pcsg.preflight — key/probe/billing/datasets/disk + projected cost.
+- STEP 5 data — 100 personas seed=2026 x ~25 turns (40/40/20 by persona); persona
+  QA (8-11 Q); LongMemEval adapter (hf_hub, verify 78 — LIVE download).
+- STEP 6 analysis — labelling, calibration (ECE/Brier/AUROC/bootstrap CIs +
+  temp/Platt/isotonic), abstention (tau sweep/AURC/fabrication), cost replay (Pareto).
+- STEP 7 make_figures — T1-T4/F1-F3 from results/ only, DRY RUN watermark.
+- STEP 8 experiments/all.yaml — full chain runs end-to-end in --dry-run.
+
+VERIFIED offline: 7 analysis tests (ECE recovers known miscalibration ~0.20±0.04,
+perfect~0, recalibration reduces ECE, abstention monotonic+AURC, costcurve
+monotonic+(0,off) reproduction). Full 100-persona dry-run: 1800 labelled assertions,
+calibration table w/ CIs (recalibration 0.357->0.174; self_consistency AUROC 0.72),
+watermarked figures. 112+ unit tests green, mock suite 19/19, 0 invariant violations.
+
+NEEDS LIVE CREDITS (one command each, see docs/RUN_EXPERIMENTS.md):
+  python -m pcsg.preflight experiments/all.yaml --live
+  python -m pcsg.run experiments/all.yaml --live  &&  python scripts/make_figures.py
+Projected live cost ~$4.81 (17.5k calls; extractor gemini-2.5-flash) > budget 4.00
+-> raise budget_usd or shrink n_personas; prices in config.yaml are TODO estimates.
+Also TODO: working provider key (Gemini project billing OR funded OpenRouter), the
+judge model slug, and a verified LongMemEval revision (adapter ready).

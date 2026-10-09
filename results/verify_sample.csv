@@ -1,0 +1,51 @@
+persona,split,message,style,expected
+27,fit,i believe lifelong learning,full,belief/lifelong_learning=lifelong learning
+22,fit,i do sketching regularly,full,habit/sketching=sketching
+54,test,what do you know about me?,noise,(none)
+10,fit,i spea dutch,typo,skill/dutch=dutch
+11,fit,ugh i'm so tired today,noise,(none)
+59,test,i speakbengali,typo,skill/bengali=bengali
+58,test,i want to become a manager,full,goal/career=become a manager
+43,test,i do cycling regularly,full,habit/cycling=cycling
+54,test,"cool, thanks!",noise,(none)
+24,fit,what do you know about me?,noise,(none)
+29,fit,i work as a designer,full,identity/occupation=designer
+65,test,i believe lifelong learning,full,belief/lifelong_learning=lifelong learning
+12,fit,i also really like sushi,full,preference/food_likes=sushi
+99,dev,i love sushi,full,preference/food_likes=sushi
+33,fit,i'm 30,full,identity/age_range=30
+15,fit,actually i moved to lucknow,full,identity/location=lucknow
+72,test,my sister is a doctor,full,relationship/sister=sister
+57,test,what can you help me with?,noise,(none)
+57,test,"cool, thanks!",noise,(none)
+36,fit,"hey, i'm sam",full,identity/name=sam
+44,test,i believe work-life balance,full,belief/work_life_balance=work-life balance
+41,test,my brother is a pilot,full,relationship/brother=brother
+1,fit,what can you help me with?,noise,(none)
+94,dev,my rabbit's name is coco,full,relationship/pet=rabbit
+51,test,my dog's name is rex,full,relationship/pet=dog
+31,fit,i'm working on a garden shed,full,project/garden_shed=garden shed
+60,test,i also really like ramen,full,preference/food_likes=ramen
+34,fit,i love biryani,full,preference/food_likes=biryani
+4,fit,i work as a journalist,full,identity/occupation=journalist
+86,dev,"hey, i'm karan",full,identity/name=karan
+73,test,i live in indore,full,identity/location=indore
+74,test,my dog's name is max,full,relationship/pet=dog
+23,fit,i started surfing,full,habit/surfing=surfing
+54,test,my brother is a chef,full,relationship/brother=brother
+41,test,my brother visited yesterday,when_asked,(none)
+56,test,i live in goa,full,identity/location=goa
+19,fit,i love pasta,full,preference/food_likes=pasta
+10,fit,i want to learn to code,full,goal/learning=learn to code
+70,test,"anyway, how are you?",noise,(none)
+70,test,"i switched jobs, now i'm a designer",full,identity/occupation=designer
+31,fit,i speakfrench,typo,skill/french=french
+38,fit,what can you help me with?,noise,(none)
+88,dev,"hey, i'm rohan",full,identity/name=rohan
+77,test,i'm good at welding,full,skill/welding=welding
+50,test,i do sketching regularly,full,habit/sketching=sketching
+38,fit,"i switched jobs, now i'm a photographer",full,identity/occupation=photographer
+69,test,i want to become a manager,full,goal/career=become a manager
+50,test,my sister visited yesterday,when_asked,(none)
+98,dev,i love momos,full,preference/food_likes=momos
+13,fit,i started sketching,full,habit/sketching=sketching
