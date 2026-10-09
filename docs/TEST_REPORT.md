@@ -134,3 +134,37 @@ Below the 0.90 target — gap is open-key synonymy + value morphology; documente
   certify it due to judge noise.
 
 ## S0 status: 0 open S0 bugs. Freeze → pcsg-v2-rc2.
+
+---
+
+# Addendum — pcsg-v2-rc3 (Phases A/B/C)
+
+## Phase A — simulated users (S9)
+Built reusable experiment tooling: `pcsg/datagen/` (persona truth tables in code —
+stable facts + 2 changes + 1 END + 2 entity facts + 1 hedged + noise; seeded;
+P6-style verbalisation with full/fragment/typo/when_asked), `tests/robustness/
+simulator.py` (scripted + model modes), and a `simulator` config role (llama-8b,
+distinct from the gpt-4o-mini extractor). **Generator self-error rate = 4.4%**
+(7/160 facts over 20 seed=1000 personas — the "reveal-when-asked" sibling fact that
+only surfaces if the assistant asks). The real 20-persona comparison run is
+**credit-deferred** (OpenRouter free allowance exhausted mid-cycle). seed=1000 is the
+TESTING seed; experiments must use a different seed.
+
+## Phase B — fault injection (S6) — COMPLETE
+`llm.complete` retries timeout/429/5xx with exponential backoff (logged in
+RETRY_LOG); the chat reply degrades gracefully (no 500); failed extractions are
+logged `extraction_log.status='failed'` with an error reason; `GET /debug/failures`
+summarises failed count by reason + the retry log for the experiment runner to
+count/exclude failed messages. Required behaviours verified by
+`tests/test_fault_injection.py` (retry → succeed; give up after max; graceful chat +
+writes intact; failed-extraction logged + no partial writes). Non-retryable 402
+(credit) correctly fails fast and is logged, not retried.
+
+## Phase C — variance (S7)
+Deterministic mock catalogue: **19/19 green 3/3 `--no-cache` → 0 flaky** on the
+deterministic layer. Real-provider 3× variance is **credit-deferred**; genuine model
+variance (the data the self-consistency signal will measure) will be captured on a
+funded key.
+
+## S0 status: 0 open S0 bugs. Freeze → pcsg-v2-rc3.
+Credit-deferred: Phase A real run, Phase C real variance (tooling ready).

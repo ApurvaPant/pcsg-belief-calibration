@@ -453,3 +453,18 @@ with an error reason), and GET /debug/failures (failed count by reason + retry l
 for the experiment runner to count/exclude failed messages. Mapped the spec's
 stages to this build's tier-0 gate / frame / fill / chat. BUG-011 fixed;
 tests/test_fault_injection.py (4) green; 102 unit tests pass.
+
+## 2026-10-09 — Phases A/B/C + pcsg-v2-rc3
+
+Phase A (S9): built pcsg/datagen (seeded personas) + simulator.py + `simulator`
+config role. Static generator error rate 4.4% (7/160). Real seed=1000 run started
+but the OpenRouter free allowance ran out mid-cycle (402 "never purchased credits",
+any max_tokens) — real run CREDIT-DEFERRED; did NOT degrade committed config or
+switch models (per memory). simulator made per-persona resilient; test runners take a
+TEST-ONLY per-process max_tokens cap (committed config stays 1024).
+Phase B (S6): COMPLETE — retries+backoff, graceful chat, failed-extraction logging,
+/debug/failures. BUG-011 fixed; 4 new tests.
+Phase C (S7): mock catalogue 3x = 19/19, 0 flaky (deterministic layer); real variance
+credit-deferred.
+Freeze: 102 unit tests, mock suite 19/19 (3/3), 0 invariant violations, 0 open S0 bugs.
+Tag pcsg-v2-rc3.

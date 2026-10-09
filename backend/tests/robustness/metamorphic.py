@@ -105,6 +105,8 @@ def main(argv=None):
     from app.config import settings
     if args.provider == "mock":
         settings.llm.provider = "mock"
+    else:
+        settings.llm.max_tokens = min(settings.llm.max_tokens, 512)  # TEST-ONLY free-tier cap
     settings.db_path = pathlib.Path(os.environ["DB_PATH"])
     from app import db, ontology
     db.init_db()

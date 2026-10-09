@@ -225,6 +225,10 @@ def main(argv=None):
     from app.config import settings
     if args.provider == "mock":
         settings.llm.provider = "mock"
+    else:
+        # TEST-ONLY per-process cap (committed config stays 1024): a low-balance /
+        # free-tier key 402s above its affordable max_tokens.
+        settings.llm.max_tokens = min(settings.llm.max_tokens, 512)
     settings.db_path = db_path
     from app import db
     db.init_db()

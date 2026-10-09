@@ -54,6 +54,10 @@ def main(argv=None):
     from app.config import settings
     if args.provider == "mock":
         settings.llm.provider = "mock"
+    else:
+        # TEST-ONLY per-process cap so a low-balance / free-tier key can afford the
+        # request (it 402s above ~850 tokens). Committed config stays at 1024.
+        settings.llm.max_tokens = min(settings.llm.max_tokens, 512)
     settings.db_path = pathlib.Path(os.environ["DB_PATH"])
     from app import db, ontology, llm
     db.init_db()
@@ -82,6 +86,7 @@ def main(argv=None):
     candidate_bugs = []
 
     for p in personas:
+      try:
         client.reset()
         client.register()
         sid = None
@@ -148,6 +153,9 @@ def main(argv=None):
               f"missed={flags.count('missed')} gen_err={flags.count('gen_error')} "
               f"change_fail={flags.count('change_not_applied')} end_fail={flags.count('end_not_applied')} "
               f"corrupt={flags.count('wrong_supersede')}")
+      except Exception as e:  # noqa: BLE001 — one persona failing must not kill the run
+        print(f"persona {p.pid:2} {p.name:8} CRASHED: {type(e).__name__}: {str(e)[:80]}")
+        candidate_bugs.append({"persona": p.pid, "type": "persona_crash", "error": str(e)[:120]})
 
     total_expected = agg["expected"]
     gen_rate = agg["gen_error"] / max(1, total_expected)

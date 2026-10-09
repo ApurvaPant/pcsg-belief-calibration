@@ -137,3 +137,14 @@ fallback reply; `ExtractionResult.failed/error` + `extraction_log.status` record
 failed extractions; `GET /debug/failures` summarises them for the experiment runner.
 Regression tests: tests/test_fault_injection.py (retry, give-up, graceful chat, failed-logging + no partial writes).
 Verified: 102 unit tests pass.
+
+## Operational note — OpenRouter credit exhausted (blocks paid phases)
+During this cycle the OpenRouter key's free allowance ran out: the API now returns
+402 for ANY paid (gpt-4o-mini) request regardless of max_tokens — body: "Insufficient
+credits. This account never purchased credits." This is external and temporary. Per
+the standing instruction (and the no-capability-degradation memory) we did NOT lower
+committed max_tokens or switch to free models. Phase A's real simulator run and Phase
+C's real-provider variance are therefore CREDIT-DEFERRED; the tooling is built and
+validated offline, ready to run on a funded key. No new S0 (or any) bug was found in
+Phases A–C beyond BUG-011 (fixed). The resilience work (BUG-011) is exactly what makes
+a mid-run credit failure degrade gracefully instead of corrupting a run.
