@@ -157,3 +157,17 @@ def fault(body: dict) -> dict:
     count = int(body.get("count", 1))
     llm.set_fault(mode, count)
     return {"armed": mode, "count": count if mode else 0}
+
+
+@router.get("/failures")
+def failures() -> dict:
+    """Summary of failed extractions (§6): count by error reason + the retry log.
+    The experiment runner reports `failed_extractions` and excludes those turns."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT reason_code, COUNT(*) n FROM extraction_log WHERE status = 'failed' "
+            "GROUP BY reason_code").fetchall()
+        total = conn.execute("SELECT COUNT(*) n FROM extraction_log WHERE status = 'failed'").fetchone()["n"]
+    return {"failed_extractions": total,
+            "by_reason": {r["reason_code"] or "unknown": r["n"] for r in rows},
+            "retries": list(llm.RETRY_LOG)}

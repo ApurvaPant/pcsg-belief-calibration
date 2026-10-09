@@ -19,6 +19,8 @@ def _no_network(*args, **kwargs):
 
 
 def pytest_configure():
+    import os
+    os.environ["PCSG_TEST_MODE"] = "1"  # tiny retry backoff + debug endpoints in tests
     settings.llm.provider = "mock"
     httpx.Client = _no_network  # type: ignore[assignment]
     httpx.AsyncClient = _no_network  # type: ignore[assignment]

@@ -345,13 +345,15 @@ def _log_gate(conn, session_id, message_id, salient, score, raw_score, reason,
 
 
 def _log_extraction(conn, message_id, context, ext, accepted, reason_code):
+    failed = getattr(ext, "failed", False)
     conn.execute(
         "INSERT INTO extraction_log (id, message_id, context_window, frame_output, fill_output, "
-        "model, prompt_version, accepted, reason_code, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "model, prompt_version, accepted, reason_code, status, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (new_id("xlog"), message_id, json.dumps(context or []),
          json.dumps(getattr(ext, "frame_output", [])), json.dumps(getattr(ext, "fill_output", [])),
-         ext.model, extraction.PROMPT_VERSION, 1 if accepted else 0, reason_code, now_iso()),
+         ext.model, extraction.PROMPT_VERSION, 1 if accepted else 0,
+         getattr(ext, "error", None) or reason_code, "failed" if failed else "ok", now_iso()),
     )
 
 
@@ -450,8 +452,15 @@ def process_turn(message: str, session_id: str | None, user_id: str) -> dict[str
     system = _CHAT_SYSTEM.format(state=profile or "(nothing recorded about the user yet)")
     chat_messages = [{"role": "system", "content": system}, *history[-_CONTEXT_TURNS:],
                      {"role": "user", "content": original_message}]
-    reply_result = llm.complete(messages=chat_messages, model=llm.resolve_model("chat"))
-    reply = reply_result["text"]
+    # §6: the chat reply must still be returned even if the model call fails
+    # (after retries). On failure, degrade gracefully instead of 500-ing — the
+    # write path above has already run and is unaffected.
+    try:
+        reply_result = llm.complete(messages=chat_messages, model=llm.resolve_model("chat"))
+        reply = reply_result["text"] or "Got it."
+    except Exception:  # noqa: BLE001
+        reply_result = {"prompt_tokens": 0, "completion_tokens": 0, "latency_ms": 0}
+        reply = "Sorry — I'm having trouble responding right now, but I've noted what you said."
 
     # Stage 5: persist + reconcile.
     changes: list[dict[str, Any]] = []

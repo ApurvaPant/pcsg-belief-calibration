@@ -165,6 +165,7 @@ CREATE TABLE IF NOT EXISTS extraction_log (
     prompt_version TEXT,
     accepted       INTEGER,     -- 1 if at least one assertion was written
     reason_code    TEXT,        -- dominant rejection reason, if any
+    status         TEXT DEFAULT 'ok',  -- ok | failed (a stage LLM call failed)
     created_at     TEXT NOT NULL
 );
 
@@ -279,6 +280,11 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE pending_slots ADD COLUMN slot_type TEXT DEFAULT 'attribute'")
     if slot_cols and "topic" not in slot_cols:
         conn.execute("ALTER TABLE pending_slots ADD COLUMN topic TEXT")
+
+    # §6: extraction_log gained a status column (ok | failed).
+    xlog_cols = {r["name"] for r in conn.execute("PRAGMA table_info(extraction_log)")}
+    if xlog_cols and "status" not in xlog_cols:
+        conn.execute("ALTER TABLE extraction_log ADD COLUMN status TEXT DEFAULT 'ok'")
 
     # fix step 1: messages store the Q-A-resolved rewrite alongside the original.
     msg_cols = {r["name"] for r in conn.execute("PRAGMA table_info(messages)")}

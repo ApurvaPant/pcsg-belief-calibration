@@ -368,7 +368,8 @@ _FILL_SCHEMA = {
 
 class ExtractionResult:
     def __init__(self, kept, dropped, model, raw, relations=None, *,
-                 frame_output=None, fill_output=None, frame_tokens=0, fill_tokens=0):
+                 frame_output=None, fill_output=None, frame_tokens=0, fill_tokens=0,
+                 failed=False, error=None):
         self.kept = kept
         self.dropped = dropped
         self.model = model
@@ -378,6 +379,11 @@ class ExtractionResult:
         self.fill_output = fill_output if fill_output is not None else []
         self.frame_tokens = frame_tokens
         self.fill_tokens = fill_tokens
+        # §6: a stage LLM call ultimately failed (after retries). The turn writes
+        # nothing and the experiment runner can EXCLUDE it rather than treat it
+        # as "nothing to extract".
+        self.failed = failed
+        self.error = error
 
 
 def _context_block(context: list[dict[str, str]] | None) -> str:
@@ -447,7 +453,7 @@ def extract_assertions(user_message, context=None, pending_slot=None,
             model=model, temperature=0.0, response_schema=_FILL_SCHEMA, schema_name="fill")
     except Exception as e:  # noqa: BLE001
         return ExtractionResult([], [], model, f"<fill error: {e}>", frame_output=frames,
-                                frame_tokens=frame_tokens)
+                                frame_tokens=frame_tokens, failed=True, error=f"fill:{type(e).__name__}")
     parsed = parse_json(fl["text"]) or {}
     assertions = parsed.get("assertions", []) if isinstance(parsed, dict) else []
     relations = parsed.get("relations", []) if isinstance(parsed, dict) else []

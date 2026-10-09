@@ -443,3 +443,13 @@ canonicalisation is out of scope for the freeze).
 Final freeze state: mock suite 19/19 (3/3), unit 98, 0 invariant violations; S0 set
 3/3 (mock + real). 0 open S0 bugs (BUG-004/005/007/010 fixed; N1 disputed-by-design,
 F3 capability-limit). Tag: pcsg-v2-rc2.
+
+## 2026-10-09 — Phase B (S6 fault injection) complete
+
+Added bounded retries (timeout/429/5xx, exponential backoff, logged in
+llm.RETRY_LOG), graceful chat degradation (no 500 on provider failure), failed-
+extraction logging (ExtractionResult.failed/error -> extraction_log.status='failed'
+with an error reason), and GET /debug/failures (failed count by reason + retry log)
+for the experiment runner to count/exclude failed messages. Mapped the spec's
+stages to this build's tier-0 gate / frame / fill / chat. BUG-011 fixed;
+tests/test_fault_injection.py (4) green; 102 unit tests pass.

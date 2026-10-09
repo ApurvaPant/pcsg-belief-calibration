@@ -123,3 +123,17 @@ when ramen IS stored; "invents a vet name" when the reply named the dog, not a v
 "one sister" marked insufficient). Manually verified, the remaining fabrication-suite
 failures are judge false-positives, not read-path fabrications. Reported rates below
 are the raw (judge) numbers; the manually-verified true fabrication rate is ~0.
+
+## BUG-011  [S1]  [infra/resilience]  status: fixed
+Found by: Phase B (S6 fault injection) — pre-existing gap noted in rc1 handoff
+Repro: arm /debug/fault http_500 (or a real provider 5xx) during /chat
+Expected: transient failures are retried with backoff; the chat reply is always
+returned; a failed extraction writes nothing and is logged status=failed.
+Actual (before): no retries; a provider error on the chat call raised -> /chat 500;
+failed extractions were indistinguishable from "nothing to extract".
+Fix: `llm.complete` retries timeout/429/5xx up to _MAX_RETRIES with exponential
+backoff (logged in llm.RETRY_LOG); `pipeline` wraps the chat call and degrades to a
+fallback reply; `ExtractionResult.failed/error` + `extraction_log.status` record
+failed extractions; `GET /debug/failures` summarises them for the experiment runner.
+Regression tests: tests/test_fault_injection.py (retry, give-up, graceful chat, failed-logging + no partial writes).
+Verified: 102 unit tests pass.

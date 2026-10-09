@@ -95,6 +95,26 @@ def _maybe_fault() -> dict[str, Any] | None:
     return None
 
 
+# Bounded retries with exponential backoff for transient failures (§6). Every
+# retry is appended to RETRY_LOG so tests and the experiment runner can audit it.
+_RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+_MAX_RETRIES = 3
+RETRY_LOG: list[dict[str, Any]] = []
+
+
+def _is_retryable(e: Exception) -> bool:
+    if isinstance(e, (httpx.TimeoutException, httpx.ConnectError)):
+        return True
+    if isinstance(e, httpx.HTTPStatusError) and e.response is not None:
+        return e.response.status_code in _RETRYABLE_STATUS
+    return False
+
+
+def _backoff_seconds(attempt: int) -> float:
+    base = 0.01 if os.getenv("PCSG_TEST_MODE") == "1" else 0.5
+    return base * (2 ** attempt)
+
+
 def complete(
     messages: list[Message],
     model: str | None = None,
@@ -108,17 +128,31 @@ def complete(
     Keys: text, prompt_tokens, completion_tokens, latency_ms. When
     `response_schema` is given, request the provider's structured-output
     (JSON-schema) mode so the model can only emit conforming JSON (PART 6).
+
+    Transient failures (timeout / 429 / 5xx) are retried up to `_MAX_RETRIES`
+    times with exponential backoff; each retry is logged in RETRY_LOG.
     """
     model = model or settings.llm.models.get("chat", "gpt-4o-mini")
     temperature = settings.llm.temperature if temperature is None else temperature
     max_tokens = settings.llm.max_tokens if max_tokens is None else max_tokens
 
-    injected = _maybe_fault()
-    if injected is not None:
-        return injected
-    if settings.llm.provider == "mock":
-        return _mock_complete(messages)
-    return _http_complete(messages, model, temperature, max_tokens, response_schema, schema_name)
+    attempt = 0
+    while True:
+        try:
+            injected = _maybe_fault()
+            if injected is not None:
+                return injected
+            if settings.llm.provider == "mock":
+                return _mock_complete(messages)
+            return _http_complete(messages, model, temperature, max_tokens, response_schema, schema_name)
+        except Exception as e:  # noqa: BLE001
+            if _is_retryable(e) and attempt < _MAX_RETRIES:
+                RETRY_LOG.append({"model": model, "attempt": attempt + 1,
+                                  "error": type(e).__name__, "detail": str(e)[:120]})
+                time.sleep(_backoff_seconds(attempt))
+                attempt += 1
+                continue
+            raise
 
 
 def embed(texts: list[str], model: str | None = None) -> list[list[float]]:
