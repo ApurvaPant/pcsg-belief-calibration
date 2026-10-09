@@ -217,6 +217,24 @@ def has_cessation(text: str) -> bool:
     return bool(CESSATION_RE.search(text or ""))
 
 
+# ── Safety quarantine: a prompt-injection / meta-instruction, or quoted /
+# forwarded content, must never write to the user's own graph. This is a
+# deterministic product guard (general, not keyed to any test wording): the
+# message still gets a chat reply, but extraction is skipped. ──────────────── #
+_QUARANTINE_RE = re.compile(
+    r"\b(ignore|disregard|forget)\b[^.?!]*\b(previous|prior|all|your|earlier)\b[^.?!]*\binstruction"
+    r"|(?:^|\n)\s*(system|assistant)\s*:"
+    r"|\bset\s+user[._]\w+"
+    r"|\b(forwarding|forwarded|fwd)\b"
+    r"|\bhere'?s an email\b|\bthis email\b|\b(got|received) (this|an) email\b",
+    re.I)
+
+
+def is_quarantined(text: str) -> bool:
+    """True for injection / meta-instructions / forwarded-content markers."""
+    return bool(_QUARANTINE_RE.search(text or ""))
+
+
 def detect_end(text: str) -> tuple[bool, str | None]:
     """Rule-matched cessation. Returns (is_end, object_phrase). A match here is
     a CONSTRAINT the extractor cannot override, not a suggestion."""

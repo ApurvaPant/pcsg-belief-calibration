@@ -34,9 +34,10 @@ def _load_scenarios(suite: str, case: str | None, category: str | None, provider
     if suite and suite != "all":
         files = [f for f in files if f.stem == suite]
     for f in files:
+        cases = set(case.split(",")) if case else None
         for s in (yaml.safe_load(f.read_text(encoding="utf-8")) or []):
             s.setdefault("category", f.stem)
-            if case and s["id"] != case:
+            if cases and s["id"] not in cases:
                 continue
             if category and s["category"] != category:
                 continue
@@ -44,7 +45,7 @@ def _load_scenarios(suite: str, case: str | None, category: str | None, provider
             # skips real-only scenarios (the mock can't represent them); a real
             # run of a specific --case overrides this.
             sp = s.get("provider", "mock")
-            if not case and sp != provider:
+            if not cases and sp != provider:
                 continue
             scen.append(s)
     return scen
@@ -108,6 +109,11 @@ class Client:
         r.raise_for_status()
         return r.json()
 
+    def new_session(self) -> str:
+        r = self.c.post("/me/sessions", json={"title": None}, headers=self._auth())
+        r.raise_for_status()
+        return r.json()["id"]
+
     def inject_assistant(self, session_id, content):
         self.c.post("/debug/inject_assistant", json={"session_id": session_id, "content": content},
                     headers=self._auth())
@@ -143,8 +149,9 @@ def _run_once(client: Client, scen: dict, judge):
         if turn.get("new_session"):
             session_id = None
         if "assistant" in turn:
-            if session_id:
-                client.inject_assistant(session_id, turn["assistant"])
+            if not session_id:  # an assistant-first scenario needs a session to attach to
+                session_id = client.new_session()
+            client.inject_assistant(session_id, turn["assistant"])
             continue
         if "user" not in turn:
             continue

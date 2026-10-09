@@ -1,0 +1,258 @@
+# §4 A/B/D/E/F on the real provider. Assertions target the core property and
+# stay robust to phrasing variance (key_any/value_any, node_count gte, reply_judge).
+
+# ── A. Baseline ─────────────────────────────────────────────────────────────
+- id: A1
+  category: baseline
+  severity: S1
+  provider: real
+  description: multi-fact intro; greeting makes no node
+  turns:
+    - user: "hey, i'm kiran"
+    - user: "i'm a third year computer science student"
+    - user: "i stay in a hostel near campus"
+  expect_final:
+    - node: {dim: identity, key: name, value: kiran, status: active}
+    - node_count: {dim: identity, status: active, gte: 2}
+
+- id: A2
+  category: baseline
+  severity: S1
+  provider: real
+  description: recall in a new chat invents nothing
+  turns:
+    - user: "hey, i'm kiran"
+    - user: "i'm a third year computer science student"
+    - user: "i stay in a hostel near campus"
+    - new_session: true
+    - user: "what do you know about me?"
+      expect:
+        writes: 0
+        reply_judge: "Mentions the user's name is Kiran and that they study computer science. PASS if it only states facts along those lines (name, CS student, hostel); FAIL if it invents unrelated facts like a job, age, or hobbies that were never stated."
+
+- id: A3
+  category: baseline
+  severity: S1
+  provider: real
+  description: occupation + employer
+  turns:
+    - user: "i work as a data analyst at a startup"
+  expect_final:
+    - node: {dim: identity, key_any: [occupation], value_any: [data analyst], status: active}
+
+- id: A4
+  category: baseline
+  severity: S1
+  provider: real
+  description: age
+  turns:
+    - user: "i'm 23"
+  expect_final:
+    - node: {dim: identity, key_any: [age_range, age], value_any: ["23"], status: active}
+
+# ── B. Fragments and question chains ────────────────────────────────────────
+- id: B1
+  category: fragments
+  severity: S2
+  provider: real
+  description: one-word answers to injected questions attach as attributes
+  turns:
+    - user: "i have a cat"
+    - assistant: "Aww! What's your cat's name?"
+    - user: "mochi"
+    - assistant: "Cute! How old is mochi?"
+    - user: "2 years"
+    - new_session: true
+    - user: "how old is my cat?"
+      expect:
+        writes: 0
+        reply_judge: "States the cat is 2 years old. FAIL if it gives any other age or says it does not know."
+  expect_final:
+    - node: {dim: relationship, key_any: [pet, cat], value_any: [cat], status: active}
+      attributes: {name: mochi}
+    - absent_node: {value: mochi}
+
+- id: B2
+  category: fragments
+  severity: S2
+  provider: real
+  description: successive qualifier answers refine one node
+  turns:
+    - user: "i mostly watch movies when i'm free"
+    - assistant: "What kind of movies?"
+    - user: "thrillers"
+    - assistant: "Any particular country?"
+    - user: "korean ones"
+  expect_final:
+    - node_count: {dim: habit, status: active, gte: 1}
+
+- id: B3
+  category: fragments
+  severity: S2
+  provider: real
+  description: a question writes nothing, then a fragment answer is kept
+  turns:
+    - user: "what should i do this weekend?"
+      expect: {writes: 0, badge_in: [RETRIEVAL_QUERY]}
+    - assistant: "What do you usually enjoy?"
+    - user: "trekking usually"
+      expect: {badge_not_in: [GATED_OUT]}
+
+- id: B4
+  category: fragments
+  severity: S2
+  provider: real
+  description: duration fragment attaches to the dog (R13)
+  turns:
+    - user: "i have a dog"
+    - assistant: "How long have you had him?"
+    - user: "8 months"
+  expect_final:
+    - node: {dim: relationship, key_any: [pet, dog], value_any: [dog], status: active}
+      attributes: {duration_any: ["8 months", "8"]}
+
+- id: B5
+  category: fragments
+  severity: S2
+  provider: real
+  description: reading / technical / deep learning not lost (R14)
+  turns:
+    - assistant: "How do you like to spend your time?"
+    - user: "reading books"
+    - assistant: "What kind of books?"
+    - user: "technical"
+    - assistant: "Any topic in particular?"
+    - user: "deep learning"
+  expect_final:
+    - node_count: {dim: habit, status: active, gte: 1}
+
+- id: B7
+  category: fragments
+  severity: S2
+  provider: real
+  description: sibling fragment
+  turns:
+    - assistant: "Do you have any siblings?"
+    - user: "yeah one sister"
+  expect_final:
+    - node: {dim: relationship, key_any: [sister, sibling], status: active}
+
+- id: B8
+  category: fragments
+  severity: S1
+  provider: real
+  description: a negative fragment never ends a node
+  turns:
+    - assistant: "Are you a morning person?"
+    - user: "not at all"
+      expect: {no_events_of_type: [node_ended]}
+
+- id: B9
+  category: fragments
+  severity: S1
+  provider: real
+  description: an ambiguous "yes" is not a destructive op
+  turns:
+    - assistant: "Do you like tea or coffee?"
+    - user: "yes"
+      expect: {no_events_of_type: [node_ended, node_superseded]}
+
+# ── D. Whose fact is it? ─────────────────────────────────────────────────────
+- id: D1
+  category: ownership
+  severity: S1
+  provider: real
+  description: relatives' facts never touch the user's identity
+  turns:
+    - user: "my sister works at google"
+    - user: "my best friend is moving to canada"
+  expect_final:
+    - absent_node: {dim: identity, key: employer, value: google}
+    - node_count: {dim: relationship, status: active, gte: 1}
+
+- id: D2
+  category: ownership
+  severity: S0
+  provider: real
+  description: a reported wish is not the user's goal
+  turns:
+    - user: "my mom thinks i should become a doctor"
+  expect_final:
+    - absent_node: {dim: goal, value: doctor}
+
+- id: D5
+  category: ownership
+  severity: S0
+  provider: real
+  description: a roommate's name never overwrites identity
+  setup: {seed: fixtures_kiran.json}
+  turns:
+    - user: "my roommate's name is arjun"
+  expect_final:
+    - node: {dim: identity, key: name, value: kiran, status: active}
+
+- id: D6
+  category: ownership
+  severity: S1
+  provider: real
+  description: a relative's age is not the user's age
+  turns:
+    - user: "my dad is 52"
+  expect_final:
+    - absent_node: {dim: identity, key_any: [age, age_range]}
+
+- id: D7
+  category: ownership
+  severity: S1
+  provider: real
+  description: a partner's taste is not the user's
+  turns:
+    - user: "my girlfriend loves sushi"
+  expect_final:
+    - absent_node: {dim: preference, key: food_likes, value: sushi}
+
+# ── E. Cardinality ──────────────────────────────────────────────────────────
+- id: E1
+  category: cardinality
+  severity: S1
+  provider: real
+  description: multiple languages become multiple skills
+  turns:
+    - user: "i speak hindi, english and a bit of tamil"
+  expect_final:
+    - node_count: {dim: skill, status: active, gte: 2}
+
+- id: E6
+  category: cardinality
+  severity: S1
+  provider: real
+  description: diet is SINGLE — a change never leaves two active diets
+  turns:
+    - user: "i'm vegetarian"
+    - user: "i've started eating eggs"
+  expect_final:
+    - node_count: {dim: preference, key: diet, status: active, lte: 1}
+
+# ── F. Corrections ──────────────────────────────────────────────────────────
+- id: F1
+  category: corrections
+  severity: S1
+  provider: real
+  description: a corrected number supersedes, not duplicates
+  turns:
+    - user: "i've been coding for 2 years"
+    - user: "sorry i meant 4 years"
+  expect_final:
+    - node_count: {dim: skill, status: active, lte: 1}
+
+- id: F3
+  category: corrections
+  severity: S1
+  provider: real
+  description: a spelling correction supersedes the name
+  turns:
+    - user: "my name is kiran"
+    - user: "actually spell it kiren"
+  expect_final:
+    - node: {dim: identity, key: name, value_any: [kiren], status: active}
+    - node_count: {dim: identity, key: name, status: active, eq: 1}

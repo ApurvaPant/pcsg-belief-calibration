@@ -418,7 +418,13 @@ def process_turn(message: str, session_id: str | None, user_id: str) -> dict[str
             reason += "; qa_resolved"
         elif fragment_answer:
             reason += "; qa_unresolved"
-        if salient:
+        if salient and salience.is_quarantined(original_message):
+            # Prompt-injection / meta-instruction / forwarded content: reply, but
+            # never extract facts from it into the user's graph (safety). Checked
+            # on the ORIGINAL message so a trailing question can't strip the marker.
+            reason += "; quarantined_injection"
+            ext = extraction.ExtractionResult([], [], None, None)
+        elif salient:
             end_forced, end_object = salience.detect_end(extract_text)
             ext = extraction.extract_assertions(extract_text, context=history, pending_slot=slot_hint,
                                                 force_end=end_forced, end_object=end_object)
