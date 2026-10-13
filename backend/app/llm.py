@@ -31,6 +31,10 @@ from .config import settings
 
 Message = dict[str, str]  # {"role": "system"|"user"|"assistant", "content": str}
 
+# Inline chain-of-thought some reasoning models emit in `content`. Stripped so no
+# thinking text ever reaches the pipeline or the judge (we parse only the answer).
+_THINK_RE = re.compile(r"<think(?:ing)?>.*?</think(?:ing)?>", re.S | re.I)
+
 # Fallback model ids if config.yaml is missing a role (real providers only).
 _DEFAULT_MODELS = {
     "chat": "openai/gpt-4o-mini",
@@ -161,7 +165,8 @@ _FAULT_RNG = _random.Random()
 # ── Cost meter (offline + live) ───────────────────────────────────────────── #
 # Every completion accumulates fake/real token cost here so the runner can
 # enforce a hard budget stop. Priced via settings.experiment. Reset per run.
-_COST: dict[str, float] = {"usd": 0.0, "calls": 0.0, "prompt_tokens": 0.0, "completion_tokens": 0.0}
+_COST: dict[str, float] = {"usd": 0.0, "calls": 0.0, "prompt_tokens": 0.0,
+                           "completion_tokens": 0.0, "reasoning_tokens": 0.0}
 
 
 def reset_cost() -> None:
@@ -173,6 +178,12 @@ def spent_usd() -> float:
     return _COST["usd"]
 
 
+def spent_tokens() -> int:
+    """Total tokens billed so far (prompt + completion + reasoning). The budget
+    metric on free-tier providers, which have no dollar cost."""
+    return int(_COST["prompt_tokens"] + _COST["completion_tokens"] + _COST["reasoning_tokens"])
+
+
 def cost_summary() -> dict[str, float]:
     return dict(_COST)
 
@@ -181,10 +192,12 @@ def _account(result: dict[str, Any], model: str) -> None:
     try:
         pt = int(result.get("prompt_tokens", 0) or 0)
         ct = int(result.get("completion_tokens", 0) or 0)
+        rt = int(result.get("reasoning_tokens", 0) or 0)
         _COST["usd"] += settings.experiment.cost_usd(result.get("model", model), pt, ct)
         _COST["calls"] += 1
         _COST["prompt_tokens"] += pt
         _COST["completion_tokens"] += ct
+        _COST["reasoning_tokens"] += rt
     except Exception:  # noqa: BLE001 — accounting must never break a call
         pass
 
@@ -193,7 +206,10 @@ def _account(result: dict[str, Any], model: str) -> None:
 # Enforces at most `rate_limit_per_min` real completions, spacing calls evenly.
 # A no-op for mock / oracle_mock (and whenever the interval is 0), so offline
 # runs and tests never sleep. The experiment/LongMemEval runners call set_rate_limit().
+import threading as _threading
+
 _RATE = {"min_interval": 0.0, "last": 0.0}
+_RATE_LOCK = _threading.Lock()
 
 
 def set_rate_limit(per_min: float | int | None) -> None:
@@ -201,12 +217,17 @@ def set_rate_limit(per_min: float | int | None) -> None:
 
 
 def _rate_gate() -> None:
+    """Space real calls to at most rate_limit_per_min, SHARED across all worker
+    threads (one global token spacing), so concurrent personas + LongMemEval
+    questions + the judge together stay under the provider's per-key limit."""
     if _RATE["min_interval"] <= 0 or settings.llm.provider in _OFFLINE_PROVIDERS:
         return
-    dt = time.perf_counter() - _RATE["last"]
-    if dt < _RATE["min_interval"]:
-        time.sleep(_RATE["min_interval"] - dt)
-    _RATE["last"] = time.perf_counter()
+    with _RATE_LOCK:
+        dt = time.perf_counter() - _RATE["last"]
+        wait = _RATE["min_interval"] - dt
+        if wait > 0:
+            time.sleep(wait)
+        _RATE["last"] = time.perf_counter()
 
 
 def set_fault_rates(rates: dict[str, float] | None = None, seed: int | None = None) -> None:
@@ -364,6 +385,9 @@ def _http_complete(
         "temperature": temperature,
         "max_tokens": max_tokens,
     }
+    # Per-model vendor params (e.g. reasoning_effort / chat_template_kwargs) — our
+    # config values override any model-page defaults, and are IDENTICAL per model.
+    payload.update(settings.llm.params_for(model))
     if response_schema is not None:
         payload["response_format"] = {
             "type": "json_schema",
@@ -376,16 +400,40 @@ def _http_complete(
         data = resp.json()
     latency_ms = int((time.perf_counter() - started) * 1000)
 
-    text = data["choices"][0]["message"]["content"] or ""
+    msg = (data.get("choices") or [{}])[0].get("message", {}) or {}
+    raw_text = msg.get("content") or ""
+    # Reasoning models may return thinking separately (reasoning_content/reasoning)
+    # or inline as <think>..</think>. We NEVER pass thinking downstream: strip it.
+    reasoning_text = msg.get("reasoning_content") or msg.get("reasoning") or ""
+    had_inline_think = bool(_THINK_RE.search(raw_text))
+    text = _THINK_RE.sub("", raw_text).strip()
     usage = data.get("usage", {}) or {}
+    details = usage.get("completion_tokens_details", {}) or {}
+    reasoning_tokens = int(details.get("reasoning_tokens", 0) or 0)
     return {
         "text": text,
         "prompt_tokens": usage.get("prompt_tokens", 0),
         "completion_tokens": usage.get("completion_tokens", 0),
+        "reasoning_tokens": reasoning_tokens,
+        # True if any thinking was present (inline or a non-empty reasoning field),
+        # for validation — the text above has it removed.
+        "had_thinking": bool(had_inline_think or reasoning_text),
         "latency_ms": latency_ms,
         # The model the provider actually served (may differ from requested).
         "model": data.get("model", model),
     }
+
+
+def list_models() -> list[str]:
+    """GET {base_url}/models and return the available model ids (real providers)."""
+    _offline_guard(settings.llm.provider, "list_models()")
+    url = settings.llm.base_url.rstrip("/") + "/models"
+    with httpx.Client(timeout=settings.llm.timeout_seconds) as client:
+        resp = client.get(url, headers=_headers())
+        resp.raise_for_status()
+        data = resp.json()
+    items = data.get("data", data) if isinstance(data, dict) else data
+    return [m.get("id") for m in items if isinstance(m, dict) and m.get("id")]
 
 
 def _http_embed(texts: list[str], model: str) -> list[list[float]]:

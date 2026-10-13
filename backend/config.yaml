@@ -7,30 +7,43 @@ llm:
   # LLM_PROVIDER in .env overrides this. Use "mock" for deterministic,
   # zero-cost, no-network operation. "gemini" / "openrouter" / "openai" all hit
   # an OpenAI-compatible endpoint via httpx (no vendor SDK).
-  provider: gemini          # mock | gemini | openrouter | openai
+  provider: nvidia          # mock | nvidia | gemini | openrouter | openai
 
-  # OpenAI-compatible endpoint. OPENAI_BASE_URL in .env overrides this.
+  # OpenAI-compatible endpoint. OPENAI_BASE_URL in .env overrides this only for
+  # the generic openai/openrouter providers (never nvidia/gemini).
+  #   NVIDIA:     https://integrate.api.nvidia.com/v1
   #   Gemini:     https://generativelanguage.googleapis.com/v1beta/openai
   #   OpenRouter: https://openrouter.ai/api/v1
-  base_url: https://generativelanguage.googleapis.com/v1beta/openai
+  base_url: https://integrate.api.nvidia.com/v1
 
-  # Version-pinned models per role (Gemini via its OpenAI-compatible layer).
-  # Cheap+fast for the classifier (runs on most messages); a stronger model for
-  # the judge (evaluation only). Adjust slugs if your key's access differs.
+  # NVIDIA build models. PROVISIONAL (ids/reasoning param pending the STEP 1
+  # probe + 10-call reasoning validation — see docs/NVIDIA_SWITCH.md). Every
+  # pipeline role runs the SAME main model at the SAME fixed minimal reasoning;
+  # the two judge roles run openai/gpt-oss-20b at reasoning_effort "medium"
+  # (replaces the earlier gpt-4o judge).
   models:
-    chat:       gemini-2.5-flash           # user replies  (= "answerer")
-    classifier: gemini-2.5-flash-lite      # cheapest/fast salience routing + frame (= tier-1 gate / span extraction)
-    extractor:  gemini-2.5-flash           # structured extraction FILL (= structuring / self-consistency / verbaliser P6)
-    simulator:  gemini-2.0-flash           # S9: plays the USER; different from the extractor
-    judge:      gemini-2.5-pro             # EVALUATION-ONLY default judge (non-LongMemEval; = value-equivalence P7 live)
-    judge_longmemeval: openai/gpt-4o       # EVALUATION-ONLY LongMemEval judge (official per-type prompts). Added per readiness PHASE 1.2.
-    embedding:  gemini-embedding-001       # unused by the pipeline today
-  # Judge routing (evaluation only; never touches the pipeline). LongMemEval
-  # answers are graded by `judge_longmemeval` with the official per-type judge
-  # prompts; every other answer is graded by `judge`.
+    chat:       deepseek-ai/deepseek-v4.1-flash   # answerer (all four systems)
+    classifier: deepseek-ai/deepseek-v4.1-flash   # tier-1 gate / span (FRAME)
+    extractor:  deepseek-ai/deepseek-v4.1-flash   # structuring FILL / self-consistency / P6
+    simulator:  deepseek-ai/deepseek-v4.1-flash   # S9 (plays the USER)
+    judge:      openai/gpt-oss-20b                # EVALUATION-ONLY default judge
+    judge_longmemeval: openai/gpt-oss-20b         # EVALUATION-ONLY LongMemEval judge (official per-type prompts)
+    embedding:  sentence-transformers/all-MiniLM-L6-v2   # local; vector_rag only (not an API call)
+  # Fallback main models if DeepSeek fails the reasoning/latency gate, in order:
+  #   qwen/qwen3-next-80b-a3b-instruct  ->  nvidia/nemotron-3-super-120b-a12b
+  # Judge routing (evaluation only; never touches the pipeline).
   judge_routing:
     longmemeval: judge_longmemeval
     default: judge
+
+  # Per-model vendor request params, merged into EVERY call to that model.
+  # The main model's reasoning param is PROVISIONAL and must be confirmed to its
+  # minimum by the STEP 1.3 10-call validation before a live run.
+  request_params:
+    "deepseek-ai/deepseek-v4.1-flash":
+      reasoning_effort: "low"       # PROVISIONAL — validate minimal (none/0) in STEP 1.3
+    "openai/gpt-oss-20b":
+      reasoning_effort: "medium"    # judge: parse only the final answer, never the reasoning
 
   # Request defaults (per-call overrides allowed in code).
   timeout_seconds: 60
@@ -59,15 +72,16 @@ storage:
   db_path: userstate.db
 
 experiment:
-  # HARD SPEND CEILING for any paid (non-mock) evaluation or sweep. Both specs
-  # require: pilot -> project cost -> refuse to run if projection > budget_usd.
-  # 0 means UNSET: the eval harness refuses every paid run until you set a real
-  # ceiling here (e.g. 10.0 for USD 10). The mock provider is always free.
+  # NVIDIA build is a FREE TIER: no dollar cost, so the price-guard is skipped and
+  # the run is bounded by a TOKEN budget instead (clean, resumable hard-stop).
+  free_tier: true
+  token_budget: 80000000       # 80M tokens total across the whole run
+  rate_limit_per_min: 35       # shared across all workers + models + judge (NVIDIA ~40/min/key)
+  # HARD SPEND CEILING for a PAID provider (ignored while free_tier: true).
   budget_usd: 25.00
-  # Approximate OpenRouter prices (USD per 1,000,000 tokens), used ONLY to
-  # PROJECT cost before a run. Actual spend is governed by your OpenRouter
-  # dashboard and the budget guard above. Keyed by model slug; "default" is the
-  # fallback for an unlisted model. Update if your account's pricing differs.
+  # Optional per-token prices (USD per 1,000,000 tokens) kept so an "equivalent
+  # dollar cost" can be reported later; NOT used for the budget while free_tier.
+  # Tokens are the cost metric for the cost-accuracy curve on this provider.
   prices_per_mtok:
     # Gemini (approx, USD per 1M tokens) — update to your billed rates.
     "gemini-2.5-flash": {input: 0.30, output: 2.50}

@@ -31,15 +31,17 @@ class PriceConfigError(RuntimeError):
     """A live run was requested but one or more configured models lack a price."""
 
 
-def check_prices(provider: str, models: dict, prices: dict) -> None:
+def check_prices(provider: str, models: dict, prices: dict, free_tier: bool = False) -> None:
     """Refuse a live (non-mock) run when any configured model has a missing or
-    zero price. Mock / oracle_mock runs are free and always allowed. The check
-    reads the RAW price table (never the silent `default` fallback), so an
-    unpriced model is caught instead of being billed at a guess.
+    zero price. Mock / oracle_mock runs are free and always allowed, as are
+    free-tier providers (e.g. NVIDIA build), which have no dollar cost and are
+    bounded by a TOKEN budget instead. The check reads the RAW price table (never
+    the silent `default` fallback), so an unpriced model is caught, not billed at
+    a guess.
 
     Run `python scripts/fill_prices.py` to populate prices before going live.
     """
-    if provider in ("mock", "oracle_mock"):
+    if provider in ("mock", "oracle_mock") or free_tier:
         return
     bad = []
     for slug in sorted({v for v in models.values() if v and v != "mock"}):
@@ -115,8 +117,18 @@ def _replay(args, outdir, personas):
         oracle.configure(args.profile, seed=args.seed)
 
     from app import llm
-    budget = float(settings.experiment.budget_usd or 0.0)
+    llm.set_rate_limit(getattr(args, "rate_limit", None))   # shared across workers (no-op offline)
+    # Budget metric: dollars normally, TOKENS on a free-tier provider (NVIDIA).
+    free_tier = bool(settings.experiment.free_tier)
+    budget = float(settings.experiment.token_budget if free_tier else (settings.experiment.budget_usd or 0.0))
     llm.reset_cost()
+
+    def _over_budget():
+        return budget > 0 and (llm.spent_tokens() if free_tier else llm.spent_usd()) >= budget
+
+    def _spent_str():
+        return f"{llm.spent_tokens():,} tok >= {int(budget):,} tok" if free_tier \
+            else f"${llm.spent_usd():.4f} >= ${budget:.2f}"
 
     ckpt_path = outdir / "checkpoint.json"
     done = set(json.loads(ckpt_path.read_text()).get("personas", [])) if ckpt_path.exists() else set()
@@ -128,10 +140,10 @@ def _replay(args, outdir, personas):
         # Hard budget stop: cleanly halt BEFORE starting a persona once logged
         # spend reaches the ceiling. Completed personas are checkpointed, so the
         # run is resumable with --resume <run_id>.
-        if budget > 0 and llm.spent_usd() >= budget:
+        if _over_budget():
             args.budget_stopped = True
-            print(f"[run] BUDGET STOP: spent ${llm.spent_usd():.4f} >= ${budget:.2f}; "
-                  f"{len(done)} personas done, checkpoint written (resume with --resume {args.run_id}).")
+            print(f"[run] BUDGET STOP: spent {_spent_str()}; {len(done)} personas done, "
+                  f"checkpoint written (resume with --resume {args.run_id}).")
             break
         # Calibration labels "was this extraction correct", so truth includes ALL
         # facts the oracle was asked to produce (incl. superseded/ended values).
@@ -331,8 +343,10 @@ def main(argv=None):
     settings.db_path = pathlib.Path(tempfile.gettempdir()) / f"pcsg_exp_{args.run_id}.db"
     from app import db
     db.init_db()
-    # Price-guard: a live run must have a real price for every configured model.
-    check_prices(settings.llm.provider, settings.llm.models, settings.experiment.prices_per_mtok)
+    # Price-guard: a live run must have a real price for every configured model
+    # (skipped on free-tier providers, which are bounded by a token budget).
+    check_prices(settings.llm.provider, settings.llm.models, settings.experiment.prices_per_mtok,
+                 free_tier=settings.experiment.free_tier)
     from app import extraction, pipeline, salience
     (outdir / "config.json").write_text(json.dumps(_config_record(args, settings, extraction, pipeline, salience), indent=2), encoding="utf-8")
     print(f"[run] {args.run_id} mode={'dry-run' if args.dry_run else 'LIVE'} provider={settings.llm.provider} -> {outdir}")
@@ -345,7 +359,10 @@ def main(argv=None):
     from app import llm
     if getattr(args, "budget_stopped", False):
         (outdir / "budget_stop.json").write_text(json.dumps(
-            {"budget_usd": settings.experiment.budget_usd, "cost": llm.cost_summary(),
+            {"free_tier": settings.experiment.free_tier,
+             "budget_usd": settings.experiment.budget_usd,
+             "token_budget": settings.experiment.token_budget,
+             "spent_tokens": llm.spent_tokens(), "cost": llm.cost_summary(),
              "resumable": True, "run_id": args.run_id}, indent=2), encoding="utf-8")
         print(f"[run] stopped on budget; resume with --resume {args.run_id}. cost={llm.cost_summary()}")
         return 0
