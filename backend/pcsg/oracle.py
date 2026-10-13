@@ -128,6 +128,8 @@ def oracle_complete(messages: list[dict]) -> dict[str, Any]:
         text = json.dumps({"assertions": asserts, "relations": []})
     elif task == "QA_RESOLVE":
         text = user.split("User's reply:")[-1].strip() or "UNRESOLVED"
+    elif task == "QA_ANSWER":
+        text = _qa_answer(system, user)
     else:  # CHAT / read path
         text = _chat_reply(system, user)
 
@@ -145,6 +147,31 @@ def _chat_reply(system: str, user: str) -> str:
             return "I don't have that in what you've told me, so I don't know."
         return f"Based on what you've told me, {ans}."
     return "Got it — noted."
+
+
+def _qa_answer(system: str, user: str) -> str:
+    """QA answerer for the four-system comparison. Deterministic, context-driven:
+    a system answers correctly only if the gold (set via set_qa) is actually in
+    the CONTEXT it was given — so no_memory (no context) abstains, full_context
+    (all turns) usually has it, vector_rag/PCSG depend on retrieval/graph. When
+    the gold IS present, correctness still follows the profile's p_correct and the
+    reported confidence follows reported_conf, so answer-level ECE is miscalibrated
+    by construction. Returns JSON {answer, confidence}."""
+    prof = _STATE["profile"]
+    gold = _STATE.get("qa_answer")
+    ctx = system.split("CONTEXT:", 1)[-1].lower() if "CONTEXT:" in system else ""
+    # unanswerable question: the calibrated action is to abstain.
+    if gold in (None, "", "__unknown__"):
+        return json.dumps({"answer": "I don't know", "confidence": round(1 - prof.get("reported_conf", prof["p_correct"]), 4)})
+    key = ontology.normalize_value(str(gold)).split()
+    key0 = key[0] if key else ""
+    if not key0 or key0 not in ctx:
+        return json.dumps({"answer": "I don't know", "confidence": 0.2})
+    rng = _rng("qa_answer", gold, ctx[:40])
+    correct = rng.random() < prof["p_correct"]
+    conf = prof["p_correct"] if prof.get("perfect") else prof["reported_conf"]
+    ans = str(gold) if correct else _wrong_value(str(gold), rng)
+    return json.dumps({"answer": ans, "confidence": round(conf, 4)})
 
 
 def _judge(user: str) -> str:

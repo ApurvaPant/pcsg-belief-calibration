@@ -1,0 +1,48 @@
+[
+  {
+    "question_id": "ku_demo_1",
+    "question_type": "knowledge-update",
+    "question": "What car does the user currently drive?",
+    "answer": "Tesla Model 3",
+    "question_date": "2023/05/01 (Mon) 10:00",
+    "is_abstention": false,
+    "sessions": [
+      {"date": "2023/01/10 (Tue) 09:00", "turns": [
+        {"role": "user", "content": "I drive a Honda Civic."},
+        {"role": "assistant", "content": "Nice, how long have you had it?"}
+      ]},
+      {"role_note": "later update", "date": "2023/04/20 (Thu) 18:00", "turns": [
+        {"role": "user", "content": "I just bought a Tesla Model 3 and sold the Civic."},
+        {"role": "assistant", "content": "Congrats on the Tesla!"}
+      ]}
+    ]
+  },
+  {
+    "question_id": "ssp_demo_1",
+    "question_type": "single-session-preference",
+    "question": "What kind of coffee does the user prefer?",
+    "answer": "oat milk latte",
+    "question_date": "2023/05/02 (Tue) 08:00",
+    "is_abstention": false,
+    "sessions": [
+      {"date": "2023/03/15 (Wed) 07:30", "turns": [
+        {"role": "user", "content": "I always order an oat milk latte in the mornings."},
+        {"role": "assistant", "content": "Sounds great."}
+      ]}
+    ]
+  },
+  {
+    "question_id": "ku_demo_abs",
+    "question_type": "knowledge-update",
+    "question": "What is the user's blood type?",
+    "answer": "The information provided is not enough. ",
+    "question_date": "2023/05/03 (Wed) 12:00",
+    "is_abstention": true,
+    "sessions": [
+      {"date": "2023/02/01 (Wed) 11:00", "turns": [
+        {"role": "user", "content": "I went hiking last weekend, it was great."},
+        {"role": "assistant", "content": "Sounds fun!"}
+      ]}
+    ]
+  }
+]

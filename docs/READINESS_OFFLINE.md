@@ -1,5 +1,55 @@
-# READINESS_OFFLINE — live-experiment pre-flight (offline session, 2026-10-13)
+# READINESS_OFFLINE — live-experiment pre-flight (offline sessions, 2026-10-13)
 
+**VERDICT: READY FOR LIVE (pending provider + prices only).** The build session
+cleared every offline blocker: the four baseline systems (T3), the LongMemEval
+T5 runner (Tier 3), per-persona/-question parallelism infra, per-call telemetry,
+and the self-consistency coverage bug are all built, wired and tested. The only
+things left for the live session are **provider/model reconciliation (Blocker 1)**
+and **live prices (Blocker 6)** — both deferred to that session by instruction.
+No paid/live LLM call was made in either offline session; `PCSG_OFFLINE=1` throughout.
+
+---
+
+## BUILD SESSION UPDATE — 2026-10-13 (tag `pcsg-v2-build-complete`)
+
+### Blocker status (from the readiness check)
+| # | Blocker | Status |
+|---|---|---|
+| 1 | Provider mismatch (gemini vs OpenRouter) | **DEFERRED to live session** (model-string change, out of scope) |
+| 2 | Four baseline answerers (T3) | **CLEARED** — `pcsg/baselines.py` (no_memory/full_context/vector_rag/pcsg), one shared answer template + `QA_ANSWER` task, wired into the QA stage with per-system metrics (`qa_systems.json`, `baselines.json`) + per-system F2 sweeps |
+| 3 | No per-persona/-question parallel runner | **CLEARED (infra)** — thread-local DB override (`db.set_db_path`) gives each worker its own SQLite file; LongMemEval runner runs per-question fresh DBs via a `ThreadPoolExecutor` (serialised under the deterministic oracle, parallel on live) |
+| 4 | Per-call telemetry | **CLEARED** — `complete()` surfaces served model + a cost meter (`llm.spent_usd`); `run.model_mismatches` flags served≠requested |
+| 5 | LongMemEval T5 runner (Tier 3) | **CLEARED** — `pcsg/longmemeval_run.py`; dataset pinned to commit `98d7416c24c7…`, 108 selected (ku 78 + ssp 30, 6 `_abs`); chronological haystack replay, 4 systems, per-type/abstention/answer-ECE metrics, resumable |
+| 6 | Prices unfilled | **DEFERRED to live session** (`fill_prices.py` runs in `go_live.sh`) |
+| A | self_consistency null (warning) | **CLEARED** — entity-subject path propagated the signal; `self_consistency_reason` column means no silent null; 100% coverage verified |
+
+### STEP 4 dry-run PASS/FAIL (oracle_mock, n=15 split-spanning, 4 systems + 3 LongMemEval, `results/dryrun/`)
+`13/13 PASS.` A split-spanning sample (not pure-dev) is used because recalibration needs fit+test personas; it includes the dev split.
+
+| Check | Result | Actual |
+|---|---|---|
+| every stage produced output | PASS | 10 artefacts |
+| labels on every assertion | PASS | 270/270 |
+| three signals in [0,1], no NaN | PASS | **0/270 bad (was 30/270)** |
+| **signal coverage 100%** | PASS | verbalized 1.0 · self_consistency 1.0 · evidence 1.0 · silent nulls 0 |
+| recalibration fit/test, no leakage | PASS | n_fit=108, n_test=108, leak=0 |
+| metrics present (ECE 10u+15q, MCE, Brier, NLL, AUROC, bootstrap CI) | PASS | all per recalibrator |
+| four-system QA metrics | PASS | no_memory/full_context/vector_rag/pcsg; AURC 0.82/0.33/0.22/0.31 |
+| LongMemEval T5 present | PASS | n=3 (knowledge-update), 1 abstention, 4 systems |
+| QA answered + judged | PASS | 66 questions × 4 systems |
+| cost recorded | PASS | 3492 calls, $0.5959 |
+| confidence_raw immutable / signals append-only | PASS | 270 rows, 0 out-of-range |
+| dashboard builds + validates | PASS | `schema.validate == []` |
+
+Full suite: **140 passing** (mock). Embedding: real `all-MiniLM-L6-v2` loads; deterministic fallback for offline tests.
+
+### Remaining for the LIVE session (only these)
+- **Blocker 1 — provider/model.** Choose the live provider; set `backend/.env` + reconcile pipeline slugs if moving off gemini. Governs whether `openai/gpt-4o` (LongMemEval judge) resolves, and paste the official per-type LongMemEval judge prompts verbatim into `pcsg/longmemeval_run.py` from `longmemeval/src/evaluation/evaluate_qa.py` (left as a source pointer this offline session).
+- **Blocker 6 — prices.** `scripts/go_live.sh` runs `fill_prices.py`; the price-guard refuses live until every configured model is priced.
+
+---
+
+### (Original readiness-check verdict, 2026-10-13 — superseded by the build update above)
 **VERDICT: READY WITH WARNINGS.** The offline pipeline (offline guard, config
 audit, price-guard, fault-injection mock, budget hard-stop, PCSG
 confidence-calibration + cost dry run) is verified and green. **LIVE LAUNCH IS

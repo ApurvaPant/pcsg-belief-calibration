@@ -111,6 +111,22 @@ def main():
         t4 = _pending("T4 — Paraphrase consistency", "metamorphic not run")
     (TAB / "T4.md").write_text(_banner(t4, wm) + "\n", encoding="utf-8")
 
+    # T5 LongMemEval (Tier 3) — latest REAL run only (results/runs); dryrun stays
+    # isolated and never mixes into the paper's final tables.
+    lme_files = sorted((RES / "runs").glob("*/longmemeval.json"), key=lambda p: p.stat().st_mtime) \
+        if (RES / "runs").exists() else []
+    if lme_files:
+        lme = _load(lme_files[-1]) or {}
+        m = lme.get("metrics", {})
+        rows = [[s, mm.get("accuracy_overall"), mm.get("abstention_accuracy"),
+                 mm.get("answer_ece"), mm.get("tokens_per_q")] for s, mm in m.items()]
+        t5 = (f"# T5 — LongMemEval (rev {str(lme.get('revision'))[:12]}, "
+              f"n={lme.get('n_questions')}, types={lme.get('count_by_type')})\n\n" +
+              _md(rows, ["system", "accuracy", "abstention_acc", "answer_ECE", "tokens/Q"]))
+    else:
+        t5 = _pending("T5 — LongMemEval", "LongMemEval runner not run (needs --lme / live)")
+    (TAB / "T5.md").write_text(_banner(t5, wm) + "\n", encoding="utf-8")
+
     # F1 reliability (per signal) from dashboard
     for sig, s in dash.get("calibration", {}).get("signals", {}).items():
         with open(FIG / f"F1_{sig}.csv", "w", newline="", encoding="utf-8") as fh:

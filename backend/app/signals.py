@@ -66,21 +66,46 @@ def compute_self_consistency(extract_fn, message, context, kept, k: int = 3) -> 
 
 
 def write_signals(conn, node_id, message_id, assertion) -> None:
-    """Append one confidence_signals row for a stored assertion."""
+    """Append one confidence_signals row for a stored assertion.
+
+    self_consistency is never a *silent* null: whenever it is absent we record a
+    reason code (`self_consistency_reason`) so T2 can account for coverage. The
+    reason is `sc_disabled` when resampling is off, or `sc_unattached` if an
+    assertion reached persistence without a computed score (a bug to chase, not
+    to hide)."""
     try:
         verbalized = max(0.0, min(1.0, float(assertion.get("confidence", 0.7))))
     except (TypeError, ValueError):
         verbalized = 0.7
     expl = str(assertion.get("explicitness", "explicit"))
     sc = assertion.get("self_consistency")
+    reason = None
+    if sc is None:
+        reason = "sc_disabled" if not self_consistency_enabled() else "sc_unattached"
     intensity = assertion.get("intensity")
     conn.execute(
         "INSERT INTO confidence_signals (id, node_id, message_id, dimension, key, value, "
-        "explicitness, verbalized, self_consistency, evidence, intensity, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "explicitness, verbalized, self_consistency, self_consistency_reason, evidence, "
+        "intensity, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (new_id("sig"), node_id, message_id, assertion.get("dimension"), assertion.get("key"),
          assertion.get("value"), expl, verbalized,
-         float(sc) if sc is not None else None,
+         float(sc) if sc is not None else None, reason,
          evidence_signal(verbalized, expl),
          float(intensity) if intensity is not None else None, now_iso()),
     )
+
+
+def coverage(conn) -> dict:
+    """Per-signal coverage over confidence_signals: fraction of rows with a
+    non-null value. verbalized/evidence are always present; self_consistency is
+    present whenever resampling was enabled and the score attached."""
+    rows = conn.execute(
+        "SELECT verbalized, self_consistency, evidence FROM confidence_signals").fetchall()
+    n = len(rows) or 1
+    def frac(col):
+        return round(sum(1 for r in rows if r[col] is not None) / n, 4)
+    return {"n": len(rows),
+            "verbalized": frac("verbalized"),
+            "self_consistency": frac("self_consistency"),
+            "evidence": frac("evidence")}

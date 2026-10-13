@@ -189,6 +189,26 @@ def _account(result: dict[str, Any], model: str) -> None:
         pass
 
 
+# ── Global rate limiter ───────────────────────────────────────────────────── #
+# Enforces at most `rate_limit_per_min` real completions, spacing calls evenly.
+# A no-op for mock / oracle_mock (and whenever the interval is 0), so offline
+# runs and tests never sleep. The experiment/LongMemEval runners call set_rate_limit().
+_RATE = {"min_interval": 0.0, "last": 0.0}
+
+
+def set_rate_limit(per_min: float | int | None) -> None:
+    _RATE["min_interval"] = (60.0 / float(per_min)) if per_min and float(per_min) > 0 else 0.0
+
+
+def _rate_gate() -> None:
+    if _RATE["min_interval"] <= 0 or settings.llm.provider in _OFFLINE_PROVIDERS:
+        return
+    dt = time.perf_counter() - _RATE["last"]
+    if dt < _RATE["min_interval"]:
+        time.sleep(_RATE["min_interval"] - dt)
+    _RATE["last"] = time.perf_counter()
+
+
 def set_fault_rates(rates: dict[str, float] | None = None, seed: int | None = None) -> None:
     """Arm per-call fault probabilities (clear with rates=None). Seed the RNG for
     deterministic tests; this RNG also drives backoff jitter."""
@@ -236,6 +256,7 @@ def complete(
     max_tokens = settings.llm.max_tokens if max_tokens is None else max_tokens
 
     _offline_guard(settings.llm.provider, "complete()")
+    _rate_gate()
     attempt = 0
     while True:
         try:
@@ -398,6 +419,8 @@ def _mock_complete(messages: list[Message]) -> dict[str, Any]:
         text = json.dumps({"assertions": mock_extract(user), "relations": mock_relations(user)})
     elif task == "QA_RESOLVE":
         text = mock_qa_resolve(user)
+    elif task == "QA_ANSWER":
+        text = _mock_qa_answer(system)
     else:
         text = _mock_chat_reply(user)
 
@@ -440,6 +463,16 @@ def mock_qa_resolve(prompt: str) -> str:
     if "how old" in ql or "your age" in ql:
         return f"i am {body}"
     return f"i {body}"
+
+
+def _mock_qa_answer(system: str) -> str:
+    """Deterministic QA answerer stand-in: abstain when no context was supplied,
+    otherwise echo a short answer. Returns JSON {answer, confidence}. (Tests that
+    need correctness differentiation use oracle_mock with set_qa.)"""
+    ctx = system.split("CONTEXT:", 1)[-1].strip() if "CONTEXT:" in system else ""
+    if not ctx or ctx.lower().startswith("(no context"):
+        return json.dumps({"answer": "I don't know", "confidence": 0.2})
+    return json.dumps({"answer": ctx.split("\n")[0][:80], "confidence": 0.7})
 
 
 def _mock_embed(text: str, dim: int = 64) -> list[float]:

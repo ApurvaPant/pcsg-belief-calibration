@@ -5,6 +5,44 @@ nothing here is aspirational.
 
 ---
 
+## 2026-10-13 — Offline build: baselines (T3) + LongMemEval (T5) + fixes → pcsg-v2-build-complete
+
+Cleared every offline blocker from the readiness check (`PCSG_OFFLINE=1`, mock/oracle_mock only).
+
+- **STEP 1 — self-consistency coverage bug.** The entity-subject path in
+  `update.apply_assertion` (relationship facts with attributes) rebuilt a minimal
+  assertion and dropped the attached `self_consistency`, leaving a silent null on
+  ~11% of assertions. Fixed: propagate the signal fields; added a
+  `self_consistency_reason` column (`sc_disabled`/`sc_unattached`) so a null is
+  never silent, and `signals.coverage()`. 100% coverage of all three signals on an
+  oracle_mock replay (`tests/test_self_consistency_coverage.py`). Recorded in
+  EXTRACTOR_VERSION.md; **prompt_version unchanged**.
+- **STEP 2 — four baseline answerers (T3).** `pcsg/baselines.py`: no_memory,
+  full_context, vector_rag, pcsg — one shared answer template + a new `QA_ANSWER`
+  task (mock + oracle). `pcsg/embedding.py` (real all-MiniLM-L6-v2, installed;
+  deterministic offline fallback). `pcsg/analysis/qa_metrics.py` (accuracy,
+  selective accuracy, coverage, fabrication, AURC, answer-ECE, tokens/Q). Wired all
+  four into the QA stage → `qa_systems.json` + `baselines.json`; per-system F2
+  sweeps. MCE + NLL added to calibration. Tests: `tests/test_baselines.py`.
+- **STEP 3 — LongMemEval runner (T5).** Pinned dataset to commit
+  `98d7416c24c778c2fee6e6f3006e7a073259d48f`, oracle file only; selects
+  knowledge-update (78) + single-session-preference (30) + their `_abs` (6) = 108,
+  excludes single-session-assistant, never reads `_s`/`_m`. `pcsg/longmemeval_run.py`:
+  per-question fresh DB, chronological haystack replay (user→pipeline,
+  assistant→context), all four systems, per-type/overall/abstention/answer-ECE
+  metrics, resumable by question id, parallel via thread-local DB (serialised under
+  the deterministic oracle). Official per-type judge prompts left as a source
+  pointer (`evaluate_qa.py`) to paste verbatim before live. Tests:
+  `tests/test_longmemeval.py` (3 questions end-to-end + resume).
+- **Infra (Blockers 3/4).** `db.set_db_path` thread-local DB override; `llm`
+  served-model field + cost meter + global rate limiter + `run.model_mismatches`.
+- **STEP 4 — dry-run re-run.** oracle_mock, n=15 split-spanning, 4 systems + 3 real
+  LongMemEval questions → `results/dryrun/`. **13/13 checks PASS** incl. 100% signal
+  coverage. Full suite **140 passing**.
+
+Remaining for live: provider/model reconciliation (Blocker 1) + prices (Blocker 6).
+Tag: `pcsg-v2-build-complete`.
+
 ## 2026-10-13 — Offline live-readiness pre-flight (no paid calls) + pcsg-v2-offline-ready
 
 Verified everything that does not need paid API calls; `PCSG_OFFLINE=1` all session.

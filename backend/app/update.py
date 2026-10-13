@@ -629,10 +629,19 @@ def apply_assertion(
     if isinstance(subject, dict) and assertion.get("attributes"):
         ent = _resolve_target(conn, user_id, subject)
         if ent is None:
+            # Carry the signal-bearing fields onto the entity node's assertion so
+            # its confidence_signals row keeps verbalized / self-consistency /
+            # evidence (bug: these were dropped, leaving self_consistency null on
+            # relationship/ADD — see EXTRACTOR_VERSION.md 2026-10-13).
             ent_assertion = {
                 "dimension": subject["dimension"], "key": subject["key"],
                 "value": subject.get("value") or subject["key"],
                 "confidence": assertion.get("confidence", 0.7),
+                "operation": assertion.get("operation", "ADD"),
+                "explicitness": assertion.get("explicitness", "explicit"),
+                "self_consistency": assertion.get("self_consistency"),
+                "intensity": assertion.get("intensity"),
+                "subject": assertion.get("subject"),
             }
             ent_id = _create_node(conn, user_id, ent_assertion, model=model, message_id=message_id)
             _add_evidence(conn, ent_id, session_id, message_id, quote)

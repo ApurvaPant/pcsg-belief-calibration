@@ -15,14 +15,15 @@
 ## Datasets
 - personas: 100 × ~25 turns, split 40 fit / 40 test / 20 dev (by persona)
 - generator self-error rate: __%  (static, `generator_self_check`)
-- LongMemEval knowledge-update: __ /78 (pinned revision in pcsg/longmemeval.py)
+- LongMemEval included: knowledge-update __/78 + single-session-preference __/30 (+ _abs); single-session-assistant excluded; _S/_M never selectable. Pinned revision `98d7416c24c7…` (`pcsg/longmemeval.py`).
 - ontology coverage (dimensions exercised): __
 
 ## Headline results (with 95% CIs)
 - **T1 Extraction** (dev/test): pass, P/R/F1, false-write, END-precision — `results/tables/T1.md`
 - **T2 Calibration**: ECE/Brier/AUROC per signal × {raw,temperature,platt,isotonic}, CIs — `results/tables/T2.md`, `results/figures/F1_*.png`
-- **T3 Baselines**: no-memory / full-context / RAG (+Mem0 optional) — accuracy, fabrication, tokens/Q — `results/tables/T3.md`
+- **T3 Baselines**: no_memory / full_context / vector_rag / pcsg (+Mem0 optional) — accuracy, selective accuracy, fabrication, coverage, AURC, answer-ECE, tokens/Q — `results/tables/T3.md` (`qa_systems.json`)
 - **T4 Paraphrase consistency**: strict + value-level per family — `results/tables/T4.md`
+- **T5 LongMemEval** (Tier 3): accuracy per type + overall, abstention accuracy on _abs, answer-level ECE, tokens/Q — all four systems — `results/tables/T5.md` (`longmemeval.json`)
 - **F2 Abstention**: coverage/accuracy/AURC/fabrication vs τ (raw vs calibrated) — `results/figures/F2.csv`
 - **F3 Cost curve**: accuracy-vs-cost Pareto over tier-1 × write_τ — `results/figures/F3.csv`
 

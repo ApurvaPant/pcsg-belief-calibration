@@ -189,39 +189,101 @@ def _collect_signals(personas):
 
 
 def _qa_and_abstention(args, outdir, personas):
-    from app import pipeline, llm
-    from app.db import get_conn, now_iso
-    from app.utils import new_id
-    from pcsg import oracle, personaqa
-    from tests.robustness.runner import _make_judge  # reuse the judge wiring
-    import app.config as cfg
+    """Tier-2 QA across ALL FOUR systems (no_memory, full_context, vector_rag,
+    pcsg) on the SAME questions, SAME answer template, SAME judge, SAME token
+    logging. Per-system metrics -> qa_systems.json; per-system risk-coverage
+    sweeps -> abstention.json (F2 shows all four)."""
+    from app.db import get_conn
+    from pcsg import oracle, personaqa, baselines
+    from pcsg.analysis import qa_metrics
+    from tests.robustness.runner import _make_judge
     judge = (lambda rubric, reply: ("PASS" in oracle._judge(f"RUBRIC:{rubric} REPLY:{reply}"), "oracle")) \
         if args.dry_run else _make_judge("real")
-    recs = []
-    # Normally QA runs on the held-out TEST split; when the run is focused on a
-    # single split (e.g. a --split dev dry run), QA runs on the selected personas
-    # so the chain is exercised end-to-end rather than left empty.
+
+    # The persona's graph was built during replay under a user labelled p.name.
+    with get_conn() as c:
+        label_to_uid = {r["label"]: r["id"] for r in c.execute("SELECT id, label FROM users")}
+
     test_personas = personas if getattr(args, "split", None) else [p for p in personas if p.split == "test"]
+    records = {s: [] for s in baselines.SYSTEMS}
+    n_questions = 0
     for p in test_personas:
-        uid, sid = new_id("user"), new_id("sess")
-        with get_conn() as c:
-            c.execute("INSERT INTO users(id,label,created_at)VALUES(?,?,?)", (uid, "qa_"+p.name, now_iso()))
-            c.execute("INSERT INTO sessions(id,user_id,title,created_at)VALUES(?,?,?,?)", (sid, uid, "qa", now_iso()))
+        uid = label_to_uid.get(p.name)
+        history = [{"role": "user", "text": t.text, "turn": i} for i, t in enumerate(p.turns)]
         for q in personaqa.make_qa(p):
+            n_questions += 1
+            unknown = q["gold"] == "__unknown__"
             if args.dry_run:
-                oracle.set_qa(None if q["gold"] == "__unknown__" else q["gold"])
-            r = pipeline.process_turn(q["question"], sid, uid)
-            ok, _ = judge(f"answer conveys: {q['gold']}", r["reply"])
-            # confidence proxy for abstention sweep: use reply presence / a stored signal
-            conf = 0.9 if q["gold"] != "__unknown__" else 0.2
-            recs.append({"persona": p.pid, "kind": q["kind"], "confidence": conf,
-                         "correct": 1 if ok else 0, "is_unknown": q["gold"] == "__unknown__"})
-    from pcsg.analysis import abstention
-    sweep = abstention.sweep(recs)
+                oracle.set_qa(None if unknown else q["gold"])
+            with get_conn() as c:
+                answers = {
+                    "no_memory": baselines.answer_no_memory(q["question"]),
+                    "full_context": baselines.answer_full_context(q["question"], history),
+                    "vector_rag": baselines.answer_vector_rag(q["question"], history, k=5),
+                    "pcsg": (baselines.answer_pcsg(q["question"], c, uid) if uid else
+                             {"system": "pcsg", "answer": "I don't know", "confidence": 0.2,
+                              "abstained": True, "tokens_in": 0, "tokens_out": 0}),
+                }
+            for s, a in answers.items():
+                if unknown:
+                    correct = 1 if a["abstained"] else 0           # correct action = abstain
+                else:
+                    ok, _ = judge(f"answer conveys: {q['gold']}", a["answer"])
+                    correct = 1 if (ok and not a["abstained"]) else 0
+                records[s].append({
+                    "system": s, "persona": p.pid, "kind": q["kind"],
+                    "confidence": a["confidence"], "correct": correct,
+                    "abstained": 1 if a["abstained"] else 0,
+                    "is_unknown": 1 if unknown else 0,
+                    "tokens": a.get("tokens_in", 0) + a.get("tokens_out", 0),
+                })
+
+    per_system = qa_metrics.summarize_all(records)
+    (outdir / "qa_systems.json").write_text(json.dumps(
+        {"watermark": args.watermark, "n_questions": n_questions, "systems": per_system}, indent=2),
+        encoding="utf-8")
+    # baselines.json (T3): one row per system for the dashboard + make_figures.
+    (outdir / "baselines.json").write_text(json.dumps(
+        {s: {"accuracy": per_system[s]["accuracy"],
+             "fabrication": per_system[s]["fabrication_rate"],
+             "tokens_per_q": per_system[s]["tokens_per_q"],
+             "selective_accuracy": per_system[s]["selective_accuracy"],
+             "coverage": per_system[s]["coverage"], "aurc": per_system[s]["aurc"],
+             "answer_ece": per_system[s]["answer_ece"]} for s in baselines.SYSTEMS}, indent=2),
+        encoding="utf-8")
+    # abstention.json: per-system sweeps (F2 plots all four) + PCSG headline.
     (outdir / "abstention.json").write_text(json.dumps(
-        {"watermark": args.watermark, "sweep": {"calibrated": sweep},
-         "aurc": abstention.aurc(recs), "n": len(recs)}, indent=2), encoding="utf-8")
-    return recs
+        {"watermark": args.watermark,
+         "sweep": {s: per_system[s]["sweep"] for s in baselines.SYSTEMS},
+         "aurc": {s: per_system[s]["aurc"] for s in baselines.SYSTEMS},
+         "n": n_questions}, indent=2), encoding="utf-8")
+    return records
+
+
+def _longmemeval_stage(args, outdir):
+    """Run N LongMemEval questions (T5) through the four systems. Prefers the real
+    cached oracle set (pinned revision); falls back to the mock fixture if the
+    dataset is unavailable offline. Includes >=1 abstention (_abs) when possible."""
+    from pcsg import longmemeval, longmemeval_run
+    n = int(args.lme)
+    try:
+        data = longmemeval.load()
+        questions, src = data["questions"], "dataset"
+    except Exception as e:  # noqa: BLE001 — offline / no cache: fall back to the fixture
+        print(f"[run] LongMemEval dataset unavailable ({type(e).__name__}); using mock fixture.")
+        fix = ROOT / "tests" / "fixtures" / "longmemeval_mini.json"
+        questions, src = json.loads(fix.read_text(encoding="utf-8")), f"fixture ({type(e).__name__})"
+    abst = [q for q in questions if q.get("is_abstention")]
+    rest = [q for q in questions if not q.get("is_abstention")]
+    chosen = ((abst[:1] + rest[: max(0, n - 1)]) if abst else rest[:n])[:n] or questions[:n]
+    res = longmemeval_run.run(chosen, outdir / "longmemeval", dry_run=args.dry_run,
+                              workers=1, rate_limit_per_min=getattr(args, "rate_limit", None),
+                              watermark=args.watermark)
+    res["revision"] = longmemeval.REVISION
+    (outdir / "longmemeval.json").write_text(json.dumps(res, indent=2), encoding="utf-8")
+    print(f"[run] LongMemEval T5: {res['n_questions']} q from {src}; by_type={res['count_by_type']}, "
+          f"n_abstention={res['n_abstention']}")
+    return res
 
 
 def _failures():
@@ -242,6 +304,7 @@ def main(argv=None):
     ap.add_argument("--n", type=int, default=0, help="override n_personas (0=use spec); dry-run aid")
     ap.add_argument("--split", default=None, choices=["fit", "test", "dev"], help="restrict to one split; dry-run aid")
     ap.add_argument("--outdir", default="runs", help="results/<outdir>/<run_id> (e.g. dryrun)")
+    ap.add_argument("--lme", type=int, default=0, help="also run N LongMemEval questions (T5); 0=skip")
     args = ap.parse_args(argv)
     args.dry_run = args.dry_run or not args.live
 
@@ -251,6 +314,7 @@ def main(argv=None):
     args.seed = int(spec.get("seed", 2026))
     args.n_personas = args.n if getattr(args, "n", 0) else int(spec.get("n_personas", 100))
     args.profile = spec.get("oracle_profile", "overconfident")
+    args.rate_limit = spec.get("rate_limit_per_min")
     args.watermark = "DRY RUN — SYNTHETIC" if args.dry_run else None
 
     # provider
@@ -298,6 +362,10 @@ def main(argv=None):
 
     # STAGE: QA + abstention
     _qa_and_abstention(args, outdir, personas)
+
+    # STAGE: LongMemEval (T5, Tier 3) — N questions through the four systems.
+    if getattr(args, "lme", 0):
+        _longmemeval_stage(args, outdir)
 
     # STAGE: cost replay (F3) from the persona logs
     logs = []

@@ -10,7 +10,20 @@ diffs the live config against this file; any mismatch is a blocker.
   the config at creation by construction; its purpose is to catch *future* drift.
 
 ## prompt_version
-`2.0-frame-fill`  (`backend/app/extraction.py:PROMPT_VERSION`)
+`2.0-frame-fill`  (`backend/app/extraction.py:PROMPT_VERSION`) — unchanged.
+
+## Bug fixes (behaviour-affecting, no prompt change)
+- **2026-10-13 — self_consistency null on entity-subject assertions.** The
+  entity-subject path in `update.apply_assertion` (relationship facts with
+  attributes, e.g. "my cat's name is mochi", "my sister is a doctor") rebuilt a
+  minimal assertion dict for the entity node and dropped the attached
+  `self_consistency` (and `explicitness`/`intensity`), so those rows stored a
+  silent null. Fix: propagate the signal-bearing fields onto the entity
+  assertion; `signals.write_signals` now also records a `self_consistency_reason`
+  (`sc_disabled` / `sc_unattached`) so a null is never silent. Coverage of all
+  three signals is 100% on an oracle_mock replay with resampling enabled
+  (`tests/test_self_consistency_coverage.py`). **prompt_version unchanged** (no
+  prompt was modified).
 
 ## Role → model (provider: `gemini`, verified in code)
 

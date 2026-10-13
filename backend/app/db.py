@@ -12,6 +12,7 @@ with `previous_node_id` pointing back at it.
 from __future__ import annotations
 
 import sqlite3
+import threading as _threading
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Iterator
@@ -197,6 +198,7 @@ CREATE TABLE IF NOT EXISTS confidence_signals (
     explicitness     TEXT,
     verbalized       REAL,          -- extractor confidence (0-1)
     self_consistency REAL,          -- agreement over k resamples, null if not computed
+    self_consistency_reason TEXT,   -- why self_consistency is null (never a silent null)
     evidence         REAL,          -- Noisy-OR of verbalized with an explicitness prior
     intensity        REAL,          -- null unless an intensity was extracted
     created_at       TEXT NOT NULL
@@ -231,8 +233,23 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# Per-thread DB override: a worker can point its whole pipeline at its OWN
+# SQLite file so personas / LongMemEval questions run in parallel with no shared
+# writes. Falls back to the global settings.db_path when unset for the thread.
+_LOCAL = _threading.local()
+
+
+def set_db_path(path) -> None:
+    """Route this thread's connections to `path` (None clears the override)."""
+    _LOCAL.db_path = path
+
+
+def active_db_path():
+    return getattr(_LOCAL, "db_path", None) or settings.db_path
+
+
 def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(settings.db_path)
+    conn = sqlite3.connect(active_db_path())
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
@@ -303,6 +320,11 @@ def _migrate(conn: sqlite3.Connection) -> None:
     xlog_cols = {r["name"] for r in conn.execute("PRAGMA table_info(extraction_log)")}
     if xlog_cols and "status" not in xlog_cols:
         conn.execute("ALTER TABLE extraction_log ADD COLUMN status TEXT DEFAULT 'ok'")
+
+    # 2026-10-13: confidence_signals records WHY self_consistency is null.
+    sig_cols = {r["name"] for r in conn.execute("PRAGMA table_info(confidence_signals)")}
+    if sig_cols and "self_consistency_reason" not in sig_cols:
+        conn.execute("ALTER TABLE confidence_signals ADD COLUMN self_consistency_reason TEXT")
 
     # fix step 1: messages store the Q-A-resolved rewrite alongside the original.
     msg_cols = {r["name"] for r in conn.execute("PRAGMA table_info(messages)")}
