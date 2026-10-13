@@ -27,6 +27,43 @@ RESULTS = REPO / "results"                                  # make_figures reads
 def _sha256(s): return hashlib.sha256((s or "").encode()).hexdigest()[:16]
 
 
+class PriceConfigError(RuntimeError):
+    """A live run was requested but one or more configured models lack a price."""
+
+
+def check_prices(provider: str, models: dict, prices: dict) -> None:
+    """Refuse a live (non-mock) run when any configured model has a missing or
+    zero price. Mock / oracle_mock runs are free and always allowed. The check
+    reads the RAW price table (never the silent `default` fallback), so an
+    unpriced model is caught instead of being billed at a guess.
+
+    Run `python scripts/fill_prices.py` to populate prices before going live.
+    """
+    if provider in ("mock", "oracle_mock"):
+        return
+    bad = []
+    for slug in sorted({v for v in models.values() if v and v != "mock"}):
+        p = prices.get(slug)
+        if not p or float(p.get("input", 0) or 0) <= 0 or float(p.get("output", 0) or 0) <= 0:
+            bad.append(slug)
+    if bad:
+        raise PriceConfigError(
+            "Refusing a live run: missing or zero price for "
+            f"{bad}. Run `python scripts/fill_prices.py` to populate "
+            "experiment.prices_per_mtok in config.yaml, then retry."
+        )
+
+
+def model_mismatches(call_log: list[dict]) -> list[dict]:
+    """Report/metrics guard: flag any call whose SERVED model differs from the
+    REQUESTED model (a provider silently substituting a model would corrupt the
+    experiment's model attribution). `call_log` rows carry model_requested +
+    model_served (llm.complete surfaces the served model in result['model'])."""
+    return [c for c in call_log
+            if c.get("model_served") and c.get("model_requested")
+            and c["model_served"] != c["model_requested"]]
+
+
 def _git_sha():
     try:
         return subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True,
@@ -53,8 +90,20 @@ def _config_record(args, settings, extraction, pipeline, salience):
     }
 
 
-def _replay(args, outdir):
-    """Gate-open replay of every persona; collect stored signals + logs. Resumable."""
+def select_personas(seed, n_personas, split=None, limit=0):
+    """Deterministic persona set for a run, optionally filtered to one split and
+    capped at `limit` (0 = all). Used by both replay and QA so they agree."""
+    from pcsg import datagen
+    personas = datagen.generate_personas(seed, n_personas)
+    if split:
+        personas = [p for p in personas if p.split == split]
+    if limit and limit > 0:
+        personas = personas[:limit]
+    return personas
+
+
+def _replay(args, outdir, personas):
+    """Gate-open replay of the given personas; collect stored signals + logs. Resumable."""
     from app.config import settings
     settings.pipeline.salience_threshold = 0.0        # gate FULLY open
     os.environ["PCSG_SELF_CONSISTENCY"] = "1"
@@ -65,13 +114,25 @@ def _replay(args, outdir):
     if args.dry_run:
         oracle.configure(args.profile, seed=args.seed)
 
-    personas = datagen.generate_personas(args.seed, args.n_personas)
+    from app import llm
+    budget = float(settings.experiment.budget_usd or 0.0)
+    llm.reset_cost()
+
     ckpt_path = outdir / "checkpoint.json"
     done = set(json.loads(ckpt_path.read_text()).get("personas", [])) if ckpt_path.exists() else set()
     logs_path = outdir / "persona_run.jsonl"
     logf = open(logs_path, "a", encoding="utf-8")
     truth = {}
+    args.budget_stopped = False
     for p in personas:
+        # Hard budget stop: cleanly halt BEFORE starting a persona once logged
+        # spend reaches the ceiling. Completed personas are checkpointed, so the
+        # run is resumable with --resume <run_id>.
+        if budget > 0 and llm.spent_usd() >= budget:
+            args.budget_stopped = True
+            print(f"[run] BUDGET STOP: spent ${llm.spent_usd():.4f} >= ${budget:.2f}; "
+                  f"{len(done)} personas done, checkpoint written (resume with --resume {args.run_id}).")
+            break
         # Calibration labels "was this extraction correct", so truth includes ALL
         # facts the oracle was asked to produce (incl. superseded/ended values).
         truth[p.pid] = [{"id": k, "dimension": f.dimension, "value": f.value}
@@ -137,7 +198,10 @@ def _qa_and_abstention(args, outdir, personas):
     judge = (lambda rubric, reply: ("PASS" in oracle._judge(f"RUBRIC:{rubric} REPLY:{reply}"), "oracle")) \
         if args.dry_run else _make_judge("real")
     recs = []
-    test_personas = [p for p in personas if p.split == "test"]
+    # Normally QA runs on the held-out TEST split; when the run is focused on a
+    # single split (e.g. a --split dev dry run), QA runs on the selected personas
+    # so the chain is exercised end-to-end rather than left empty.
+    test_personas = personas if getattr(args, "split", None) else [p for p in personas if p.split == "test"]
     for p in test_personas:
         uid, sid = new_id("user"), new_id("sess")
         with get_conn() as c:
@@ -174,6 +238,10 @@ def main(argv=None):
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--live", action="store_true")
     ap.add_argument("--resume", default=None, help="existing run_id to resume")
+    ap.add_argument("--limit", type=int, default=0, help="cap personas (0=all); dry-run aid")
+    ap.add_argument("--n", type=int, default=0, help="override n_personas (0=use spec); dry-run aid")
+    ap.add_argument("--split", default=None, choices=["fit", "test", "dev"], help="restrict to one split; dry-run aid")
+    ap.add_argument("--outdir", default="runs", help="results/<outdir>/<run_id> (e.g. dryrun)")
     args = ap.parse_args(argv)
     args.dry_run = args.dry_run or not args.live
 
@@ -181,7 +249,7 @@ def main(argv=None):
     spec = yaml.safe_load((ROOT.parent / args.spec).read_text(encoding="utf-8")) if (ROOT.parent / args.spec).exists() \
         else yaml.safe_load((ROOT / args.spec).read_text(encoding="utf-8"))
     args.seed = int(spec.get("seed", 2026))
-    args.n_personas = int(spec.get("n_personas", 100))
+    args.n_personas = args.n if getattr(args, "n", 0) else int(spec.get("n_personas", 100))
     args.profile = spec.get("oracle_profile", "overconfident")
     args.watermark = "DRY RUN — SYNTHETIC" if args.dry_run else None
 
@@ -194,17 +262,29 @@ def main(argv=None):
         settings.llm.provider = "oracle_mock"
     import tempfile, uuid
     args.run_id = args.resume or time.strftime("%Y%m%d_%H%M%S")
-    outdir = RESULTS / "runs" / args.run_id
+    outdir = RESULTS / args.outdir / args.run_id
     outdir.mkdir(parents=True, exist_ok=True)
     settings.db_path = pathlib.Path(tempfile.gettempdir()) / f"pcsg_exp_{args.run_id}.db"
     from app import db
     db.init_db()
+    # Price-guard: a live run must have a real price for every configured model.
+    check_prices(settings.llm.provider, settings.llm.models, settings.experiment.prices_per_mtok)
     from app import extraction, pipeline, salience
     (outdir / "config.json").write_text(json.dumps(_config_record(args, settings, extraction, pipeline, salience), indent=2), encoding="utf-8")
     print(f"[run] {args.run_id} mode={'dry-run' if args.dry_run else 'LIVE'} provider={settings.llm.provider} -> {outdir}")
 
     # STAGE: persona replay (gate open) -> signals -> labelling -> calibration
-    personas, truth, split_by = _replay(args, outdir)
+    personas = select_personas(args.seed, args.n_personas, args.split, args.limit)
+    print(f"[run] personas selected: {len(personas)}"
+          + (f" (split={args.split})" if args.split else "") + (f" limit={args.limit}" if args.limit else ""))
+    personas, truth, split_by = _replay(args, outdir, personas)
+    from app import llm
+    if getattr(args, "budget_stopped", False):
+        (outdir / "budget_stop.json").write_text(json.dumps(
+            {"budget_usd": settings.experiment.budget_usd, "cost": llm.cost_summary(),
+             "resumable": True, "run_id": args.run_id}, indent=2), encoding="utf-8")
+        print(f"[run] stopped on budget; resume with --resume {args.run_id}. cost={llm.cost_summary()}")
+        return 0
     stored = _collect_signals(personas)
     from pcsg.analysis import labelling, calibration, costcurve
     records = labelling.label_run(stored, truth, split_by)
@@ -232,13 +312,19 @@ def main(argv=None):
     cc["watermark"] = args.watermark
     (outdir / "cost_curve.json").write_text(json.dumps(cc, indent=2), encoding="utf-8")
 
-    # STAGE: failures + minimal T1/baselines placeholders (dry-run)
+    # STAGE: failures + cost + minimal T1/baselines placeholders (dry-run)
     (outdir / "failures.json").write_text(json.dumps(_failures(), indent=2), encoding="utf-8")
+    (outdir / "cost.json").write_text(json.dumps(llm.cost_summary(), indent=2), encoding="utf-8")
     (outdir / "done.json").write_text(json.dumps({"stages": ["replay", "calibration", "qa_abstention", "cost"], "ok": True}), encoding="utf-8")
-    # publish latest -> results/ root for make_figures
-    for name in ("calibration.json", "abstention.json", "cost_curve.json"):
-        (RESULTS / name).write_text((outdir / name).read_text(encoding="utf-8"), encoding="utf-8")
-    print(f"[run] DONE. artefacts in {outdir} (+ copied to results/ for make_figures).")
+    # publish latest -> results/ root for make_figures — ONLY for a normal run.
+    # A focused dry run (--outdir dryrun) stays isolated and never mixes with
+    # final results (readiness rule).
+    if args.outdir == "runs":
+        for name in ("calibration.json", "abstention.json", "cost_curve.json"):
+            (RESULTS / name).write_text((outdir / name).read_text(encoding="utf-8"), encoding="utf-8")
+        print(f"[run] DONE. artefacts in {outdir} (+ copied to results/ for make_figures).")
+    else:
+        print(f"[run] DONE. artefacts in {outdir} (isolated; not copied to results/ root).")
     return 0
 
 

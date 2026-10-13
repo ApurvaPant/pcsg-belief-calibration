@@ -5,6 +5,46 @@ nothing here is aspirational.
 
 ---
 
+## 2026-10-13 — Offline live-readiness pre-flight (no paid calls) + pcsg-v2-offline-ready
+
+Verified everything that does not need paid API calls; `PCSG_OFFLINE=1` all session.
+
+- **Offline guard** (`llm.py`): `PCSG_OFFLINE=1` makes any non-mock provider call
+  raise `OfflineGuardError` at the public entrypoints AND the network boundary
+  (`_http_complete`/`_http_embed`) — nothing can bypass the mock. 7 tests.
+- **PHASE 0:** pytest **130 green** (mock); robustness **19/19, inv=0**; disk 57 GB;
+  datagen seed=2026 truth hash `30a7b1d0…eca61` identical ×2; split 40/40/20, 0
+  overlap; seed 1000 unused.
+- **PHASE 1:** created `docs/EXTRACTOR_VERSION.md` (was absent; snapshot of live
+  config); added `judge_longmemeval: openai/gpt-4o` + `judge_routing` (config only,
+  no pipeline slug changed); `budget_usd=25` (config + all.yaml); `scripts/fill_prices.py`
+  (write-only) + fixture parse test; runner **price-guard** refuses a live run with a
+  missing/zero price (`check_prices` + tests).
+- **PHASE 2 (tractable):** rate-based fault injection in the mock (`set_fault_rates`:
+  429/5xx/timeout/malformed) + fake tokens; retries now **≤5 with full-jitter backoff**,
+  60 s timeout, logged; **cost meter** (`llm.spent_usd`) + **budget hard-stop**
+  (stops between personas, writes `budget_stop.json`, `--resume` completes) — demoed
+  stop at 2/15 then clean resume to 15/15; **served-model** surfaced +
+  `model_mismatches` check + tests.
+- **PHASE 3:** full oracle_mock dry run (n=15 mixed) → `results/dryrun/` (isolated;
+  never copied to results/ root). 9/10 checks PASS: 270 labelled assertions, all
+  stages non-empty, recalibration fit/test no leakage, metrics complete (added
+  **MCE + NLL** to calibration), QA+judge (PCSG only), dashboard validates. One WARN:
+  `self_consistency` null on 30/270 (relationship/ADD) — pre-existing frozen-signal
+  behavior, calibration-safe, NOT altered to force a pass.
+- **PHASE 4:** LongMemEval **Tier 3 NOT READY** — adapter only, no T5 runner (not built, per rule).
+- **PHASE 5:** `scripts/go_live.sh` (unset guard → fill_prices → verify served=requested
+  → 5-persona DEV pilot → project cost/time vs budget → STOP for human); full report in
+  `docs/READINESS_OFFLINE.md`.
+
+**Verdict: READY WITH WARNINGS** — offline verified; live BLOCKED on provider
+reconciliation (gemini vs OpenRouter; some gemini slugs may be retired), prices
+(fill via go_live), and — for the full paper — three unbuilt components: 4 baseline
+answerers (T3), LongMemEval T5 runner (Tier 3), per-persona parallel runner. Tag:
+`pcsg-v2-offline-ready`.
+
+---
+
 ## 2026-10-08 — Critical fix: a negation can no longer END a correct node
 
 ### The bug

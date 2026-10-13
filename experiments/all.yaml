@@ -2,8 +2,9 @@ name: all
 seed: 2026            # experiments seed (NEVER 1000, which is for testing)
 n_personas: 100
 oracle_profile: overconfident   # dry-run calibration profile
-budget_usd: 4.00
-concurrency: 4
+budget_usd: 25.00
+workers: 10            # parallel personas (each its own SQLite DB); default 10
+concurrency: 4         # legacy alias; `workers` takes precedence
 rate_limit_per_min: 120
 mem0: false           # optional final baseline, off by default
 stages:

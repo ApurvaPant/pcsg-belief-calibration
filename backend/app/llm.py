@@ -52,6 +52,33 @@ def resolve_model(role: str) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# Offline guard — PCSG_OFFLINE=1 forbids any real (paid) provider call.
+# --------------------------------------------------------------------------- #
+# When set, the ONLY permitted providers are the deterministic, free, offline
+# mock / oracle_mock. Any attempt to reach a network provider raises here
+# rather than silently falling back — a tripped guard means some code path is
+# bypassing the mock and is a bug to report, not to work around.
+_OFFLINE_PROVIDERS = ("mock", "oracle_mock")
+
+
+class OfflineGuardError(RuntimeError):
+    """Raised when PCSG_OFFLINE=1 and a non-mock provider call is attempted."""
+
+
+def offline_mode() -> bool:
+    return os.getenv("PCSG_OFFLINE") == "1"
+
+
+def _offline_guard(provider: str, where: str) -> None:
+    if offline_mode() and provider not in _OFFLINE_PROVIDERS:
+        raise OfflineGuardError(
+            f"PCSG_OFFLINE=1: refused a non-mock LLM call at {where} "
+            f"(provider={provider!r}). A code path is bypassing the mock / "
+            f"oracle_mock provider; fix the caller rather than disabling the guard."
+        )
+
+
+# --------------------------------------------------------------------------- #
 # Public API
 # --------------------------------------------------------------------------- #
 # ── Test-mode fault injection (§6 of the testing spec) ─────────────────────── #
@@ -95,10 +122,12 @@ def _maybe_fault() -> dict[str, Any] | None:
     return None
 
 
-# Bounded retries with exponential backoff for transient failures (§6). Every
-# retry is appended to RETRY_LOG so tests and the experiment runner can audit it.
+# Bounded retries with exponential backoff + jitter for transient failures (§6).
+# Every retry is appended to RETRY_LOG so tests and the experiment runner can
+# audit it. At most _MAX_RETRIES retries; the per-call timeout is the provider
+# timeout in config (60 s).
 _RETRYABLE_STATUS = {429, 500, 502, 503, 504}
-_MAX_RETRIES = 3
+_MAX_RETRIES = 5
 RETRY_LOG: list[dict[str, Any]] = []
 
 
@@ -111,8 +140,78 @@ def _is_retryable(e: Exception) -> bool:
 
 
 def _backoff_seconds(attempt: int) -> float:
+    """Exponential backoff with full jitter: sleep ∈ [0, base·2^attempt]."""
     base = 0.01 if os.getenv("PCSG_TEST_MODE") == "1" else 0.5
-    return base * (2 ** attempt)
+    ceiling = base * (2 ** attempt)
+    return _FAULT_RNG.uniform(0.0, ceiling)
+
+
+# ── Rate-based fault injection (offline cost/retry exercise) ──────────────── #
+# Separate from the single-shot _FAULT hook: this rolls a die on EVERY call at
+# configured probabilities, so the runner can exercise retry/backoff and cost
+# accounting against the mock with no network and no spend. Inert until armed
+# (all rates 0); the mock/test paths arm it explicitly. Hard faults (429/5xx/
+# timeout) raise to drive retries; malformed_json returns unparseable text.
+import random as _random
+
+_FAULT_RATES: dict[str, float] = {"http_429": 0.0, "http_500": 0.0, "timeout": 0.0, "malformed_json": 0.0}
+_FAULT_RNG = _random.Random()
+
+
+# ── Cost meter (offline + live) ───────────────────────────────────────────── #
+# Every completion accumulates fake/real token cost here so the runner can
+# enforce a hard budget stop. Priced via settings.experiment. Reset per run.
+_COST: dict[str, float] = {"usd": 0.0, "calls": 0.0, "prompt_tokens": 0.0, "completion_tokens": 0.0}
+
+
+def reset_cost() -> None:
+    for k in _COST:
+        _COST[k] = 0.0
+
+
+def spent_usd() -> float:
+    return _COST["usd"]
+
+
+def cost_summary() -> dict[str, float]:
+    return dict(_COST)
+
+
+def _account(result: dict[str, Any], model: str) -> None:
+    try:
+        pt = int(result.get("prompt_tokens", 0) or 0)
+        ct = int(result.get("completion_tokens", 0) or 0)
+        _COST["usd"] += settings.experiment.cost_usd(result.get("model", model), pt, ct)
+        _COST["calls"] += 1
+        _COST["prompt_tokens"] += pt
+        _COST["completion_tokens"] += ct
+    except Exception:  # noqa: BLE001 — accounting must never break a call
+        pass
+
+
+def set_fault_rates(rates: dict[str, float] | None = None, seed: int | None = None) -> None:
+    """Arm per-call fault probabilities (clear with rates=None). Seed the RNG for
+    deterministic tests; this RNG also drives backoff jitter."""
+    for k in _FAULT_RATES:
+        _FAULT_RATES[k] = float((rates or {}).get(k, 0.0))
+    if seed is not None:
+        _FAULT_RNG.seed(seed)
+
+
+def _maybe_fault_rate() -> dict[str, Any] | None:
+    """Roll configured fault rates for one call. Raises for hard faults; returns
+    a malformed-JSON result for the soft fault; None if nothing fired."""
+    if not any(_FAULT_RATES.values()):
+        return None
+    if _FAULT_RNG.random() < _FAULT_RATES["timeout"]:
+        raise httpx.ReadTimeout("injected timeout (rate)")
+    if _FAULT_RNG.random() < _FAULT_RATES["http_429"]:
+        raise httpx.HTTPStatusError("429", request=None, response=httpx.Response(429))  # type: ignore[arg-type]
+    if _FAULT_RNG.random() < _FAULT_RATES["http_500"]:
+        raise httpx.HTTPStatusError("500", request=None, response=httpx.Response(500))  # type: ignore[arg-type]
+    if _FAULT_RNG.random() < _FAULT_RATES["malformed_json"]:
+        return {"text": "{not valid json at all", "prompt_tokens": 7, "completion_tokens": 3, "latency_ms": 1}
+    return None
 
 
 def complete(
@@ -136,18 +235,29 @@ def complete(
     temperature = settings.llm.temperature if temperature is None else temperature
     max_tokens = settings.llm.max_tokens if max_tokens is None else max_tokens
 
+    _offline_guard(settings.llm.provider, "complete()")
     attempt = 0
     while True:
         try:
             injected = _maybe_fault()
+            if injected is None:
+                injected = _maybe_fault_rate()
             if injected is not None:
+                injected.setdefault("model", model)
                 return injected
             if settings.llm.provider == "mock":
-                return _mock_complete(messages)
-            if settings.llm.provider == "oracle_mock":
+                result = _mock_complete(messages)
+            elif settings.llm.provider == "oracle_mock":
                 from pcsg import oracle  # lazy: experiment-only, offline
-                return oracle.oracle_complete(messages)
-            return _http_complete(messages, model, temperature, max_tokens, response_schema, schema_name)
+                result = oracle.oracle_complete(messages)
+            else:
+                result = _http_complete(messages, model, temperature, max_tokens, response_schema, schema_name)
+            # Surface the SERVED model so callers can audit served≠requested.
+            # mock / oracle_mock echo the requested model; the HTTP path records
+            # the provider's reported `model` field.
+            result.setdefault("model", model)
+            _account(result, model)
+            return result
         except Exception as e:  # noqa: BLE001
             if _is_retryable(e) and attempt < _MAX_RETRIES:
                 RETRY_LOG.append({"model": model, "attempt": attempt + 1,
@@ -167,6 +277,7 @@ def embed(texts: list[str], model: str | None = None) -> list[list[float]]:
     """
     if settings.llm.provider == "mock":
         return [_mock_embed(t) for t in texts]
+    _offline_guard(settings.llm.provider, "embed()")
     model = model or resolve_model("embedding")
     try:
         return _http_embed(texts, model)
@@ -194,6 +305,7 @@ def startup_check() -> None:
     provider = settings.llm.provider
     if provider in ("mock", "oracle_mock"):
         return
+    _offline_guard(provider, "startup_check()")
     if not settings.llm.api_key:
         raise RuntimeError(
             f"LLM_PROVIDER={provider} but no API key set. Provide OPENROUTER_API_KEY "
@@ -223,6 +335,7 @@ def _http_complete(
     messages: list[Message], model: str, temperature: float, max_tokens: int,
     response_schema: dict | None = None, schema_name: str = "output",
 ) -> dict[str, Any]:
+    _offline_guard(settings.llm.provider, "_http_complete()")
     url = settings.llm.base_url.rstrip("/") + "/chat/completions"
     payload = {
         "model": model,
@@ -249,10 +362,13 @@ def _http_complete(
         "prompt_tokens": usage.get("prompt_tokens", 0),
         "completion_tokens": usage.get("completion_tokens", 0),
         "latency_ms": latency_ms,
+        # The model the provider actually served (may differ from requested).
+        "model": data.get("model", model),
     }
 
 
 def _http_embed(texts: list[str], model: str) -> list[list[float]]:
+    _offline_guard(settings.llm.provider, "_http_embed()")
     url = settings.llm.base_url.rstrip("/") + "/embeddings"
     payload = {"model": model, "input": texts}
     with httpx.Client(timeout=settings.llm.timeout_seconds) as client:

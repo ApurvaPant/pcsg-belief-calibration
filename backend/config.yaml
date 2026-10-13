@@ -18,12 +18,19 @@ llm:
   # Cheap+fast for the classifier (runs on most messages); a stronger model for
   # the judge (evaluation only). Adjust slugs if your key's access differs.
   models:
-    chat:       gemini-2.5-flash           # user replies
-    classifier: gemini-2.5-flash-lite      # cheapest/fast salience routing + frame
-    extractor:  gemini-2.5-flash           # structured extraction (FILL)
+    chat:       gemini-2.5-flash           # user replies  (= "answerer")
+    classifier: gemini-2.5-flash-lite      # cheapest/fast salience routing + frame (= tier-1 gate / span extraction)
+    extractor:  gemini-2.5-flash           # structured extraction FILL (= structuring / self-consistency / verbaliser P6)
     simulator:  gemini-2.0-flash           # S9: plays the USER; different from the extractor
-    judge:      gemini-2.5-pro             # EVALUATION-ONLY (STEP 1): stronger than pipeline models
+    judge:      gemini-2.5-pro             # EVALUATION-ONLY default judge (non-LongMemEval; = value-equivalence P7 live)
+    judge_longmemeval: openai/gpt-4o       # EVALUATION-ONLY LongMemEval judge (official per-type prompts). Added per readiness PHASE 1.2.
     embedding:  gemini-embedding-001       # unused by the pipeline today
+  # Judge routing (evaluation only; never touches the pipeline). LongMemEval
+  # answers are graded by `judge_longmemeval` with the official per-type judge
+  # prompts; every other answer is graded by `judge`.
+  judge_routing:
+    longmemeval: judge_longmemeval
+    default: judge
 
   # Request defaults (per-call overrides allowed in code).
   timeout_seconds: 60
@@ -56,7 +63,7 @@ experiment:
   # require: pilot -> project cost -> refuse to run if projection > budget_usd.
   # 0 means UNSET: the eval harness refuses every paid run until you set a real
   # ceiling here (e.g. 10.0 for USD 10). The mock provider is always free.
-  budget_usd: 4.00
+  budget_usd: 25.00
   # Approximate OpenRouter prices (USD per 1,000,000 tokens), used ONLY to
   # PROJECT cost before a run. Actual spend is governed by your OpenRouter
   # dashboard and the budget guard above. Keyed by model slug; "default" is the

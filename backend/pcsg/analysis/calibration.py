@@ -45,6 +45,25 @@ def brier(probs, labels):
     return float(np.mean((p - y) ** 2))
 
 
+def mce(probs, labels, bins=10):
+    """Maximum Calibration Error: largest |acc − conf| over equal-width bins."""
+    p = _clip(probs); y = np.asarray(labels, float)
+    edges = np.linspace(0, 1, bins + 1)
+    worst = 0.0
+    for i in range(bins):
+        lo, hi = edges[i], edges[i + 1]
+        m = (p >= lo) & (p <= hi if i == bins - 1 else p < hi)
+        if m.sum():
+            worst = max(worst, abs(p[m].mean() - y[m].mean()))
+    return float(worst)
+
+
+def nll(probs, labels):
+    """Mean negative log-likelihood (log loss) of the Bernoulli predictions."""
+    p = _clip(probs); y = np.asarray(labels, float)
+    return float(-np.mean(y * np.log(p) + (1 - y) * np.log(1 - p)))
+
+
 def auroc(probs, labels):
     y = np.asarray(labels, int)
     if len(np.unique(y)) < 2:
@@ -136,7 +155,9 @@ def study(records, n_boot=300):
             out["by_signal_recalibrator"][sig][rec] = {
                 "ece": round(ece(q, ty, 10, "uniform"), 4),
                 "ece_quantile": round(ece(q, ty, 15, "quantile"), 4),
+                "mce": round(mce(q, ty, 10), 4),
                 "brier": round(brier(q, ty), 4),
+                "nll": round(nll(q, ty), 4),
                 "auroc": round(auroc(q, ty), 4),
                 "ci": {"ece": [round(x, 4) for x in bootstrap_ci(lambda p, y: ece(p, y), q, ty, tg, n_boot)]},
             }

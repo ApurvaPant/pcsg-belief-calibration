@@ -36,4 +36,6 @@ frontend/*.log
 backend/*.out.log
 results/runs/
 results/datasets/
+results/dryrun/
+results/pilot/
 backend/results/

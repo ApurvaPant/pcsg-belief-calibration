@@ -1,0 +1,10 @@
+{
+  "data": [
+    {"id": "openai/gpt-4o", "pricing": {"prompt": "0.0000025", "completion": "0.00001"}},
+    {"id": "openai/gpt-4o-mini", "pricing": {"prompt": "0.00000015", "completion": "0.0000006"}},
+    {"id": "google/gemini-2.5-flash", "pricing": {"prompt": "0.0000003", "completion": "0.0000025"}},
+    {"id": "free/model", "pricing": {"prompt": "0", "completion": "0"}},
+    {"id": "weird/model", "pricing": {"prompt": "not-a-number", "completion": "0.001"}},
+    {"id": "nopricing/model"}
+  ]
+}
