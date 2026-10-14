@@ -198,12 +198,22 @@ def run(questions: list[dict], outdir: pathlib.Path, *, dry_run: bool = True,
             f.write(json.dumps(rec) + "\n")
         ckpt.write_text(json.dumps({"done": sorted(done)}), encoding="utf-8")
 
+    def _safe_run(q):
+        # Resilience: one question that errors (e.g. a call that exhausts retries)
+        # is recorded as failed and the run continues — never stops the batch.
+        try:
+            return _run_one(q, dry_run)
+        except Exception as e:  # noqa: BLE001
+            print(f"[lme] question {q.get('question_id')} failed: {type(e).__name__}: {str(e)[:80]} — skipping")
+            return {"question_id": q["question_id"], "question_type": q.get("question_type"),
+                    "is_abstention": bool(q.get("is_abstention")), "failed": True, "systems": {}}
+
     if eff_workers == 1:
         for q in todo:
-            _store(_run_one(q, dry_run))
+            _store(_safe_run(q))
     else:  # pragma: no cover - live parallel path
         with ThreadPoolExecutor(max_workers=eff_workers) as ex:
-            for rec in ex.map(lambda q: _run_one(q, dry_run), todo):
+            for rec in ex.map(_safe_run, todo):
                 _store(rec)
 
     by_type = {}

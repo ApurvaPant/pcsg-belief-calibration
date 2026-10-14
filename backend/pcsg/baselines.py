@@ -49,10 +49,16 @@ def _parse(text: str) -> tuple[str, float]:
         return (t or "I don't know"), (0.2 if _is_idk(t) else 0.5)
 
 
+# The answer is short JSON ({answer, confidence}); cap generation so a verbose
+# model can't run to the full 1024-token default and blow the per-call timeout
+# (overriding the model-page huge default, per STEP 2).
+ANSWER_MAX_TOKENS = 256
+
+
 def _ask(context: str, question: str, model_role: str = "chat") -> dict[str, Any]:
     sys = ANSWER_SYSTEM.replace("{context}", context or "(no context)")
     msgs = [{"role": "system", "content": sys}, {"role": "user", "content": f"QUESTION: {question}"}]
-    r = llm.complete(msgs, model=llm.resolve_model(model_role))
+    r = llm.complete(msgs, model=llm.resolve_model(model_role), temperature=0.0, max_tokens=ANSWER_MAX_TOKENS)
     ans, conf = _parse(r.get("text", ""))
     return {"answer": ans, "confidence": conf, "abstained": _is_idk(ans),
             "tokens_in": int(r.get("prompt_tokens", 0) or 0),

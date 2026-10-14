@@ -1,19 +1,21 @@
 # PREFLIGHT_FINAL — NVIDIA run readiness (2026-10-14)
 
-## Verdict: **READY TO LAUNCH (priority queue) — WITH WARNINGS**
+## Verdict: **READY TO LAUNCH — recommend `-Personas 60` (projected ~12–13 h, LongMemEval-dominated)**
 
-The NVIDIA setup is validated and the full chain runs live; the overnight queue is
-built, resumable, priority-ordered and pause-able. **But the FULL spec will NOT
-complete in 13 h.** The 4-system QA stage is *latency-bound* (one persona's QA did
-not finish in ~35 min in-session), so Tier 2 alone exceeds the budget. The priority
-queue is designed for exactly this: it front-loads **Tier 1 (the core calibration
-result)**, which *does* fit (~4.6 h at 60 personas), then runs Tier 2 / Tier 3
-best-effort and **resumes the next night** for the rest. The 80 M-token hard-stop +
-per-stage resumability make an overrun safe.
+The NVIDIA setup is validated, the full chain runs live, and the overnight queue is
+built, resumable, priority-ordered and pause-able. The 1-persona pilot **exposed and
+I fixed two issues** (see Pilot): QA answers were running to the full 1024-token
+default and blowing the 60 s per-call timeout, and a timed-out call **crashed the QA
+stage** (no per-question guard). After the fixes (answer cap 256 tokens + per-question
+try/except in QA and LongMemEval), the full run at **60 personas projects to ~12–13 h**,
+dominated by Tier 3 (LongMemEval haystack replay). This is **tight** and the
+post-fix QA/LME times are *estimated, not re-measured live* — so the priority queue
+front-loads Tier 1 (core calibration, ~4.6 h) and Tier 2 (QA, ~1 h), with Tier 3
+best-effort + resumable, and the 80 M-token hard-stop makes any overrun safe.
 
-**Blocker to a 13 h full run:** Tier 2 (QA, all four systems) and Tier 3
-(LongMemEval ×108) are latency-dominated and together run well beyond 13 h — see
-Sizing. Launch is safe; *completeness in one night is not*.
+**Watch the first Tier-2 persona and the first few Tier-3 questions in
+`QUEUE_STATUS.md`** to confirm the post-fix rates before trusting the 13 h estimate;
+if Tier 3 is slower than projected, it resumes the next night with no lost work.
 
 ## Models (validated live)
 - **Main model, every pipeline role:** `nvidia/nemotron-3-super-120b-a12b` with
@@ -35,16 +37,20 @@ Sizing. Launch is safe; *completeness in one night is not*.
   stop-rule has no real comparator and a real-vs-mock gap is not a regression. **No prompt content was tuned.**
   Tagged `extractor-v2-nvidia`; details in `EXTRACTOR_VERSION.md` v2.
 
-## Pilot (STEP 4) — measured + honest gaps
-Ran 1 DEV persona live, full chain, into `results/pilot/` (foreground, rate-limited to 35 RPM).
+## Pilot (STEP 4) — measured, with two issues found **and fixed**
+Ran 1 DEV persona live, full chain, into `results/pilot/` (foreground, 35 RPM). Total wall: **1775 s (~30 min)**.
 - **Replay (completed):** 25 turns → **~160 LLM calls/persona** = 25 salience + ~22 frame + ~22 fill +
-  ~66 self-consistency (k=3) + 25 chat. Thinking off confirmed (0 reasoning tokens). Replay is
-  *rate-bound* (short calls): ~**4.6 min/persona** at 35 RPM.
-- **QA (did NOT finish in-session):** the 4-system QA for ONE persona ran **>35 min** and did not complete —
-  Nemotron answering with full context + the gpt-oss judge are *latency-bound* (long generations, many seconds
-  each), so the 35 RPM cap is not the limiter, wall-time is. This is the dominant cost and the 13 h blocker.
-- **Peak RAM:** single process, MiniLM loaded once (~a few hundred MB) + Python + SQLite — modest; the memory
-  pressure seen in this session was from *background* shells, not the run. Close other apps on this laptop.
+  ~66 self-consistency (k=3) + 25 chat. Thinking off confirmed (0 reasoning tokens). Replay is *rate-bound*
+  (short calls): ~**4.6 min/persona** at 35 RPM. Calibration (Tier 1) produced live.
+- **QA — two problems, both fixed:**
+  1. QA answers ran to the **1024-token default** and some exceeded the **60 s per-call timeout**; the
+     retries also timed out, so QA was pathologically slow. **Fix:** cap the answer generation to 256 tokens
+     (`baselines.ANSWER_MAX_TOKENS`; the answer is short JSON) — overriding the model-page default as STEP 2 directs.
+  2. A timed-out QA call **raised `httpx.ReadTimeout` and crashed the whole stage** (no per-question guard).
+     **Fix:** per-question try/except in QA **and** LongMemEval — a failed question is recorded and the run
+     continues (satisfies "a failed question doesn't stop the run / survives a network drop").
+- **Peak RAM:** single process, MiniLM loaded once (~a few hundred MB) + Python + SQLite — modest. The memory
+  pressure in this session came from *background* shells, not the run. Close other apps on this laptop.
 
 | pilot check | result |
 |---|---|
@@ -53,35 +59,35 @@ Ran 1 DEV persona live, full chain, into `results/pilot/` (foreground, rate-limi
 | chain runs live (replay → labels → calibration) | ✅ produced live |
 | signal coverage (3 signals) | ✅ present on replay signals (STEP-1 fix) |
 | 429 rate < 5% | ✅ none observed (rate-limited to 35 RPM) |
-| 4-system QA + judge end-to-end | ⚠️ **not completed in-session** (latency-bound; verify live via QUEUE_STATUS) |
-| 13 dry-run checks | ✅ previously 13/13 on oracle_mock; live Tier-2/3 unverified end-to-end |
+| 4-system QA + judge end-to-end | ⚠️ crashed on a timeout in-session → **fixed** (cap + resilience); post-fix QA time estimated, **verify live** |
+| failed question/persona doesn't stop the run | ✅ replay (existing) + QA + LongMemEval (fixed this step) |
 
 ## Sizing to 13 h (35 RPM) — projection + recommendation
-Wall-time is **rate-bound for replay** (calls/35/60) but **latency-bound for QA/LongMemEval**.
-- **Tier 1 (replay + calibration):** ~160 calls/persona → **~4.6 min/persona**. **60 personas ≈ 4.6 h**; 100 ≈ 7.6 h. (Calibration/figures are offline.)
-- **Tier 2 (QA, 4 systems, on the ~40% test split):** latency-bound; 1 persona > 35 min observed (incomplete).
-  Even at a ~30 min/persona lower bound, 24 test personas (N=60) ≈ **>12 h alone** → does not fit after Tier 1.
-- **Tier 3 (LongMemEval ×108):** each question replays a full ~36-turn haystack (~230 calls) + 4 answers + judge,
-  latency-bound → **many hours**; will not start within 13 h after Tiers 1–2.
+With the answer-length cap, both replay and QA are now **rate-bound** (short calls ≈ the 35 RPM spacing);
+LongMemEval is the swing factor because each question replays a whole haystack.
+- **Tier 1 (replay + calibration):** ~160 calls/persona → **~4.6 min/persona** (measured). **60 personas ≈ 4.6 h**; 100 ≈ 7.6 h. Calibration/figures offline.
+- **Tier 2 (QA, 4 systems, ~40% test split):** ~68 calls/test-persona (≤256-token answers + judge) → ~2 min/persona (post-fix *estimate*). N=60 (24 test) ≈ **~0.8 h**; N=100 (40 test) ≈ ~1.3 h.
+- **Tier 3 (LongMemEval ×108):** each question replays a ~36-turn haystack through the pipeline (~90–230 calls) + 4 answers + judge → ~5–7 min/question → **~6–8 h** for 108. The dominant cost; *estimate, verify live*.
 - **Cost sweep:** offline replay (fast) + a few live cells.
 
-**Recommendation — launch at `-Personas 60` and treat the run as priority-ordered, multi-night:**
-- **Night 1 (fits ~13 h):** Tier 1 (≈4.6 h) + Tier-1 figures + cost sweep (offline) → the paper's **core calibration
-  + cost-curve results**, plus as much of Tier 2 (QA) as the remaining ~8 h allows (≈15 test personas), all resumable.
-- **Night 2 (resume):** finish Tier 2, then Tier 3 (LongMemEval). Re-running the queue with the same `-RunId` resumes.
-- **If you need everything in ONE 13 h night,** cut scope (keeping seed 2026, 40/40/20): run QA on a reduced test
-  subset and LongMemEval on a subset (e.g. 40 of 108). I did **not** change scope automatically — this is your call.
-- **Before committing, watch `QUEUE_STATUS.md` after ~30 min** and after the FIRST Tier-2 persona: its real wall-time
-  (which the in-session pilot could not measure to completion) tells you whether to narrow scope.
-
-### Projected hours per stage (N=60; QA/LME are latency-bound lower bounds, verify live)
+### Projected hours per stage (N=60; replay measured, QA/LME post-fix estimates)
 | stage | projection |
 |---|---|
-| Tier 1 replay + calibration (+figures) | ~4.6 h |
-| Tier 2 QA (24 test personas × 4 systems) | ≥ 12 h (does not fit after Tier 1) — best-effort |
-| Tier 3 LongMemEval ×108 | many hours — night 2 |
+| Tier 1 replay + calibration (+figures) | **~4.6 h** (measured) |
+| Tier 2 QA (24 test × 4 systems) + figures | ~0.8 h |
+| Tier 3 LongMemEval ×108 | **~6–8 h** (swing factor) |
 | cost sweep + final figures | < 0.5 h (offline) |
-| **Night-1 guaranteed (Tier 1 + cost + partial QA)** | **~13 h** |
+| **total (N=60)** | **~12–13 h** — tight; fits if LongMemEval lands at the low end |
+
+**Recommendation — launch the priority queue at `-Personas 60`:**
+- It produces **Tier 1 (core calibration) first (~4.6 h)**, then QA (~0.8 h), then LongMemEval best-effort. Even if
+  LongMemEval overruns 13 h, Tiers 1–2 + cost + figures (the paper's core calibration, baselines and cost-curve
+  results) are already written and usable; re-run with the same `-RunId` to finish LongMemEval the next night.
+- **Verify the estimate live:** after ~30 min check `QUEUE_STATUS.md`; after the first Tier-2 persona and the first
+  2–3 Tier-3 questions, their real wall-times confirm whether the ~12–13 h holds. The in-session pilot measured
+  replay but QA/LME times are post-fix projections.
+- At **N=100** the run is ~16 h (over) — use 60. To guarantee a one-night finish, optionally shrink LongMemEval
+  (e.g. `-Lme 60`) or run QA on fewer test personas; I did **not** change scope automatically.
 
 ## Launch / pause / resume / progress (plain PowerShell, repo root)
 ```powershell

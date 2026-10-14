@@ -250,28 +250,40 @@ def _qa_and_abstention(args, outdir, personas):
             unknown = q["gold"] == "__unknown__"
             if args.dry_run:
                 oracle.set_qa(None if unknown else q["gold"])
-            with get_conn() as c:
-                answers = {
-                    "no_memory": baselines.answer_no_memory(q["question"]),
-                    "full_context": baselines.answer_full_context(q["question"], history),
-                    "vector_rag": baselines.answer_vector_rag(q["question"], history, k=5),
-                    "pcsg": (baselines.answer_pcsg(q["question"], c, uid) if uid else
-                             {"system": "pcsg", "answer": "I don't know", "confidence": 0.2,
-                              "abstained": True, "tokens_in": 0, "tokens_out": 0}),
-                }
-            for s, a in answers.items():
-                if unknown:
-                    correct = 1 if a["abstained"] else 0           # correct action = abstain
-                else:
-                    ok, _ = judge(f"answer conveys: {q['gold']}", a["answer"])
-                    correct = 1 if (ok and not a["abstained"]) else 0
-                records[s].append({
-                    "system": s, "persona": p.pid, "kind": q["kind"],
-                    "confidence": a["confidence"], "correct": correct,
-                    "abstained": 1 if a["abstained"] else 0,
-                    "is_unknown": 1 if unknown else 0,
-                    "tokens": a.get("tokens_in", 0) + a.get("tokens_out", 0),
-                })
+            # Resilience: a question that errors out (e.g. a call that exhausts its
+            # retries) is recorded as a failed/abstained answer for every system and
+            # the run continues — one bad question never stops the overnight run.
+            try:
+                with get_conn() as c:
+                    answers = {
+                        "no_memory": baselines.answer_no_memory(q["question"]),
+                        "full_context": baselines.answer_full_context(q["question"], history),
+                        "vector_rag": baselines.answer_vector_rag(q["question"], history, k=5),
+                        "pcsg": (baselines.answer_pcsg(q["question"], c, uid) if uid else
+                                 {"system": "pcsg", "answer": "I don't know", "confidence": 0.2,
+                                  "abstained": True, "tokens_in": 0, "tokens_out": 0}),
+                    }
+                for s, a in answers.items():
+                    if unknown:
+                        correct = 1 if a["abstained"] else 0           # correct action = abstain
+                    else:
+                        ok, _ = judge(f"answer conveys: {q['gold']}", a["answer"])
+                        correct = 1 if (ok and not a["abstained"]) else 0
+                    records[s].append({
+                        "system": s, "persona": p.pid, "kind": q["kind"],
+                        "confidence": a["confidence"], "correct": correct,
+                        "abstained": 1 if a["abstained"] else 0,
+                        "is_unknown": 1 if unknown else 0,
+                        "tokens": a.get("tokens_in", 0) + a.get("tokens_out", 0),
+                    })
+            except Exception as e:  # noqa: BLE001 — never let one question kill the run
+                print(f"[run] QA question failed (persona {p.pid}, {q.get('kind')}): "
+                      f"{type(e).__name__}: {str(e)[:80]} — recorded as failed, continuing")
+                for s in baselines.SYSTEMS:
+                    records[s].append({"system": s, "persona": p.pid, "kind": q["kind"],
+                                       "confidence": 0.0, "correct": 1 if unknown else 0,
+                                       "abstained": 1, "is_unknown": 1 if unknown else 0,
+                                       "tokens": 0, "failed": 1})
 
     per_system = qa_metrics.summarize_all(records)
     (outdir / "qa_systems.json").write_text(json.dumps(
