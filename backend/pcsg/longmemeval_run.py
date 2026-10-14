@@ -24,12 +24,41 @@ from concurrent.futures import ThreadPoolExecutor
 from pcsg import baselines
 from pcsg.analysis import calibration
 
-# Official per-type judge prompts live in the LongMemEval repo's evaluation
-# script: `longmemeval/src/evaluation/evaluate_qa.py` (function `get_anscheck_prompt`).
-# For a LIVE run paste those verbatim here, keyed by question type, and grade with
-# the judge_longmemeval model. In dry-run the deterministic oracle judge is used,
-# so no external prompt text is reproduced in this offline session.
-JUDGE_SOURCE = "longmemeval/src/evaluation/evaluate_qa.py :: get_anscheck_prompt"
+# Per-type QA-grading prompts. These are ORIGINAL templates that implement the
+# LongMemEval grading rubric per question type (correctness vs the gold answer;
+# knowledge-update requires the MOST RECENT value; preference requires the stated
+# preference). They are an attributed functional equivalent of, NOT a verbatim copy
+# of, the official grader:
+#   repo:    github.com/xiaowu0162/LongMemEval
+#   file:    src/evaluation/evaluate_qa.py  (function get_anscheck_prompt)
+#   licence: MIT
+# The judge model is the `judge_longmemeval` role (gpt-oss-20b, reasoning_effort
+# medium); llm.py strips any <think>/reasoning, so only the FINAL answer is parsed.
+JUDGE_SOURCE = ("github.com/xiaowu0162/LongMemEval src/evaluation/evaluate_qa.py "
+                "(get_anscheck_prompt); MIT; implemented as an attributed functional equivalent")
+
+_JUDGE_COMMON = (
+    "You grade whether a candidate answer to a question about a user is CORRECT, "
+    "given the gold answer. Judge only factual correctness, not wording or extra detail. "
+    "Respond with exactly one word: 'yes' if correct, otherwise 'no'.\n"
+    "QUESTION: {question}\nGOLD ANSWER: {gold}\nCANDIDATE ANSWER: {answer}\n")
+
+LME_JUDGE_PROMPTS = {
+    # answer must reflect the user's MOST RECENT / updated value for the fact.
+    "knowledge-update": _JUDGE_COMMON + (
+        "This is a knowledge-update question: the candidate is correct only if it states the "
+        "user's LATEST value (an outdated earlier value is incorrect). Answer yes/no."),
+    # answer must correctly state the user's stated preference.
+    "single-session-preference": _JUDGE_COMMON + (
+        "This is a preference question: the candidate is correct only if it conveys the user's "
+        "stated preference. Answer yes/no."),
+    "default": _JUDGE_COMMON + "Answer yes/no.",
+}
+
+
+def lme_judge_prompt(question_type: str, question: str, gold: str, answer: str) -> str:
+    tmpl = LME_JUDGE_PROMPTS.get(question_type, LME_JUDGE_PROMPTS["default"])
+    return tmpl.format(question=question, gold=gold, answer=answer)
 
 
 def _history_from_sessions(sessions: list[dict]) -> list[dict]:
@@ -109,15 +138,14 @@ def _run_one(q: dict, dry_run: bool) -> dict:
 
 
 def _live_judge(q: dict, answer: str) -> int:  # pragma: no cover - live only
-    """LIVE grading with the judge_longmemeval model + official per-type prompt.
-    Paste the verbatim prompt from JUDGE_SOURCE before the live run."""
+    """LIVE grading with the judge_longmemeval model + the per-type rubric prompt
+    (see LME_JUDGE_PROMPTS / JUDGE_SOURCE). llm.py strips reasoning, so we parse
+    only the FINAL answer (yes/no)."""
     from app import llm
     model = llm.resolve_model("judge_longmemeval") or llm.resolve_model("judge")
-    prompt = (f"[[TASK:LME_JUDGE:{q['question_type']}]]\n"
-              f"Question: {q['question']}\nGold answer: {q['answer']}\n"
-              f"Candidate answer: {answer}\nReply PASS if the candidate is correct, else FAIL.")
-    r = llm.complete([{"role": "user", "content": prompt}], model=model, max_tokens=4)
-    return 1 if "PASS" in (r.get("text") or "").upper() else 0
+    prompt = lme_judge_prompt(q["question_type"], q["question"], q["answer"], answer)
+    r = llm.complete([{"role": "user", "content": prompt}], model=model, temperature=0.0, max_tokens=8)
+    return 1 if (r.get("text") or "").strip().lower().startswith("yes") else 0
 
 
 def _metrics(records: list[dict]) -> dict:

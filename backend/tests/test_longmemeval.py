@@ -53,6 +53,21 @@ def test_longmemeval_three_questions_end_to_end(tmp_path):
     assert out["judge_source"] and out["metrics"]
 
 
+def test_lme_judge_prompts_structure():
+    """The per-type judge templates exist and carry the rubric slots. These are an
+    attributed functional equivalent of the official grader (not a verbatim copy),
+    so we assert structure, not exact text."""
+    from pcsg import longmemeval_run as R
+    assert {"knowledge-update", "single-session-preference", "default"} <= set(R.LME_JUDGE_PROMPTS)
+    assert "longmemeval" in R.JUDGE_SOURCE.lower() and "MIT" in R.JUDGE_SOURCE
+    for qt in ("knowledge-update", "single-session-preference", "default", "temporal-reasoning"):
+        p = R.lme_judge_prompt(qt, "What car?", "Tesla Model 3", "a Tesla")
+        assert "What car?" in p and "Tesla Model 3" in p and "a Tesla" in p
+        assert "yes" in p.lower() and "no" in p.lower()      # yes/no verdict instruction
+    # knowledge-update prompt stresses the LATEST value
+    assert "latest" in R.lme_judge_prompt("knowledge-update", "q", "g", "a").lower()
+
+
 def test_longmemeval_resume(tmp_path):
     questions = json.loads(FIX.read_text(encoding="utf-8"))
     longmemeval_run.run(questions[:1], tmp_path, dry_run=True)        # do 1

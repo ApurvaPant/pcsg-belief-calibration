@@ -16,32 +16,30 @@ llm:
   #   OpenRouter: https://openrouter.ai/api/v1
   base_url: https://integrate.api.nvidia.com/v1
 
-  # NVIDIA build models. PROVISIONAL (ids/reasoning param pending the STEP 1
-  # probe + 10-call reasoning validation — see docs/NVIDIA_SWITCH.md). Every
-  # pipeline role runs the SAME main model at the SAME fixed minimal reasoning;
-  # the two judge roles run openai/gpt-oss-20b at reasoning_effort "medium"
-  # (replaces the earlier gpt-4o judge).
+  # NVIDIA build models (validated 2026-10-14, see docs/NVIDIA_API_CHECK.md +
+  # PREFLIGHT_FINAL.md). Every pipeline role runs the SAME main model with thinking
+  # OFF; the two judge roles run openai/gpt-oss-20b at reasoning_effort "medium".
+  # DeepSeek V4.1 Flash was rejected (timed out >30s); Qwen is not available on
+  # this key — so the main model is Nemotron 3 Super (1.4s, thinking fully off).
   models:
-    chat:       deepseek-ai/deepseek-v4.1-flash   # answerer (all four systems)
-    classifier: deepseek-ai/deepseek-v4.1-flash   # tier-1 gate / span (FRAME)
-    extractor:  deepseek-ai/deepseek-v4.1-flash   # structuring FILL / self-consistency / P6
-    simulator:  deepseek-ai/deepseek-v4.1-flash   # S9 (plays the USER)
-    judge:      openai/gpt-oss-20b                # EVALUATION-ONLY default judge
-    judge_longmemeval: openai/gpt-oss-20b         # EVALUATION-ONLY LongMemEval judge (official per-type prompts)
+    chat:       nvidia/nemotron-3-super-120b-a12b   # answerer (all four systems)
+    classifier: nvidia/nemotron-3-super-120b-a12b   # tier-1 gate / span (FRAME)
+    extractor:  nvidia/nemotron-3-super-120b-a12b   # structuring FILL / self-consistency / P6
+    simulator:  nvidia/nemotron-3-super-120b-a12b   # S9 (plays the USER)
+    judge:      openai/gpt-oss-20b                  # EVALUATION-ONLY default judge
+    judge_longmemeval: openai/gpt-oss-20b           # EVALUATION-ONLY LongMemEval judge (per-type prompts)
     embedding:  sentence-transformers/all-MiniLM-L6-v2   # local; vector_rag only (not an API call)
-  # Fallback main models if DeepSeek fails the reasoning/latency gate, in order:
-  #   qwen/qwen3-next-80b-a3b-instruct  ->  nvidia/nemotron-3-super-120b-a12b
   # Judge routing (evaluation only; never touches the pipeline).
   judge_routing:
     longmemeval: judge_longmemeval
     default: judge
 
   # Per-model vendor request params, merged into EVERY call to that model.
-  # The main model's reasoning param is PROVISIONAL and must be confirmed to its
-  # minimum by the STEP 1.3 10-call validation before a live run.
+  # Nemotron: thinking OFF (validated — 0 reasoning tokens, median 0.9s, no <think>
+  # text, over 10 extraction prompts). IDENTICAL for every pipeline call.
   request_params:
-    "deepseek-ai/deepseek-v4.1-flash":
-      reasoning_effort: "low"       # PROVISIONAL — validate minimal (none/0) in STEP 1.3
+    "nvidia/nemotron-3-super-120b-a12b":
+      chat_template_kwargs: {enable_thinking: false}
     "openai/gpt-oss-20b":
       reasoning_effort: "medium"    # judge: parse only the final answer, never the reasoning
 
