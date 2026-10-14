@@ -136,7 +136,28 @@ def _replay(args, outdir, personas):
     logf = open(logs_path, "a", encoding="utf-8")
     truth = {}
     args.budget_stopped = False
+    _t_start = time.time()
+    _total = len(personas)
+
+    def _write_progress():
+        # Lightweight heartbeat the overnight queue renders into QUEUE_STATUS.md.
+        n429 = sum(1 for r in llm.RETRY_LOG if "429" in str(r.get("detail", "")) or r.get("error") == "HTTPStatusError")
+        (outdir / "progress.json").write_text(json.dumps({
+            "stage": "replay", "done": len(done), "total": _total,
+            "elapsed_sec": round(time.time() - _t_start, 1),
+            "spent_tokens": llm.spent_tokens(), "calls": int(llm.cost_summary().get("calls", 0)),
+            "retries": len(llm.RETRY_LOG), "http_429": n429,
+            "ts": now_iso()}), encoding="utf-8")
+
+    pause_flag = RESULTS / "PAUSE"
     for p in personas:
+        # Graceful pause: results/PAUSE finishes the in-progress persona, then stops
+        # cleanly (resumable). The queue creates PAUSE on request / first Ctrl+C.
+        if pause_flag.exists():
+            args.paused = True
+            print(f"[run] PAUSED (results/PAUSE present): {len(done)} personas done; "
+                  f"resume with --resume {args.run_id}.")
+            break
         # Hard budget stop: cleanly halt BEFORE starting a persona once logged
         # spend reaches the ceiling. Completed personas are checkpointed, so the
         # run is resumable with --resume <run_id>.
@@ -166,9 +187,11 @@ def _replay(args, outdir, personas):
             logf.flush()
             done.add(p.pid)
             ckpt_path.write_text(json.dumps({"personas": sorted(done), "stage": "replay"}), encoding="utf-8")
+            _write_progress()
         except Exception as e:  # noqa: BLE001 — transient DB/IO: skip; --resume retries
             print(f"[run] persona {p.pid} failed: {type(e).__name__}: {str(e)[:80]} (resumable)")
     logf.close()
+    _write_progress()
     (outdir / "truth.json").write_text(json.dumps(truth), encoding="utf-8")
     # collect signals per persona
     split_by = {p.pid: p.split for p in personas}
@@ -317,7 +340,13 @@ def main(argv=None):
     ap.add_argument("--split", default=None, choices=["fit", "test", "dev"], help="restrict to one split; dry-run aid")
     ap.add_argument("--outdir", default="runs", help="results/<outdir>/<run_id> (e.g. dryrun)")
     ap.add_argument("--lme", type=int, default=0, help="also run N LongMemEval questions (T5); 0=skip")
+    ap.add_argument("--run-id", dest="run_id_arg", default=None,
+                    help="fixed run_id (lets the priority queue reuse one run DB across tiers)")
+    ap.add_argument("--stages", default="replay,calibration,qa,lme,cost",
+                    help="comma list of stages to run (replay always runs; others gated). "
+                         "The queue runs tiers as separate invocations that reuse --run-id.")
     args = ap.parse_args(argv)
+    args.stage_set = {s.strip() for s in args.stages.split(",") if s.strip()}
     args.dry_run = args.dry_run or not args.live
 
     import yaml
@@ -336,8 +365,15 @@ def main(argv=None):
     from app.config import settings
     if args.dry_run:
         settings.llm.provider = "oracle_mock"
+    # Per-spec model / request-param overrides (used by the optional model2 and
+    # effort-ablation runs, which swap the pipeline model / thinking setting
+    # without editing config.yaml). Live runs only; never touches prompts.
+    for role, model in (spec.get("models_override") or {}).items():
+        settings.llm.models[role] = model
+    if spec.get("request_params_override"):
+        settings.llm.request_params = {**settings.llm.request_params, **spec["request_params_override"]}
     import tempfile, uuid
-    args.run_id = args.resume or time.strftime("%Y%m%d_%H%M%S")
+    args.run_id = args.resume or getattr(args, "run_id_arg", None) or time.strftime("%Y%m%d_%H%M%S")
     outdir = RESULTS / args.outdir / args.run_id
     outdir.mkdir(parents=True, exist_ok=True)
     settings.db_path = pathlib.Path(tempfile.gettempdir()) / f"pcsg_exp_{args.run_id}.db"
@@ -348,7 +384,19 @@ def main(argv=None):
     check_prices(settings.llm.provider, settings.llm.models, settings.experiment.prices_per_mtok,
                  free_tier=settings.experiment.free_tier)
     from app import extraction, pipeline, salience
-    (outdir / "config.json").write_text(json.dumps(_config_record(args, settings, extraction, pipeline, salience), indent=2), encoding="utf-8")
+    # Safety net: a --resume invocation inherits the ORIGINAL persona count/seed
+    # from the run's config.json unless explicitly overridden with --n, so later
+    # tiers (QA/LME/cost) operate on exactly the personas Tier 1 replayed — never
+    # silently reselecting the spec default.
+    existing_cfg = outdir / "config.json"
+    if args.resume and not getattr(args, "n", 0) and existing_cfg.exists():
+        try:
+            prev = json.loads(existing_cfg.read_text(encoding="utf-8"))
+            args.n_personas = int(prev.get("n_personas", args.n_personas))
+            args.seed = int(prev.get("seed", args.seed))
+        except Exception:  # noqa: BLE001
+            pass
+    existing_cfg.write_text(json.dumps(_config_record(args, settings, extraction, pipeline, salience), indent=2), encoding="utf-8")
     print(f"[run] {args.run_id} mode={'dry-run' if args.dry_run else 'LIVE'} provider={settings.llm.provider} -> {outdir}")
 
     # STAGE: persona replay (gate open) -> signals -> labelling -> calibration
@@ -357,6 +405,12 @@ def main(argv=None):
           + (f" (split={args.split})" if args.split else "") + (f" limit={args.limit}" if args.limit else ""))
     personas, truth, split_by = _replay(args, outdir, personas)
     from app import llm
+    if getattr(args, "paused", False):
+        (outdir / "paused.json").write_text(json.dumps(
+            {"paused": True, "run_id": args.run_id, "spent_tokens": llm.spent_tokens(),
+             "resumable": True}, indent=2), encoding="utf-8")
+        print(f"[run] PAUSED; resume with --resume {args.run_id}.")
+        return 0
     if getattr(args, "budget_stopped", False):
         (outdir / "budget_stop.json").write_text(json.dumps(
             {"free_tier": settings.experiment.free_tier,
@@ -366,36 +420,41 @@ def main(argv=None):
              "resumable": True, "run_id": args.run_id}, indent=2), encoding="utf-8")
         print(f"[run] stopped on budget; resume with --resume {args.run_id}. cost={llm.cost_summary()}")
         return 0
-    stored = _collect_signals(personas)
+    stages = getattr(args, "stage_set", {"replay", "calibration", "qa", "lme", "cost"})
     from pcsg.analysis import labelling, calibration, costcurve
-    records = labelling.label_run(stored, truth, split_by)
-    with open(outdir / "labelled.jsonl", "w", encoding="utf-8") as lf:
-        for r in records:
-            lf.write(json.dumps(r) + "\n")
-    cal = calibration.study(records)
-    cal["watermark"] = args.watermark
-    (outdir / "calibration.json").write_text(json.dumps(cal, indent=2), encoding="utf-8")
-    print(f"[run] calibration: {len(records)} labelled assertions; signals={list(cal['by_signal_recalibrator'])}")
+    if "calibration" in stages:
+        # STAGE: Tier 1 — signals -> labelling -> calibration metrics (T1/T2/F1).
+        stored = _collect_signals(personas)
+        records = labelling.label_run(stored, truth, split_by)
+        with open(outdir / "labelled.jsonl", "w", encoding="utf-8") as lf:
+            for r in records:
+                lf.write(json.dumps(r) + "\n")
+        cal = calibration.study(records)
+        cal["watermark"] = args.watermark
+        (outdir / "calibration.json").write_text(json.dumps(cal, indent=2), encoding="utf-8")
+        print(f"[run] calibration: {len(records)} labelled assertions; signals={list(cal['by_signal_recalibrator'])}")
 
-    # STAGE: QA + abstention
-    _qa_and_abstention(args, outdir, personas)
+    if "qa" in stages:
+        # STAGE: Tier 2 — QA across all four systems + abstention (T3/F2).
+        _qa_and_abstention(args, outdir, personas)
 
-    # STAGE: LongMemEval (T5, Tier 3) — N questions through the four systems.
-    if getattr(args, "lme", 0):
+    if "lme" in stages and getattr(args, "lme", 0):
+        # STAGE: Tier 3 — LongMemEval through the four systems (T5).
         _longmemeval_stage(args, outdir)
 
-    # STAGE: cost replay (F3) from the persona logs
-    logs = []
-    for ln in (outdir / "persona_run.jsonl").read_text(encoding="utf-8").splitlines():
-        m = json.loads(ln)
-        asserts = [{"fact_id": f"{m['persona']}_{c.get('key')}_{c.get('value')}",
-                    "confidence": 0.9, "correct": 1 if c.get("action") in ("created", "reinforced") else 0}
-                   for c in m["changes"] if c.get("action") in ("created", "reinforced")]
-        logs.append({"persona": m["persona"], "salience": m["salience"], "tokens": 300, "assertions": asserts})
-    truth_counts = {p.pid: len(p.expected_active()) for p in personas}
-    cc = costcurve.replay(logs, truth_counts)
-    cc["watermark"] = args.watermark
-    (outdir / "cost_curve.json").write_text(json.dumps(cc, indent=2), encoding="utf-8")
+    if "cost" in stages:
+        # STAGE: cost replay (F3) from the persona logs.
+        logs = []
+        for ln in (outdir / "persona_run.jsonl").read_text(encoding="utf-8").splitlines():
+            m = json.loads(ln)
+            asserts = [{"fact_id": f"{m['persona']}_{c.get('key')}_{c.get('value')}",
+                        "confidence": 0.9, "correct": 1 if c.get("action") in ("created", "reinforced") else 0}
+                       for c in m["changes"] if c.get("action") in ("created", "reinforced")]
+            logs.append({"persona": m["persona"], "salience": m["salience"], "tokens": 300, "assertions": asserts})
+        truth_counts = {p.pid: len(p.expected_active()) for p in personas}
+        cc = costcurve.replay(logs, truth_counts)
+        cc["watermark"] = args.watermark
+        (outdir / "cost_curve.json").write_text(json.dumps(cc, indent=2), encoding="utf-8")
 
     # STAGE: failures + cost + minimal T1/baselines placeholders (dry-run)
     (outdir / "failures.json").write_text(json.dumps(_failures(), indent=2), encoding="utf-8")
@@ -405,11 +464,14 @@ def main(argv=None):
     # A focused dry run (--outdir dryrun) stays isolated and never mixes with
     # final results (readiness rule).
     if args.outdir == "runs":
-        for name in ("calibration.json", "abstention.json", "cost_curve.json"):
-            (RESULTS / name).write_text((outdir / name).read_text(encoding="utf-8"), encoding="utf-8")
-        print(f"[run] DONE. artefacts in {outdir} (+ copied to results/ for make_figures).")
+        for name in ("calibration.json", "abstention.json", "cost_curve.json", "qa_systems.json",
+                     "baselines.json", "longmemeval.json"):
+            src = outdir / name
+            if src.exists():  # stage-safe: only publish artefacts that were produced
+                (RESULTS / name).write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        print(f"[run] DONE (stages={sorted(stages)}). artefacts in {outdir} (+ published to results/).")
     else:
-        print(f"[run] DONE. artefacts in {outdir} (isolated; not copied to results/ root).")
+        print(f"[run] DONE (stages={sorted(stages)}). artefacts in {outdir} (isolated).")
     return 0
 
 

@@ -1,0 +1,16 @@
+name: effort_ablation
+# Optional stage 7 (skip by default). Reasoning-effort ablation: the SAME 40
+# personas as the main run, Nemotron with thinking turned ON (vs the main run's
+# thinking-off), Tier 1 + calibration only. Compare this run's calibration
+# against the main run to measure the effect of reasoning effort. Standard
+# 40/40/20 split (seed 2026).
+seed: 2026
+n_personas: 40
+oracle_profile: overconfident
+budget_usd: 25.00
+token_budget: 80000000
+workers: 1
+rate_limit_per_min: 35
+request_params_override:
+  "nvidia/nemotron-3-super-120b-a12b": {chat_template_kwargs: {enable_thinking: true}}
+stages: [persona_replay, labelling, calibration]

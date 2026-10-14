@@ -1,0 +1,20 @@
+name: model2
+# Optional stage 6 (skip by default). Second main model: openai/gpt-oss-20b at
+# reasoning_effort "low" for the PIPELINE roles; Tier 1 + calibration only, 40
+# personas. The judge stays gpt-oss-20b@medium; P7/labelling and embedding are
+# unchanged. Standard 40/40/20 persona split (seed 2026) -> ~16 fit / 16 test / 8 dev.
+seed: 2026
+n_personas: 40
+oracle_profile: overconfident
+budget_usd: 25.00
+token_budget: 80000000
+workers: 1
+rate_limit_per_min: 35
+models_override:
+  chat: openai/gpt-oss-20b
+  classifier: openai/gpt-oss-20b
+  extractor: openai/gpt-oss-20b
+  simulator: openai/gpt-oss-20b
+request_params_override:
+  "openai/gpt-oss-20b": {reasoning_effort: "low"}
+stages: [persona_replay, labelling, calibration]
