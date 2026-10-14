@@ -88,3 +88,6 @@ backend/*.out.log
 *~
 .DS_Store
 Thumbs.db
+
+# Archived dry-run outputs (kept on disk, out of version control)
+results/archive_dryrun/

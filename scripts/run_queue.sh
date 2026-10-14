@@ -24,15 +24,31 @@ status() {  # $1 stage, $2 state
   } > "$STATUS"
 }
 
-run_stage() {  # $1 name ; rest: args to pcsg.run  (or: name --figures)
-  local name="$1"; shift; local marker="$QDIR/$name.done"
+LAST="$RESULTS/runs/$RUN_ID/last_stage.json"
+run_stage() {  # $1 name ; rest: args to pcsg.run  (or: name --figures) ; optional last arg "NOCALLS"
+  local name="$1"; shift; local marker="$QDIR/$name.done"; local expect_calls=1
+  [ "${*: -1}" = "NOCALLS" ] && { set -- "${@:1:$(($#-1))}"; expect_calls=0; }
   [ -f "$marker" ] && { echo "[queue] $name done — skip"; return; }
   [ -f "$PAUSE" ] && { status "$name" "PAUSED before start"; echo "[queue] PAUSED"; exit 0; }
-  echo "[queue] starting $name"; status "$name" "running"
-  if [ "$1" = "--figures" ]; then ( cd "$REPO" && "$PY" scripts/make_figures.py ); rc=$?
-  else ( cd "$BACKEND" && PYTHONPATH=. "$PY" -m pcsg.run "$@" ); rc=$?; fi
+  echo "[queue] STAGE $name"
+  if [ "$1" = "--figures" ]; then
+    echo "[queue]   cmd: $PY scripts/make_figures.py --run-id $RUN_ID --require-live"
+    status "$name" "running"; ( cd "$REPO" && PYTHONUTF8=1 PYTHONIOENCODING=utf-8 "$PY" scripts/make_figures.py --run-id "$RUN_ID" --require-live ); rc=$?
+  else
+    echo "[queue]   cmd: $PY -m pcsg.run $*"
+    status "$name" "running"; ( cd "$BACKEND" && PYTHONPATH=. PYTHONUTF8=1 PYTHONIOENCODING=utf-8 "$PY" -m pcsg.run "$@" ); rc=$?
+  fi
   if [ -f "$PAUSE" ]; then status "$name" "PAUSED"; echo "[queue] PAUSED — remove results/PAUSE and re-run with RUN_ID=$RUN_ID"; exit 0; fi
-  if [ $rc -ne 0 ]; then status "$name" "ERROR rc=$rc (later stages continue)"; echo "[queue] $name FAILED (continuing)"; return; fi
+  if [ $rc -ne 0 ]; then status "$name" "ERROR rc=$rc"; echo "[queue] $name FAILED rc=$rc — STOPPING"; exit $rc; fi
+  # Guard (pcsg.run stages): verify it ran live for THIS run id and made calls.
+  if [ "$1" != "--figures" ]; then
+    local ok; ok=$("$PY" -c "import json,sys;d=json.load(open(sys.argv[1]));print(d.get('mode'),d.get('run_id'),d.get('model_calls'))" "$LAST" 2>/dev/null)
+    local m=$(echo "$ok" | awk '{print $1}'); local rid=$(echo "$ok" | awk '{print $2}'); local calls=$(echo "$ok" | awk '{print $3}')
+    [ "$m" = "live" ] || { echo "[queue] GUARD FAIL: $name mode=$m (expected live)"; exit 11; }
+    [ "$rid" = "$RUN_ID" ] || { echo "[queue] GUARD FAIL: $name run_id=$rid != $RUN_ID"; exit 12; }
+    if [ "$expect_calls" = "1" ] && [ "${calls:-0}" -le 0 ]; then echo "[queue] GUARD FAIL: $name made 0 model calls"; exit 13; fi
+    echo "[queue] $name DONE mode=$m calls=$calls"
+  fi
   touch "$marker"; status "$name" "done"; echo "[queue] $name done"
 }
 
@@ -42,7 +58,7 @@ run_stage tier1_figures --figures
 run_stage tier2_qa experiments/all.yaml --live --resume "$RUN_ID" --n "$PERSONAS" --stages replay,qa
 run_stage tier2_figures --figures
 run_stage tier3_longmemeval experiments/all.yaml --live --resume "$RUN_ID" --n "$PERSONAS" --lme "$LME" --stages replay,lme
-run_stage cost_sweep experiments/all.yaml --live --resume "$RUN_ID" --n "$PERSONAS" --stages replay,cost
+run_stage cost_sweep experiments/all.yaml --live --resume "$RUN_ID" --n "$PERSONAS" --stages replay,cost NOCALLS
 run_stage final_figures --figures
 if [ "$OPT" = "--optional" ]; then
   run_stage model2_gptoss experiments/model2.yaml --live --run-id "model2_$RUN_ID" --stages replay,calibration

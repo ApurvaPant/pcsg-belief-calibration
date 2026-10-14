@@ -48,11 +48,11 @@ def _latest_run():
 def _build_dashboard(run_id=None):
     from pcsg.viz.build import write_dashboard
     run_dir = (RES / "runs" / run_id) if run_id else _latest_run()
-    if run_dir is None:
-        return None, []
+    if run_dir is None or not run_dir.exists():
+        return None, [], None
     out, errs = write_dashboard(run_dir)
     (RES / "dashboard.json").write_text(out.read_text(encoding="utf-8"), encoding="utf-8")
-    return _load(RES / "dashboard.json"), errs
+    return _load(RES / "dashboard.json"), errs, run_dir
 
 
 def _md(rows, header):
@@ -69,14 +69,38 @@ def _pending(name, why):
 
 
 def main():
-    run_id = sys.argv[1] if len(sys.argv) > 1 else None
-    dash, errs = _build_dashboard(run_id)
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("run_id", nargs="?", default=None, help="build figures from this run id (default: latest)")
+    ap.add_argument("--run-id", dest="run_id_opt", default=None, help="same as positional run id")
+    ap.add_argument("--require-live", action="store_true",
+                    help="refuse to build if the run's mode is dry-run (so figures can never be made from a dry run)")
+    a = ap.parse_args()
+    run_id = a.run_id_opt or a.run_id
+
+    # Guard: resolve the run and refuse dry-run / mismatch when --require-live.
+    run_dir = (RES / "runs" / run_id) if run_id else _latest_run()
+    if run_dir is None or not run_dir.exists():
+        print(f"make_figures: no run found ({run_id or 'latest'}) under results/runs/.")
+        return 1
+    cfg = _load(run_dir / "config.json") or {}
+    cfg_mode, cfg_id = cfg.get("mode"), cfg.get("run_id", run_dir.name)
+    if run_id and cfg_id != run_id:
+        print(f"make_figures: GUARD FAIL — resolved run_id {cfg_id!r} != requested {run_id!r}.")
+        return 2
+    if a.require_live and cfg_mode != "live":
+        print(f"make_figures: GUARD FAIL — run {cfg_id!r} mode is {cfg_mode!r}, not 'live'. "
+              f"Refusing to build paper figures from a non-live run.")
+        return 2
+
+    dash, errs, _ = _build_dashboard(run_id)
     if dash is None:
-        print("No run found under results/runs/. Run `python -m pcsg.run experiments/all.yaml --dry-run` first.")
+        print("No run found under results/runs/.")
         return 1
     if errs:
         print("dashboard.json schema errors:", errs)
     wm = dash.get("watermark")
+    print(f"make_figures: building from run_id={cfg_id} mode={cfg_mode}")
 
     # T2 calibration (from dashboard)
     rows = []

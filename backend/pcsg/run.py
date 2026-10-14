@@ -412,10 +412,15 @@ def main(argv=None):
     print(f"[run] {args.run_id} mode={'dry-run' if args.dry_run else 'LIVE'} provider={settings.llm.provider} -> {outdir}")
 
     # STAGE: persona replay (gate open) -> signals -> labelling -> calibration
+    _ck = outdir / "checkpoint.json"
+    pre_done = len(json.loads(_ck.read_text()).get("personas", [])) if _ck.exists() else 0
     personas = select_personas(args.seed, args.n_personas, args.split, args.limit)
     print(f"[run] personas selected: {len(personas)}"
           + (f" (split={args.split})" if args.split else "") + (f" limit={args.limit}" if args.limit else ""))
     personas, truth, split_by = _replay(args, outdir, personas)
+    post_done = len(json.loads(_ck.read_text()).get("personas", [])) if _ck.exists() else 0
+    args.new_personas = post_done - pre_done
+    args.total_personas = len(personas)
     from app import llm
     if getattr(args, "paused", False):
         (outdir / "paused.json").write_text(json.dumps(
@@ -472,6 +477,33 @@ def main(argv=None):
     (outdir / "failures.json").write_text(json.dumps(_failures(), indent=2), encoding="utf-8")
     (outdir / "cost.json").write_text(json.dumps(llm.cost_summary(), indent=2), encoding="utf-8")
     (outdir / "done.json").write_text(json.dumps({"stages": ["replay", "calibration", "qa_abstention", "cost"], "ok": True}), encoding="utf-8")
+
+    # ── stage summary + anti-silent-pass guard ──────────────────────────────
+    from app.db import now_iso as _now
+    calls = int(llm.cost_summary().get("calls", 0))
+    qa_n = 0
+    qp = outdir / "qa_systems.json"
+    if qp.exists():
+        try: qa_n = int(json.loads(qp.read_text()).get("n_questions", 0))
+        except Exception: pass
+    mode = "dry-run" if args.dry_run else "live"
+    (outdir / "last_stage.json").write_text(json.dumps({
+        "run_id": args.run_id, "mode": mode, "stages": sorted(stages),
+        "new_personas": args.new_personas, "total_personas": args.total_personas,
+        "model_calls": calls, "qa_questions": qa_n, "ts": _now()}, indent=2), encoding="utf-8")
+    print(f"[run] SUMMARY run_id={args.run_id} mode={mode} stages={sorted(stages)} "
+          f"personas_done={args.new_personas}/{args.total_personas} model_calls={calls} qa_q={qa_n}")
+    # A LIVE stage that ran a model-calling step must have made calls / done work;
+    # otherwise fail loudly (never pass silently — the queue stops).
+    if not args.dry_run:
+        calling = (args.new_personas > 0) or ("qa" in stages) or ("lme" in stages and getattr(args, "lme", 0))
+        if calling and calls == 0:
+            print("[run] GUARD FAIL: live model-calling stage made ZERO model calls — aborting.")
+            return 3
+        if ("replay" in stages) and args.total_personas > 0 and pre_done < args.total_personas and args.new_personas == 0:
+            print("[run] GUARD FAIL: live replay completed ZERO new personas — aborting.")
+            return 3
+
     # publish latest -> results/ root for make_figures — ONLY for a normal run.
     # A focused dry run (--outdir dryrun) stays isolated and never mixes with
     # final results (readiness rule).
