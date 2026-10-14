@@ -89,31 +89,49 @@ LongMemEval is the swing factor because each question replays a whole haystack.
 - At **N=100** the run is ~16 h (over) — use 60. To guarantee a one-night finish, optionally shrink LongMemEval
   (e.g. `-Lme 60`) or run QA on fewer test personas; I did **not** change scope automatically.
 
-## Launch / pause / resume / progress (plain PowerShell, repo root)
+## Launch / pause / resume / progress — **built-in Windows PowerShell 5.1** (repo root)
+`pwsh` (PowerShell 7) is NOT required. Use `powershell.exe` or the `.bat`.
 ```powershell
 # LAUNCH the overnight priority queue (recommended): core result first, rest best-effort + resumable
-pwsh -File scripts\run_queue.ps1 -Personas 60
+powershell -ExecutionPolicy Bypass -File scripts\run_queue.ps1 -Personas 60
+#   or simply:   scripts\run_queue.bat 60
 
 # LAUNCH ONLY the main run (no queue), if you prefer to drive stages yourself:
-cd backend ; $env:PYTHONPATH="." ; .\.venv\Scripts\python.exe -m pcsg.run experiments\all.yaml --live --n 60
+cd backend ; $env:PYTHONPATH="." ; $env:PYTHONUTF8="1" ; .\.venv\Scripts\python.exe -m pcsg.run experiments\all.yaml --live --n 60
 
 # PAUSE gracefully (current persona finishes, state saved):
-New-Item results\PAUSE -ItemType File        # or press Ctrl+C once in the queue window
+New-Item results\PAUSE -ItemType File
 
 # RESUME (skips finished stages/personas; no duplicates):
 Remove-Item results\PAUSE -ErrorAction SilentlyContinue
-pwsh -File scripts\run_queue.ps1 -Personas 60 -RunId <run_id>
+powershell -ExecutionPolicy Bypass -File scripts\run_queue.ps1 -Personas 60 -RunId <run_id>
+#   or:   scripts\run_queue.bat 60 <run_id>
 
-# CHECK PROGRESS (updates ≥ every 5 min):
+# CHECK PROGRESS (updates at each stage transition + per-persona heartbeat):
 Get-Content results\QUEUE_STATUS.md
 
-# STOP IMMEDIATELY: press Ctrl+C a second time (or close the window)
+# STOP IMMEDIATELY: press Ctrl+C (resume re-runs the interrupted persona cleanly; no duplicate rows)
 
-# OPTIONAL stages 6–7 (model2 + effort ablation; skipped by default):
-pwsh -File scripts\run_queue.ps1 -Personas 60 -RunId <run_id> -IncludeOptional
+# OPTIONAL stages 6-7 (model2 + effort ablation; skipped by default):
+powershell -ExecutionPolicy Bypass -File scripts\run_queue.ps1 -Personas 60 -RunId <run_id> -IncludeOptional
 ```
-Bash equivalents: `bash scripts/run_queue.sh 60` · `touch results/PAUSE` · `bash scripts/run_queue.sh 60 <run_id>` ·
-`cat results/QUEUE_STATUS.md` · `bash scripts/run_queue.sh 60 <run_id> 108 --optional`.
+Bash equivalents: `bash scripts/run_queue.sh 60` | `touch results/PAUSE` | `bash scripts/run_queue.sh 60 <run_id>` |
+`cat results/QUEUE_STATUS.md` | `bash scripts/run_queue.sh 60 <run_id> 108 --optional`.
+
+## Queue fix (2026-10-15) — why Tier 1 silently did nothing, and the guards added
+**Root cause:** the queue launched each stage with `Start-Job -ArgumentList ...,$pyArgs`
+where `$pyArgs` is an array; PowerShell flattens a trailing array into `-ArgumentList`,
+so the job's parameters shifted and the stage never ran `pcsg.run --live` — it fell
+through to the figures path and regenerated figures from the OLD dry-run (`20261009_*`).
+Tier 1 "finished" in seconds with zero model calls.
+**Fixed:** stages now run **synchronously** (`& $Py -m pcsg.run @args`, no job/array splat),
+each prints its **exact command**, and each is verified against `results/runs/<id>/last_stage.json`.
+A live stage **STOPS the queue** if that file is missing, `mode != live`, the run id differs,
+or `model_calls == 0` (for a calling stage); `make_figures` refuses a dry-run or mismatched run
+(`--require-live`). Old dry-run outputs are archived under `results/archive_dryrun/`.
+**Proven under PS 5.1:** live Tier 1 at `-Personas 1` made **212 real calls**, 1 persona
+replayed, 19 assertions stored, labels + `calibration.json` written (~6 min); dry-run full
+queue (n=4) completed with figures from the current run; pause -> resume -> idempotent skip verified.
 
 ## Healthy numbers to see in QUEUE_STATUS.md after ~30 min
 - **stage = tier1_replay_calibration, running**, `replay done` climbing by ~1 every ~4–5 min (so ~6–8 done by 30 min at N=60).
