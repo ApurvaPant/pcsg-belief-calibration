@@ -208,8 +208,12 @@ def run(questions: list[dict], outdir: pathlib.Path, *, dry_run: bool = True,
             return {"question_id": q["question_id"], "question_type": q.get("question_type"),
                     "is_abstention": bool(q.get("is_abstention")), "failed": True, "systems": {}}
 
+    pause_flag = outdir.parents[2] / "PAUSE" if len(outdir.parents) >= 3 else outdir / "PAUSE"
     if eff_workers == 1:
         for q in todo:
+            if pause_flag.exists():   # graceful pause: finish in-progress question, then stop (resumable by id)
+                print(f"[lme] PAUSED (results/PAUSE present): {len(done)} questions done; resume with the same run id.")
+                break
             _store(_safe_run(q))
     else:  # pragma: no cover - live parallel path
         with ThreadPoolExecutor(max_workers=eff_workers) as ex:

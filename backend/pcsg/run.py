@@ -132,6 +132,13 @@ def _replay(args, outdir, personas):
 
     ckpt_path = outdir / "checkpoint.json"
     done = set(json.loads(ckpt_path.read_text()).get("personas", [])) if ckpt_path.exists() else set()
+    # Persona<->user map keyed on persona id (NOT name — names collide). Persisted so
+    # _collect_signals / QA attribute assertions to the right persona. Loaded+merged on resume.
+    pu_path = outdir / "persona_users.json"
+    persona_users = {}
+    if pu_path.exists():
+        try: persona_users = {int(k): v for k, v in json.loads(pu_path.read_text()).items()}
+        except Exception: persona_users = {}
     logs_path = outdir / "persona_run.jsonl"
     logf = open(logs_path, "a", encoding="utf-8")
     truth = {}
@@ -174,6 +181,7 @@ def _replay(args, outdir, personas):
             continue
         try:
             uid, sid = new_id("user"), new_id("sess")
+            persona_users[p.pid] = uid
             with get_conn() as c:
                 c.execute("INSERT INTO users(id,label,created_at)VALUES(?,?,?)", (uid, p.name, now_iso()))
                 c.execute("INSERT INTO sessions(id,user_id,title,created_at)VALUES(?,?,?,?)", (sid, uid, "exp", now_iso()))
@@ -193,29 +201,33 @@ def _replay(args, outdir, personas):
     logf.close()
     _write_progress()
     (outdir / "truth.json").write_text(json.dumps(truth), encoding="utf-8")
-    # collect signals per persona
+    pu_path.write_text(json.dumps({str(k): v for k, v in persona_users.items()}), encoding="utf-8")
     split_by = {p.pid: p.split for p in personas}
-    pid_by_user = {}
-    with get_conn() as c:
-        for u in c.execute("SELECT id, label FROM users"):
-            pass
     return personas, truth, split_by
 
 
-def _collect_signals(personas):
+def _collect_signals(personas, outdir=None):
+    """Attribute each stored assertion to its persona by USER ID (persona_users.json),
+    never by name (datagen names collide). Falls back to name only if the id map is
+    absent (legacy runs), which is the known-buggy path."""
     from app.db import get_conn
+    uid2pid = {}
+    pu_path = (outdir / "persona_users.json") if outdir else None
+    if pu_path and pu_path.exists():
+        try: uid2pid = {v: int(k) for k, v in json.loads(pu_path.read_text()).items()}
+        except Exception: uid2pid = {}
     name_to_pid = {}
     for p in personas:
-        name_to_pid.setdefault(p.name, p.pid)
+        name_to_pid.setdefault(p.name, p.pid)   # legacy fallback only
     stored = {p.pid: [] for p in personas}
     with get_conn() as c:
         rows = c.execute(
             "SELECT cs.dimension, cs.key, cs.value, cs.verbalized, cs.self_consistency, cs.evidence, "
-            "cs.explicitness, u.label AS uname FROM confidence_signals cs "
+            "cs.explicitness, n.user_id AS uid, u.label AS uname FROM confidence_signals cs "
             "JOIN nodes n ON n.id = cs.node_id JOIN users u ON u.id = n.user_id").fetchall()
     for r in rows:
-        pid = name_to_pid.get(r["uname"])
-        if pid is None:
+        pid = uid2pid.get(r["uid"]) if uid2pid else name_to_pid.get(r["uname"])
+        if pid is None or pid not in stored:
             continue
         stored[pid].append({"dimension": r["dimension"], "key": r["key"], "value": r["value"],
                             "verbalized": r["verbalized"], "self_consistency": r["self_consistency"],
@@ -235,15 +247,23 @@ def _qa_and_abstention(args, outdir, personas):
     judge = (lambda rubric, reply: ("PASS" in oracle._judge(f"RUBRIC:{rubric} REPLY:{reply}"), "oracle")) \
         if args.dry_run else _make_judge("real")
 
-    # The persona's graph was built during replay under a user labelled p.name.
-    with get_conn() as c:
-        label_to_uid = {r["label"]: r["id"] for r in c.execute("SELECT id, label FROM users")}
+    # Resolve each persona's graph by persona id -> user id (persona_users.json),
+    # NEVER by name (names collide). Legacy fallback to name only if the map is absent.
+    pu_path = outdir / "persona_users.json"
+    pid2uid = {}
+    if pu_path.exists():
+        try: pid2uid = {int(k): v for k, v in json.loads(pu_path.read_text()).items()}
+        except Exception: pid2uid = {}
+    label_to_uid = {}
+    if not pid2uid:
+        with get_conn() as c:
+            label_to_uid = {r["label"]: r["id"] for r in c.execute("SELECT id, label FROM users")}
 
     test_personas = personas if getattr(args, "split", None) else [p for p in personas if p.split == "test"]
     records = {s: [] for s in baselines.SYSTEMS}
     n_questions = 0
     for p in test_personas:
-        uid = label_to_uid.get(p.name)
+        uid = pid2uid.get(p.pid) if pid2uid else label_to_uid.get(p.name)
         history = [{"role": "user", "text": t.text, "turn": i} for i, t in enumerate(p.turns)]
         for q in personaqa.make_qa(p):
             n_questions += 1
@@ -441,7 +461,7 @@ def main(argv=None):
     from pcsg.analysis import labelling, calibration, costcurve
     if "calibration" in stages:
         # STAGE: Tier 1 — signals -> labelling -> calibration metrics (T1/T2/F1).
-        stored = _collect_signals(personas)
+        stored = _collect_signals(personas, outdir)
         records = labelling.label_run(stored, truth, split_by)
         with open(outdir / "labelled.jsonl", "w", encoding="utf-8") as lf:
             for r in records:
