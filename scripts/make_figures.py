@@ -177,10 +177,31 @@ def main():
         for variant, series in abn.items():
             for pt in series:
                 w.writerow([variant, pt["tau"], pt["coverage"], pt["accuracy"], pt["fabrication"]])
+    cost_cells = dash.get("cost_curve", {}).get("cells", [])
     with open(FIG / "F3.csv", "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh); w.writerow(["cell", "tier1", "write_tau", "accuracy", "cost_tokens", "pareto"])
-        for c in dash.get("cost_curve", {}).get("cells", []):
+        for c in cost_cells:
             w.writerow([c["cell"], c["tier1"], c["write_tau"], c["accuracy"], c["cost_tokens"], c.get("pareto")])
+    # F3 figure: write-policy cost/accuracy trade-off (x = write-path extraction
+    # tokens, y = truth-recall), one series per write_tau, Pareto cells ringed.
+    if HAVE_MPL and cost_cells:
+        plt.figure(figsize=(5, 4))
+        taus = sorted({c["write_tau"] for c in cost_cells})
+        for tau in taus:
+            pts = sorted([c for c in cost_cells if c["write_tau"] == tau], key=lambda c: c["cost_tokens"])
+            plt.plot([c["cost_tokens"] / 1e6 for c in pts], [c["accuracy"] for c in pts],
+                     marker="o", label=f"write_tau={tau}")
+        par = [c for c in cost_cells if c.get("pareto")]
+        if par:
+            plt.scatter([c["cost_tokens"] / 1e6 for c in par], [c["accuracy"] for c in par],
+                        s=140, facecolors="none", edgecolors="k", linewidths=1.3, label="Pareto", zorder=5)
+        plt.xlabel("write-path extraction tokens (millions)")
+        plt.ylabel("current-state truth recall")
+        plt.title("F3 — write-policy cost vs. recall")
+        plt.legend(fontsize=8); plt.grid(alpha=0.3)
+        if wm:
+            plt.figtext(0.5, 0.5, wm, fontsize=16, color="red", alpha=0.25, ha="center", va="center", rotation=30)
+        plt.savefig(FIG / "F3.png", dpi=110, bbox_inches="tight"); plt.close()
 
     print(f"dashboard: results/dashboard.json  (run {dash['meta']['run_id']}, mode={dash['meta']['mode']})")
     print(f"tables -> results/tables/  figures -> results/figures/  {'[WATERMARKED]' if wm else ''}")

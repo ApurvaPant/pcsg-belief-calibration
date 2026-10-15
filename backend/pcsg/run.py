@@ -235,6 +235,60 @@ def _collect_signals(personas, outdir=None):
     return stored
 
 
+def _cost_logs(outdir, personas):
+    """Build the offline cost-replay logs (F3) from the active run DB.
+
+    Each message carries its REAL salience (gate_log.raw_score) and REAL write-path
+    tokens (gate_log.frame_tokens + fill_tokens). Each stored assertion carries its
+    verbalized confidence and a rule-A label against the persona's ACTIVE truth
+    (fact_id = the matched truth fact's id, so distinct matched ids per persona can
+    never exceed that persona's truth count -> the recall in _state_accuracy is in
+    [0,1]). Assertions are attributed to a persona by USER ID (persona_users.json),
+    never by name. Returns (logs, truth_counts)."""
+    from app.db import get_conn
+    from pcsg.analysis.labelling import label_one
+    uid2pid = {}
+    pu_path = outdir / "persona_users.json"
+    if pu_path.exists():
+        try: uid2pid = {v: int(k) for k, v in json.loads(pu_path.read_text()).items()}
+        except Exception: uid2pid = {}
+    # ACTIVE truth per persona (id = fact key) -> labelling target + denominator.
+    active_truth, truth_counts = {}, {}
+    for p in personas:
+        at = [{"id": k, "dimension": f.dimension, "value": f.value}
+              for k, f in p.facts.items() if f.kind != "end" and f.superseded_by is None]
+        active_truth[p.pid] = at
+        truth_counts[p.pid] = len(at)
+    with get_conn() as c:
+        gate = {r["message_id"]: r for r in c.execute(
+            "SELECT message_id, raw_score, COALESCE(frame_tokens,0) AS ft, "
+            "COALESCE(fill_tokens,0) AS fl FROM gate_log")}
+        sigs = c.execute(
+            "SELECT cs.message_id AS mid, cs.dimension AS dim, cs.value AS val, "
+            "cs.verbalized AS vb, n.user_id AS uid FROM confidence_signals cs "
+            "JOIN nodes n ON n.id = cs.node_id").fetchall()
+    by_msg = {}
+    for s in sigs:
+        by_msg.setdefault(s["mid"], []).append(s)
+    logs = []
+    for mid, g in gate.items():
+        pid, asserts = None, []
+        for s in by_msg.get(mid, []):
+            pid_i = uid2pid.get(s["uid"])
+            if pid_i is None:
+                continue
+            pid = pid_i
+            correct, tid = label_one({"dimension": s["dim"], "value": s["val"]},
+                                     active_truth.get(pid_i, []))
+            asserts.append({
+                "fact_id": f"{pid_i}:{tid}" if tid else f"{mid}:{s['val']}",
+                "confidence": float(s["vb"]) if s["vb"] is not None else 0.0,
+                "correct": correct})
+        logs.append({"persona": pid, "salience": int(g["raw_score"] or 0),
+                     "tokens": int(g["ft"]) + int(g["fl"]), "assertions": asserts})
+    return logs, truth_counts
+
+
 def _qa_and_abstention(args, outdir, personas):
     """Tier-2 QA across ALL FOUR systems (no_memory, full_context, vector_rag,
     pcsg) on the SAME questions, SAME answer template, SAME judge, SAME token
@@ -480,18 +534,29 @@ def main(argv=None):
         _longmemeval_stage(args, outdir)
 
     if "cost" in stages:
-        # STAGE: cost replay (F3) from the persona logs.
-        logs = []
-        for ln in (outdir / "persona_run.jsonl").read_text(encoding="utf-8").splitlines():
-            m = json.loads(ln)
-            asserts = [{"fact_id": f"{m['persona']}_{c.get('key')}_{c.get('value')}",
-                        "confidence": 0.9, "correct": 1 if c.get("action") in ("created", "reinforced") else 0}
-                       for c in m["changes"] if c.get("action") in ("created", "reinforced")]
-            logs.append({"persona": m["persona"], "salience": m["salience"], "tokens": 300, "assertions": asserts})
-        truth_counts = {p.pid: len(p.expected_active()) for p in personas}
+        # STAGE: cost replay (F3) — OFFLINE replay from the run DB. Real salience +
+        # real write-path tokens per message (gate_log), real per-assertion
+        # verbalized confidence, and rule-A labelling against each persona's ACTIVE
+        # truth so "accuracy" is a bounded truth-recall in [0,1] (NOT the unbounded
+        # "fraction written" proxy that produced accuracy=1.0667). No model calls.
+        logs, truth_counts = _cost_logs(outdir, personas)
         cc = costcurve.replay(logs, truth_counts)
         cc["watermark"] = args.watermark
+        cc["accuracy_definition"] = (
+            "truth RECALL: distinct ACTIVE truth facts matched by a retained assertion "
+            "(rule A: dimension + normalised value) / total active truth facts, per "
+            "persona, summed. In [0,1]. NOT QA accuracy, NOT assertion precision.")
+        cc["cost_definition"] = (
+            "write-path extraction tokens (gate frame+fill) summed over messages whose "
+            "salience >= the tier1 threshold.")
         (outdir / "cost_curve.json").write_text(json.dumps(cc, indent=2), encoding="utf-8")
+        _accs = [c["accuracy"] for c in cc["cells"]]
+        _costs = [c["cost_tokens"] for c in cc["cells"]]
+        print(f"[run] cost curve: {len(logs)} messages, "
+              f"{sum(len(m['assertions']) for m in logs)} assertions, "
+              f"{len(cc['cells'])} cells; accuracy in [{min(_accs):.4f},{max(_accs):.4f}], "
+              f"cost in [{min(_costs)},{max(_costs)}] tokens")
+        assert all(0.0 <= a <= 1.0 for a in _accs), f"cost-curve accuracy out of [0,1]: {_accs}"
 
     # STAGE: failures + cost + minimal T1/baselines placeholders (dry-run)
     (outdir / "failures.json").write_text(json.dumps(_failures(), indent=2), encoding="utf-8")
