@@ -1,0 +1,18 @@
+{
+  "n_matched": 61,
+  "dist": {
+    "correct": 50,
+    "partly": 26,
+    "wrong": 2
+  },
+  "auroc": {
+    "verbalized": {
+      "lenient": 0.2797,
+      "strict": 0.5514
+    },
+    "self_consistency": {
+      "lenient": 0.3644,
+      "strict": 0.661
+    }
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "inputs": {
+    "results/runs/main_20261015_000553/persona_run.jsonl": "d2a94415d91fa1bedfa8d28ff00d5d055b5ff356f889b322c81f836a15d344d2",
+    "results/runs/main_20261015_000553/labelled.jsonl": "540f4c16c05df0241a9e8277cb66dec9e6ae377d85dc9155ab99e1a8d87e977e",
+    "results/runs/main_20261015_000553/truth.json": "a0e09bd7c827993c1ca93f4c5a77df28ff11ff83b28c7a2e37b39cff675fddb9",
+    "results/runs/main_20261015_000553/calibration.json": "370e1153719c657ba168079e2d5872fe5f3a2a8a08b461b74b868f1de74e70f9",
+    "results/runs/main_20261015_000553/config.json": "a92292085ff33d3aee356b4d9aaf8ca26de26eadfe69441dba628107b95c0dde",
+    "results/runs/main_20261015_000553/cost.json": "566235948f70f297bbb1ed925f5b97ce2aea8fdb6d276216b36197aaa28caf5f",
+    "results/runs/main_20261015_000553/cost_curve.json": "78cec4fd086f95f5d83b11939ec0b2f925618e15d25ec1f430923587a5e88633",
+    "results/runs/main_20261015_000553/qa_systems.json": "feb5e639c86924fa6f29d79c13f633eebf3dfedf9d9a00c5e09dedd505f7271b",
+    "results/runs/main_20261015_000553/persona_users.json": "cac230ef3a2dbd06f4b1a0ef49a4552fddc68d3b753573456315d24d521120db",
+    "results/runs/main_20261015_000553/baselines.json": "f0afc1d95c11a0ff80d6a981f8fe908ef692c1d51616565a4240faa227042a90",
+    "results/runs/main_20261015_000553/abstention.json": "1746a835be07aa6f3fd35fd48a94da7c9635cb2f2cd765889a6da2f70fd14ede",
+    "backend/config.yaml": "7dba34fc8011a70aa66408e7e90ea0fb7d42facd1ffc37947bfd2c57003e2db8",
+    "backend/app/extraction.py": "514f91d4007af69aa9fd21ae3d750e34b2b78568cbd320b8b412d7e4d63ee392",
+    "results/analysis/error_audit_v2_raj.csv": "fde2851e6c5d2f42d796bea62ebc3114003c0fc5f3d4c64ea6d064b18d9df3b2",
+    "results/analysis/error_audit_v2_key.csv": "e6a407af64794b534d56fab3797469efb6426d72a9985b192db31b70a7dca619"
+  },
+  "outputs": {
+    "results/tables/T1.md": "b30a522b0275fa65a2be599ae1c818265727db290503319c222ef461d333e501",
+    "results/tables/T2.md": "e7481768fefd220cb45246c4320bba8852390d22e7ea74cb1136de01090b0bbe",
+    "results/tables/T3.md": "947cea882f9d649462d8e104a0f3db8976b0392bb7fb7cde773dd786095cd448",
+    "results/tables/T4.md": "3f3670aaa5829bc9669ae663e0014a69d1acc4cf909e2d7861b697cd7a6ba64f",
+    "results/tables/T5.md": "da61b252e2c5ecfb322db66f250f143f2672ee2ecd4a5fc4102f2709117f8adb",
+    "results/figures/F1_evidence.csv": "e303d44faccf3630b5f1ee156317ec34cea3c141b6b0b287ccf89d73982a949c",
+    "results/figures/F1_evidence.png": "d93548e8f812829fd0c006f6bdaa5060f2426ace97786aab679f11475a4f79dc",
+    "results/figures/F1_self_consistency.csv": "d47e95ff374afd4c326533c52b68da23182507b6ca4f2bf6a0303af8f1d147d9",
+    "results/figures/F1_self_consistency.png": "14b40f5a4ccf61642c2b96b3e3be7e402e8e60d9b606e4ae2ffff4f652478542",
+    "results/figures/F1_verbalized.csv": "90e37b02228011919424e0411bb92478043389311c60b9f18d80c48337076f28",
+    "results/figures/F1_verbalized.png": "d838636096976016b51e70376649488a180012c022d20396a87054cad0923012",
+    "results/figures/F2.csv": "00c0f8265f230d081adefc69ee8b951b2af30e803a2bf8c0701ef7dee65b1aeb",
+    "results/figures/F3.csv": "a734c578c29b649fadd4ed1dd685112c4d35cfdaec02e636736e1abe989aaf74",
+    "results/figures/F3.png": "cd8bd4fb494c7f72f953e9b8e6f13c272ad173178d4bd4e75e9cb201072af6db",
+    "results/analysis_v2/ABSTAIN_SC.md": "6c29238f329334fc9320e866eebe5fc15f957dbbf9ea6eebdfc987714007bbca",
+    "results/analysis_v2/EVIDENCE_V2.md": "40d428f3f0d61935f9b488108da6aef64fb7324da251a1b2d30341ff91e06202",
+    "results/analysis_v2/HUMAN_AUDIT.md": "6c89fe58d6c13d912e1a3a677867e76409fe5ede283e09e885e9ededae9c6e2a",
+    "results/analysis_v2/STATS.md": "0d3bf80993622e717e04b75ac61b735adf249dfca3ff1981fc415edf67a1d4fb",
+    "results/analysis_v2/TEMPLATES.md": "2d1a68b10b56bc6f9518c95873c92e5ac626d972ee2a08e1c9f7462c69bf3cb0",
+    "results/analysis_v2/_evidence_v2.json": "850d4f8d5c054f4717ec67969b3b7fed32da3054b8fc4de1f5abd16af61899fd",
+    "results/analysis_v2/_human_audit.json": "fa3eeb1913d0f256c88cc7c522e82977c7f6840563cc5ddfc77601770b6cd3b7",
+    "results/analysis_v2/_stats.json": "1b89fb48f3b841c438f06e6208c537205221e1fa6fbfb48e40cd786acfcb5135",
+    "results/analysis_v2/_templates.json": "5fa34c697a25c315545f638fabf5519a8a158778690ac8fbdbc276fba9a788b5"
+  },
+  "metadata": {
+    "run_id": "main_20261015_000553",
+    "run_git_sha": "9e77dbcda5e0a907209f19635d49fdb9970a4e9f",
+    "repo_git_commit": "99869d3c15835789f77f8d06dbaa3b93d6393c26",
+    "models": {
+      "chat": "nvidia/nemotron-3-super-120b-a12b",
+      "classifier": "nvidia/nemotron-3-super-120b-a12b",
+      "extractor": "nvidia/nemotron-3-super-120b-a12b",
+      "simulator": "nvidia/nemotron-3-super-120b-a12b",
+      "judge": "openai/gpt-oss-20b",
+      "judge_longmemeval": "openai/gpt-oss-20b",
+      "embedding": "sentence-transformers/all-MiniLM-L6-v2"
+    },
+    "seed": 2026,
+    "n_personas": 60,
+    "temperature": 0.2,
+    "max_tokens": 1024,
+    "prompt_version": "2.0-frame-fill",
+    "prompt_hashes": {
+      "FRAME": "39339f174c1d5248",
+      "FILL": "93a5fa7da282f88b",
+      "CHAT": "8cb8a28ee9bec370",
+      "SALIENCE": "1e3bfe3499368bfc"
+    },
+    "self_consistency_k": 3,
+    "rate_limit_per_min": 35,
+    "longmemeval_revision": "98d7416c24c778c2fee6e6f3006e7a073259d48f",
+    "cost_meter": {
+      "calls": 1920.0,
+      "prompt_tokens": 507797.0,
+      "completion_tokens": 92343.0,
+      "reasoning_tokens": 0.0
+    },
+    "cost_meter_note": "cost.json reflects the meter state in the main run folder; the headline '22.5M tokens / 12,787 calls' is the tier1_replay_calibration total from results/QUEUE_STATUS.md and is NOT equal to this cost.json (see docs/PAPER_NUMBERS.md)."
+  }
+}

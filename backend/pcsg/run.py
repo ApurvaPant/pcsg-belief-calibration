@@ -434,6 +434,28 @@ def _longmemeval_stage(args, outdir):
     return res
 
 
+def write_cost_json(path, summary):
+    """Write the cost meter to cost.json WITHOUT clobbering a real prior total.
+
+    `_replay` calls llm.reset_cost(), so a --resume / offline-stage invocation that makes
+    ZERO model calls would otherwise overwrite the original run's cost.json with zeros.
+    Guard: if this invocation billed 0 calls and an existing cost.json has calls>0, keep
+    the existing file (the real cumulative cost) instead of zeroing it."""
+    import pathlib as _pl
+    path = _pl.Path(path)
+    new_calls = float((summary or {}).get("calls", 0) or 0)
+    if new_calls == 0 and path.exists():
+        try:
+            prev = json.loads(path.read_text(encoding="utf-8"))
+            if float(prev.get("calls", 0) or 0) > 0:
+                print(f"[run] cost.json preserved (this invocation made 0 calls; kept prior "
+                      f"calls={int(prev['calls'])}).")
+                return
+        except Exception:  # noqa: BLE001 — unreadable prior: fall through and write
+            pass
+    path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+
+
 def _failures():
     from app.db import get_conn
     with get_conn() as c:
@@ -612,7 +634,7 @@ def main(argv=None):
 
     # STAGE: failures + cost + minimal T1/baselines placeholders (dry-run)
     (outdir / "failures.json").write_text(json.dumps(_failures(), indent=2), encoding="utf-8")
-    (outdir / "cost.json").write_text(json.dumps(llm.cost_summary(), indent=2), encoding="utf-8")
+    write_cost_json(outdir / "cost.json", llm.cost_summary())
     (outdir / "done.json").write_text(json.dumps({"stages": ["replay", "calibration", "qa_abstention", "cost"], "ok": True}), encoding="utf-8")
 
     # ── stage summary + anti-silent-pass guard ──────────────────────────────

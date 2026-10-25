@@ -1,0 +1,24 @@
+{
+  "coverage": 0.682,
+  "dist_posthoc": {
+    "explicit": 289,
+    "implicit": 24
+  },
+  "dist_orig": {
+    "explicit": 313
+  },
+  "auroc_brier": {
+    "posthoc": [
+      0.3581,
+      0.1217
+    ],
+    "original": [
+      0.3718,
+      0.1212
+    ],
+    "verbalized": [
+      0.3718,
+      0.1256
+    ]
+  }
+}

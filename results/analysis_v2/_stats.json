@@ -1,0 +1,30 @@
+{
+  "paired": {
+    "correct_A": {
+      "observed_dAUROC": 0.2315,
+      "ci95": [
+        0.1539,
+        0.3076
+      ],
+      "p_one_sided_sc_le_verb": 0.0,
+      "reps": 10000
+    },
+    "correct_C": {
+      "observed_dAUROC": 0.1757,
+      "ci95": [
+        0.0631,
+        0.2821
+      ],
+      "p_one_sided_sc_le_verb": 0.0012,
+      "reps": 10000
+    }
+  },
+  "brier_platt_sc": 0.08428657118074102,
+  "base_brier": 0.09363919859882949,
+  "delong": {
+    "auc_sc": 0.6802,
+    "auc_verb": 0.4487,
+    "z": 3.9375,
+    "p_two_sided": 8.232e-05
+  }
+}

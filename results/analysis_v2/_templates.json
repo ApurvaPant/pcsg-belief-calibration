@@ -1,0 +1,36 @@
+{
+  "msg_dupe_all": 0.852,
+  "shared_test_beliefs": 405,
+  "n_test_beliefs": 411,
+  "linked_cov": 0.682,
+  "signals": {
+    "verbalized": {
+      "linked_all": {
+        "n": 313,
+        "acc": 0.8722,
+        "brier": 0.1256,
+        "auroc": 0.3718
+      },
+      "unique_evidence": {
+        "n": 14,
+        "acc": 0.8571,
+        "brier": 0.1261,
+        "auroc": 0.375
+      }
+    },
+    "self_consistency": {
+      "linked_all": {
+        "n": 313,
+        "acc": 0.8722,
+        "brier": 0.1221,
+        "auroc": 0.6184
+      },
+      "unique_evidence": {
+        "n": 14,
+        "acc": 0.8571,
+        "brier": 0.1032,
+        "auroc": 0.75
+      }
+    }
+  }
+}
