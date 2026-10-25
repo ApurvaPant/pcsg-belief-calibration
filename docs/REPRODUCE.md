@@ -52,3 +52,15 @@ a second run prints `CHECK OK: 15 inputs + 23 outputs match`.
   that joined each confidence signal to its message text was cleaned from TEMP, so text-linked
   analyses recover the link by (persona,dimension[,value]) alignment and report coverage
   (≈68% of test beliefs; 61/78 audited). Stated in each file; not approximated silently.
+- **Deleted run database.** The main run used a SINGLE shared experiment DB,
+  `%TEMP%/pcsg_exp_main_20261015_000553.db` (all 60 personas in one DB, keyed by user_id —
+  it was never per-persona), and it has been removed from TEMP. The LongMemEval stage also
+  creates ephemeral per-QUESTION DBs (`%TEMP%/lme_*.db`) that are unlinked by design, so none
+  persist. Losing the experiment DB prevents, from committed artifacts alone: (a) exact
+  per-belief signal→message-text linkage (`confidence_signals.message_id → messages.content →
+  nodes.user_id`); (b) recovery of the per-message write-path token columns
+  (`gate_log.frame_tokens/fill_tokens`, `extraction_log`) — only the aggregate extraction
+  total **5,634,624** survives (in `cost_curve.json` at tier1=0); (c) the full token meter /
+  per-persona token accounting (the 22.5M figure — see PAPER_NUMBERS.md); (d) exact per-belief
+  explicitness and evidence spans (hence the post-hoc hedge lexicon on the ~68% subset). Call
+  counts survive in `results/QUEUE_STATUS.md` / `queue_state.json` (tier1 12,787; tier2 QA 1,883).

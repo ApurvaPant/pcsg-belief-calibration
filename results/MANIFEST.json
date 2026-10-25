@@ -33,7 +33,7 @@
     "results/figures/F3.csv": "a734c578c29b649fadd4ed1dd685112c4d35cfdaec02e636736e1abe989aaf74",
     "results/figures/F3.png": "cd8bd4fb494c7f72f953e9b8e6f13c272ad173178d4bd4e75e9cb201072af6db",
     "results/analysis_v2/ABSTAIN_SC.md": "6c29238f329334fc9320e866eebe5fc15f957dbbf9ea6eebdfc987714007bbca",
-    "results/analysis_v2/EVIDENCE_V2.md": "40d428f3f0d61935f9b488108da6aef64fb7324da251a1b2d30341ff91e06202",
+    "results/analysis_v2/EVIDENCE_V2.md": "03f0ae2ceb290e4e9893ab8bfb82dbc04960c5d6c4817e9f8be32f51f9ae61b8",
     "results/analysis_v2/HUMAN_AUDIT.md": "6c89fe58d6c13d912e1a3a677867e76409fe5ede283e09e885e9ededae9c6e2a",
     "results/analysis_v2/STATS.md": "0d3bf80993622e717e04b75ac61b735adf249dfca3ff1981fc415edf67a1d4fb",
     "results/analysis_v2/TEMPLATES.md": "2d1a68b10b56bc6f9518c95873c92e5ac626d972ee2a08e1c9f7462c69bf3cb0",
@@ -45,7 +45,7 @@
   "metadata": {
     "run_id": "main_20261015_000553",
     "run_git_sha": "9e77dbcda5e0a907209f19635d49fdb9970a4e9f",
-    "repo_git_commit": "99869d3c15835789f77f8d06dbaa3b93d6393c26",
+    "repo_git_commit": "02ebd82d735cf0b0077048e04a7a9cc6191a1d33",
     "models": {
       "chat": "nvidia/nemotron-3-super-120b-a12b",
       "classifier": "nvidia/nemotron-3-super-120b-a12b",
