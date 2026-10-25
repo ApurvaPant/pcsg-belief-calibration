@@ -202,6 +202,45 @@ def _account(result: dict[str, Any], model: str) -> None:
         pass
 
 
+# ── Verifiability cache log (overnight runs) ──────────────────────────────── #
+# When a path is set, every real completion appends one JSONL record keyed by
+# sha256(model + params + messages). Stores response text, tokens, latency,
+# served model, timestamp. The API key is NEVER part of the key or the record
+# (it lives only in the Authorization header, never in messages/params).
+_CACHE_LOG: dict[str, Any] = {"path": None}
+
+
+def set_cache_log(path) -> None:
+    """Point the verifiability log at `path` (str/Path), or None to disable."""
+    _CACHE_LOG["path"] = str(path) if path else None
+
+
+def cache_log_path():
+    return _CACHE_LOG["path"]
+
+
+def _cache_append(messages, model, params, result) -> None:
+    path = _CACHE_LOG["path"]
+    if not path:
+        return
+    try:
+        keymat = json.dumps({"model": model, "params": params, "messages": messages},
+                            sort_keys=True, ensure_ascii=False)
+        key = hashlib.sha256(keymat.encode("utf-8")).hexdigest()
+        rec = {"ts": time.strftime("%Y-%m-%dT%H:%M:%S"), "key": key,
+               "model_requested": model, "model_served": result.get("model"),
+               "params": params, "messages": messages,
+               "text": result.get("text", ""),
+               "prompt_tokens": int(result.get("prompt_tokens", 0) or 0),
+               "completion_tokens": int(result.get("completion_tokens", 0) or 0),
+               "reasoning_tokens": int(result.get("reasoning_tokens", 0) or 0),
+               "latency_ms": result.get("latency_ms")}
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    except Exception:  # noqa: BLE001 — logging must never break a call
+        pass
+
+
 # ── Global rate limiter ───────────────────────────────────────────────────── #
 # Enforces at most `rate_limit_per_min` real completions, spacing calls evenly.
 # A no-op for mock / oracle_mock (and whenever the interval is 0), so offline
@@ -299,6 +338,9 @@ def complete(
             # the provider's reported `model` field.
             result.setdefault("model", model)
             _account(result, model)
+            _cache_append(messages, model,
+                          {"temperature": temperature, "max_tokens": max_tokens,
+                           "request_params": settings.llm.request_params.get(model)}, result)
             return result
         except Exception as e:  # noqa: BLE001
             if _is_retryable(e) and attempt < _MAX_RETRIES:

@@ -1,0 +1,23 @@
+name: model2_sc
+# STEP 4 (overnight 2026-10-25): SECOND extraction/structuring model.
+# Nemotron 3 Super was withdrawn from the hosted API on 2026-10-25, so this is
+# openai/gpt-oss-20b (reasoning_effort "low" on the write-path). Generates the
+# SAME 60-persona population as the main run (seed 2026 -> 24/24/12 split) so the
+# --only-personas subset picks the SAME 12 test personas as the main study; those
+# 12 are then replayed with self-consistency k=3 and labelled A/C/E, and compared
+# against the stored Nemotron numbers for the same 12 personas.
+seed: 2026
+n_personas: 60
+oracle_profile: overconfident
+budget_usd: 25.00
+token_budget: 80000000
+workers: 1
+rate_limit_per_min: 35
+models_override:
+  chat: openai/gpt-oss-20b
+  classifier: openai/gpt-oss-20b
+  extractor: openai/gpt-oss-20b
+  simulator: openai/gpt-oss-20b
+request_params_override:
+  "openai/gpt-oss-20b": {reasoning_effort: "low"}
+stages: [persona_replay, labelling, calibration]

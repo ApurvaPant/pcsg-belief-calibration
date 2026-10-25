@@ -157,47 +157,74 @@ def _replay(args, outdir, personas):
             "ts": now_iso()}), encoding="utf-8")
 
     pause_flag = RESULTS / "PAUSE"
+    import threading as _threading
+    import concurrent.futures as _cf
+    _lock = _threading.Lock()
+    # Calibration labels "was this extraction correct", so truth includes ALL facts
+    # the oracle was asked to produce (incl. superseded/ended). Precompute for every
+    # persona (replay order no longer implies truth coverage under parallelism).
     for p in personas:
-        # Graceful pause: results/PAUSE finishes the in-progress persona, then stops
-        # cleanly (resumable). The queue creates PAUSE on request / first Ctrl+C.
-        if pause_flag.exists():
-            args.paused = True
-            print(f"[run] PAUSED (results/PAUSE present): {len(done)} personas done; "
-                  f"resume with --resume {args.run_id}.")
-            break
-        # Hard budget stop: cleanly halt BEFORE starting a persona once logged
-        # spend reaches the ceiling. Completed personas are checkpointed, so the
-        # run is resumable with --resume <run_id>.
-        if _over_budget():
-            args.budget_stopped = True
-            print(f"[run] BUDGET STOP: spent {_spent_str()}; {len(done)} personas done, "
-                  f"checkpoint written (resume with --resume {args.run_id}).")
-            break
-        # Calibration labels "was this extraction correct", so truth includes ALL
-        # facts the oracle was asked to produce (incl. superseded/ended values).
         truth[p.pid] = [{"id": k, "dimension": f.dimension, "value": f.value}
                         for k, f in p.facts.items()]
-        if p.pid in done:
-            continue
+    todo = [p for p in personas if p.pid not in done]
+
+    def _persona_body(p):
+        # Replay ONE persona; shared writes (log/checkpoint/progress) are serialised.
+        # Returns "done" | "skip" (pause/budget) | "fail". Resumable by checkpoint.
+        if pause_flag.exists():
+            args.paused = True
+            return "skip"
+        if _over_budget():
+            args.budget_stopped = True
+            return "skip"
         try:
             uid, sid = new_id("user"), new_id("sess")
-            persona_users[p.pid] = uid
             with get_conn() as c:
                 c.execute("INSERT INTO users(id,label,created_at)VALUES(?,?,?)", (uid, p.name, now_iso()))
                 c.execute("INSERT INTO sessions(id,user_id,title,created_at)VALUES(?,?,?,?)", (sid, uid, "exp", now_iso()))
+            lines = []
             for t in p.turns:
                 if args.dry_run:
                     oracle.set_turn(datagen.turn_expected(p, t))
                 r = pipeline.process_turn(t.text, sid, uid)
-                logf.write(json.dumps({"persona": p.pid, "split": p.split, "text": t.text,
-                                       "salience": round((r["salience_score"] or 0) * 100),
-                                       "changes": r["changes"]}) + "\n")
-            logf.flush()
-            done.add(p.pid)
-            ckpt_path.write_text(json.dumps({"personas": sorted(done), "stage": "replay"}), encoding="utf-8")
-            _write_progress()
+                lines.append(json.dumps({"persona": p.pid, "split": p.split, "text": t.text,
+                                         "salience": round((r["salience_score"] or 0) * 100),
+                                         "changes": r["changes"]}))
+            with _lock:
+                persona_users[p.pid] = uid
+                logf.write("\n".join(lines) + ("\n" if lines else ""))
+                logf.flush()
+                done.add(p.pid)
+                ckpt_path.write_text(json.dumps({"personas": sorted(done), "stage": "replay"}), encoding="utf-8")
+                _write_progress()
+            return "done"
         except Exception as e:  # noqa: BLE001 — transient DB/IO: skip; --resume retries
             print(f"[run] persona {p.pid} failed: {type(e).__name__}: {str(e)[:80]} (resumable)")
+            return "fail"
+
+    workers = int(getattr(args, "replay_workers", 1) or 1)
+    if workers > 1 and not args.dry_run:
+        # gpt-oss is latency-bound; serial replay under-uses the 35 RPM budget. The
+        # GLOBAL rate limiter (llm.set_rate_limit) still caps total calls/min, so
+        # this stays within the one-process / shared-key limit.
+        print(f"[run] parallel replay: {len(todo)} personas x {workers} workers "
+              f"(global rate limit still applies)")
+        with _cf.ThreadPoolExecutor(max_workers=workers) as ex:
+            for f in _cf.as_completed([ex.submit(_persona_body, p) for p in todo]):
+                f.result()
+    else:
+        for p in todo:
+            if pause_flag.exists():
+                args.paused = True
+                print(f"[run] PAUSED (results/PAUSE present): {len(done)} personas done; "
+                      f"resume with --resume {args.run_id}.")
+                break
+            if _over_budget():
+                args.budget_stopped = True
+                print(f"[run] BUDGET STOP: spent {_spent_str()}; {len(done)} personas done, "
+                      f"checkpoint written (resume with --resume {args.run_id}).")
+                break
+            _persona_body(p)
     logf.close()
     _write_progress()
     (outdir / "truth.json").write_text(json.dumps(truth), encoding="utf-8")
@@ -424,6 +451,13 @@ def main(argv=None):
     ap.add_argument("--limit", type=int, default=0, help="cap personas (0=all); dry-run aid")
     ap.add_argument("--n", type=int, default=0, help="override n_personas (0=use spec); dry-run aid")
     ap.add_argument("--split", default=None, choices=["fit", "test", "dev"], help="restrict to one split; dry-run aid")
+    ap.add_argument("--only-personas", dest="only_personas", default=None,
+                    help="comma-separated persona ids to keep (applied after seed/split selection); "
+                         "used by the overnight second-model / paraphrase runs to target a fixed subset")
+    ap.add_argument("--replay-workers", dest="replay_workers", type=int, default=1,
+                    help="parallel persona-replay workers for LIVE runs (default 1=serial). The GLOBAL "
+                         "rate limiter still caps total calls/min; used overnight because gpt-oss is "
+                         "latency-bound (serial would under-use the 35 RPM budget).")
     ap.add_argument("--outdir", default="runs", help="results/<outdir>/<run_id> (e.g. dryrun)")
     ap.add_argument("--lme", type=int, default=0, help="also run N LongMemEval questions (T5); 0=skip")
     ap.add_argument("--run-id", dest="run_id_arg", default=None,
@@ -465,6 +499,10 @@ def main(argv=None):
     settings.db_path = pathlib.Path(tempfile.gettempdir()) / f"pcsg_exp_{args.run_id}.db"
     from app import db
     db.init_db()
+    # Verifiability: log every live model call to <run>/llm_cache.jsonl (overnight runs).
+    if not args.dry_run:
+        from app import llm as _llmlog
+        _llmlog.set_cache_log(outdir / "llm_cache.jsonl")
     # Price-guard: a live run must have a real price for every configured model
     # (skipped on free-tier providers, which are bounded by a token budget).
     check_prices(settings.llm.provider, settings.llm.models, settings.experiment.prices_per_mtok,
@@ -489,9 +527,23 @@ def main(argv=None):
     _ck = outdir / "checkpoint.json"
     pre_done = len(json.loads(_ck.read_text()).get("personas", [])) if _ck.exists() else 0
     personas = select_personas(args.seed, args.n_personas, args.split, args.limit)
+    if getattr(args, "only_personas", None):
+        keep = {int(x) for x in str(args.only_personas).split(",") if x.strip() != ""}
+        personas = [p for p in personas if p.pid in keep]
+        print(f"[run] --only-personas filter -> {len(personas)} personas: {sorted(p.pid for p in personas)}")
     print(f"[run] personas selected: {len(personas)}"
           + (f" (split={args.split})" if args.split else "") + (f" limit={args.limit}" if args.limit else ""))
-    personas, truth, split_by = _replay(args, outdir, personas)
+    # LME-only invocation: the LongMemEval stage builds its OWN per-question DBs,
+    # so skip the (costly) Tier-1 persona replay entirely when no other stage needs it.
+    if args.stage_set == {"lme"} and not args.resume:
+        print("[run] LME-only stages: skipping Tier-1 persona replay (not needed for T5).")
+        truth, split_by = {}, {}
+        args.budget_stopped, args.paused = False, False
+        from app import llm as _llm
+        _llm.set_rate_limit(getattr(args, "rate_limit", None))
+        _llm.reset_cost()
+    else:
+        personas, truth, split_by = _replay(args, outdir, personas)
     post_done = len(json.loads(_ck.read_text()).get("personas", [])) if _ck.exists() else 0
     args.new_personas = post_done - pre_done
     args.total_personas = len(personas)
