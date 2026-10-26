@@ -47,6 +47,15 @@ results/analysis_v2/STATS.md §2d and ABSTAIN_SC.md).
 | 12,787 calls | 12787 | results/QUEUE_STATUS.md → tier1_replay_calibration | ⚠️ reproduces from QUEUE_STATUS, **not** from cost.json |
 | 22.5M tokens | **not recoverable** | — | ❌ `cost.json` holds only 1,920 calls / ~600K tokens (a post-reset meter written by a later `--resume` before the cost.json clobber fix; see below). The 22.5M figure was the live tier-1 token total and survives only as prose, not in a committed artifact. |
 
+## Judge validation (LongMemEval, lme_gptoss_20261026b)
+| paper number | value found | source → field | script | status |
+|---|---|---|---|---|
+| judge–human agreement 34/34, κ=1.00 (parsed verdicts) | 34/34, κ=1.000, Wilson 0.898–1.000 | results/lme/lme_gptoss_20261026b/JUDGE_CHECK.md → "all parsed" | scripts/judge_agreement.py (over judge_check_lme_human.csv) | ✅ |
+| incl. blank verdicts as wrong: 36/40, κ=0.79 | 36/40, κ=0.789 | JUDGE_CHECK.md → "All 40 rows, blank verdict counted as 0" | scripts/judge_agreement.py | ✅ |
+
+The "Judge validation" paragraph (LLM judge faithfully reproduces the official LongMemEval
+grading) maps to `results/lme/lme_gptoss_20261026b/JUDGE_CHECK.md`.
+
 ### cost.json clobber — fixed
 `_replay` calls `llm.reset_cost()`, and the end of a run wrote `cost.json` from the
 (reset) meter, so a later `--resume`/offline stage with 0 new calls overwrote the real
