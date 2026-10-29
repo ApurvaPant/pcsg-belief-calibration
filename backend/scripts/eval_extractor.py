@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Extractor evaluation harness (extractor_improvement_today.md — STEP 1).
+"""Extractor evaluation harness (docs/dev-notes/extractor_improvement_today.md — STEP 1).
 
 Scores the extractor against a fixed, human-labelled case set so every prompt
 or pipeline change can be justified by a NUMBER rather than by eyeballing the

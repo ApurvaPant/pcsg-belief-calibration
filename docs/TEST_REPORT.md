@@ -1,6 +1,6 @@
 # PCSG — Robustness Test Report (pcsg-v2-rc1)
 
-Date: 2026-10-09 · Author: automated robustness run (technical_testing_spec.md)
+Date: 2026-10-09 · Author: automated robustness run (docs/dev-notes/technical_testing_spec.md)
 
 ## 1. Summary
 

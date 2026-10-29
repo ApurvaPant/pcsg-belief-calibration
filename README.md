@@ -34,6 +34,7 @@ writing and reading this memory versus full-context and vector-RAG baselines.
 | `results/model2/` | Second-model comparison |
 | `results/MANIFEST.json` | SHA-256 of every reproducibility input and output |
 | `docs/REPRODUCE.md`, `docs/PAPER_NUMBERS.md` | How to reproduce; provenance of every headline number |
+| `docs/dev-notes/` | Internal design and development notes |
 | `scripts/reproduce.ps1`, `scripts/reproduce.sh` | One-command offline reproduction + manifest check |
 
 ## Reproducing the paper (offline, no API key)

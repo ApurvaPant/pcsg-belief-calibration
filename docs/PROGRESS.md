@@ -448,7 +448,7 @@ policy.
 
 ---
 
-## 2026-10-09 — Robustness test system (technical_testing_spec.md) + pcsg-v2-rc1
+## 2026-10-09 — Robustness test system (docs/dev-notes/technical_testing_spec.md) + pcsg-v2-rc1
 
 Built the automated robustness harness (§1-2) against the real routes and ran it.
 
