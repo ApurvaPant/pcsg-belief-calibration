@@ -1,0 +1,642 @@
+{
+  "watermark": null,
+  "n_questions": 264,
+  "systems": {
+    "no_memory": {
+      "n": 264,
+      "accuracy": 0.1818,
+      "selective_accuracy": 0.0,
+      "coverage": 0.0,
+      "fabrication_rate": 0.0,
+      "aurc": 0.9954,
+      "tokens_per_q": 113.0,
+      "answer_ece": 0.0,
+      "sweep": [
+        {
+          "tau": 0.0,
+          "coverage": 1.0,
+          "accuracy": 0.0,
+          "risk": 1.0,
+          "fabrication": 1.0
+        },
+        {
+          "tau": 0.05,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.1,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.15,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.2,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.25,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.3,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.35,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.4,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.45,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.5,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.55,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.6,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.65,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.7,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.75,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.8,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.85,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.9,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.95,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 1.0,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        }
+      ]
+    },
+    "full_context": {
+      "n": 264,
+      "accuracy": 0.9924,
+      "selective_accuracy": 0.9953,
+      "coverage": 0.8144,
+      "fabrication_rate": 0.0,
+      "aurc": 0.0046,
+      "tokens_per_q": 460.4,
+      "answer_ece": 0.0292,
+      "sweep": [
+        {
+          "tau": 0.0,
+          "coverage": 1.0,
+          "accuracy": 0.9907,
+          "risk": 0.0093,
+          "fabrication": 1.0
+        },
+        {
+          "tau": 0.05,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.1,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.15,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.2,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.25,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.3,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.35,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.4,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.45,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.5,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.55,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.6,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.65,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.7,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.75,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.8,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.85,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.9,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.95,
+          "coverage": 0.7348,
+          "accuracy": 0.9948,
+          "risk": 0.0052,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 1.0,
+          "coverage": 0.3561,
+          "accuracy": 0.9891,
+          "risk": 0.0109,
+          "fabrication": 0.0417
+        }
+      ]
+    },
+    "vector_rag": {
+      "n": 264,
+      "accuracy": 0.8258,
+      "selective_accuracy": 0.9239,
+      "coverage": 0.697,
+      "fabrication_rate": 0.0,
+      "aurc": 0.0321,
+      "tokens_per_q": 169.7,
+      "answer_ece": 0.0206,
+      "sweep": [
+        {
+          "tau": 0.0,
+          "coverage": 1.0,
+          "accuracy": 0.787,
+          "risk": 0.213,
+          "fabrication": 1.0
+        },
+        {
+          "tau": 0.05,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.1,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.15,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.2,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.25,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.3,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.35,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.4,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.45,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.5,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.55,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.6,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.65,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.7,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.75,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.8,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.85,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.9,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.95,
+          "coverage": 0.5189,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 1.0,
+          "coverage": 0.1515,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        }
+      ]
+    },
+    "pcsg": {
+      "n": 264,
+      "accuracy": 0.8788,
+      "selective_accuracy": 0.9583,
+      "coverage": 0.7273,
+      "fabrication_rate": 0.0,
+      "aurc": 0.0559,
+      "tokens_per_q": 377.2,
+      "answer_ece": 0.1235,
+      "sweep": [
+        {
+          "tau": 0.0,
+          "coverage": 1.0,
+          "accuracy": 0.8519,
+          "risk": 0.1481,
+          "fabrication": 1.0
+        },
+        {
+          "tau": 0.05,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.1,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.15,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.2,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.25,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.3,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.35,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.4,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.45,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.5,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.55,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.6,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.65,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.7,
+          "coverage": 0.6174,
+          "accuracy": 0.9509,
+          "risk": 0.0491,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.75,
+          "coverage": 0.6174,
+          "accuracy": 0.9509,
+          "risk": 0.0491,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.8,
+          "coverage": 0.5341,
+          "accuracy": 0.9433,
+          "risk": 0.0567,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.85,
+          "coverage": 0.3144,
+          "accuracy": 0.9157,
+          "risk": 0.0843,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.9,
+          "coverage": 0.0947,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.95,
+          "coverage": 0.0152,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 1.0,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        }
+      ]
+    }
+  }
+}

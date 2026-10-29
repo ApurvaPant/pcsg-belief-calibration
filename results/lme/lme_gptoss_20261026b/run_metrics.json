@@ -1,0 +1,12 @@
+{
+  "n_done": 106,
+  "elapsed_min": 220.41,
+  "calls": 5094,
+  "retries": 197,
+  "retry_rate": 0.0387,
+  "calls_per_q": 48.1,
+  "min_per_q": 2.08,
+  "calls_per_min": 23.1,
+  "workers": 4,
+  "spent_tokens": 9121603
+}

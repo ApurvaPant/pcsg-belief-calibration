@@ -1,0 +1,13 @@
+{
+  "run_id": "main_20261015_000553",
+  "mode": "live",
+  "stages": [
+    "cost",
+    "replay"
+  ],
+  "new_personas": 0,
+  "total_personas": 60,
+  "model_calls": 0,
+  "qa_questions": 264,
+  "ts": "2026-10-15T05:18:06.587056+00:00"
+}

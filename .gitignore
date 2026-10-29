@@ -66,7 +66,8 @@ backend/datasets/
 # headline artefacts under results/ (dashboard.json, figures/, tables/,
 # RESULTS_SUMMARY.md, consistency/) stay tracked; only machine-generated run
 # directories are ignored.
-results/runs/
+results/runs/*
+!results/runs/main_20261015_000553/
 results/dryrun/
 results/pilot/
 results/datasets/
@@ -91,3 +92,11 @@ Thumbs.db
 
 # Archived dry-run outputs (kept on disk, out of version control)
 results/archive_dryrun/
+
+# ─── Public-release: local-only working files (kept on disk, out of git) ──
+CLAUDE.md
+claude.md
+.claude/
+# Dead / superseded experiment runs (kept locally, not published)
+results/lme/lme_gptoss_20261026/
+results/lme/pilot_20261025_205446/

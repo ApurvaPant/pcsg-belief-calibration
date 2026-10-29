@@ -1,6 +1,6 @@
 # PCSG — modelling fix + multi-session + graph rendering
 
-Paste everything below the line into Claude Code.
+Paste everything below the line into coding agent.
 
 ---
 

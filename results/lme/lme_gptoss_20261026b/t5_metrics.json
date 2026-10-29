@@ -1,0 +1,68 @@
+{
+  "label": "memory+answering: openai/gpt-oss-20b (reasoning_effort low); judge: minimaxai/minimax-m3.1-flash. Nemotron 3 Super was withdrawn from the hosted API 2026-10-25; gpt-oss-20b is retained for the structured write path because faster models (nemotron-3.5-lightning 0/5, minimax 3/5) did not return valid 5/5 JSON frames on this endpoint, while gpt-oss-20b did (5/5).",
+  "judge_source": "github.com/xiaowu0162/LongMemEval src/evaluation/evaluate_qa.py (get_anscheck_prompt); MIT; copied verbatim",
+  "n": 108,
+  "n_abstention": 6,
+  "per_system": {
+    "no_memory": {
+      "overall": 0.056,
+      "ci": [
+        0.019,
+        0.102
+      ],
+      "by_type": {
+        "knowledge-update": 0.077,
+        "single-session-preference": 0.0
+      },
+      "abstention_acc": 1.0,
+      "coverage": 0.0,
+      "selective_acc": null,
+      "tokens_per_q": 192.8
+    },
+    "full_context": {
+      "overall": 0.744,
+      "ci": [
+        0.651,
+        0.826
+      ],
+      "by_type": {
+        "knowledge-update": 0.808,
+        "single-session-preference": 0.125
+      },
+      "abstention_acc": 1.0,
+      "coverage": 0.863,
+      "selective_acc": 0.879,
+      "tokens_per_q": 5735.2
+    },
+    "vector_rag": {
+      "overall": 0.663,
+      "ci": [
+        0.562,
+        0.764
+      ],
+      "by_type": {
+        "knowledge-update": 0.763,
+        "single-session-preference": 0.077
+      },
+      "abstention_acc": 0.833,
+      "coverage": 0.814,
+      "selective_acc": 0.844,
+      "tokens_per_q": 528.3
+    },
+    "pcsg": {
+      "overall": 0.149,
+      "ci": [
+        0.08,
+        0.23
+      ],
+      "by_type": {
+        "knowledge-update": 0.16,
+        "single-session-preference": 0.083
+      },
+      "abstention_acc": 1.0,
+      "coverage": 0.353,
+      "selective_acc": 0.467,
+      "tokens_per_q": 521.5
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "run_id": "main_20261015_000553",
+  "mode": "live",
+  "git_sha": "9e77dbcda5e0a907209f19635d49fdb9970a4e9f",
+  "watermark": null,
+  "provider": "nvidia",
+  "base_url": "https://integrate.api.nvidia.com/v1",
+  "models": {
+    "chat": "nvidia/nemotron-3-super-120b-a12b",
+    "classifier": "nvidia/nemotron-3-super-120b-a12b",
+    "extractor": "nvidia/nemotron-3-super-120b-a12b",
+    "simulator": "nvidia/nemotron-3-super-120b-a12b",
+    "judge": "openai/gpt-oss-20b",
+    "judge_longmemeval": "openai/gpt-oss-20b",
+    "embedding": "sentence-transformers/all-MiniLM-L6-v2"
+  },
+  "temperature": 0.2,
+  "max_tokens": 1024,
+  "budget_usd": 25.0,
+  "seed": 2026,
+  "n_personas": 60,
+  "salience_threshold_replay": 0.0,
+  "self_consistency": true,
+  "prompt_hashes": {
+    "FRAME": "39339f174c1d5248",
+    "FILL": "93a5fa7da282f88b",
+    "CHAT": "8cb8a28ee9bec370",
+    "SALIENCE": "1e3bfe3499368bfc"
+  },
+  "prompt_version": "2.0-frame-fill",
+  "longmemeval_revision": "see pcsg/longmemeval.py REVISION"
+}

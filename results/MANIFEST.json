@@ -46,8 +46,8 @@
   },
   "metadata": {
     "run_id": "main_20261015_000553",
-    "run_git_sha": "9e77dbcda5e0a907209f19635d49fdb9970a4e9f",
-    "repo_git_commit": "02ebd82d735cf0b0077048e04a7a9cc6191a1d33",
+    "run_git_sha": "e98c909a398105fee1cc5d9fff9bee380da253f6",
+    "repo_git_commit": "02361aee6b4589e0bf7cd5f3df238003dac44f23",
     "models": {
       "chat": "nvidia/nemotron-3-super-120b-a12b",
       "classifier": "nvidia/nemotron-3-super-120b-a12b",

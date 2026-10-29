@@ -96,8 +96,6 @@ try {
   $msg = @'
 overnight(2026-10-25): gpt-oss-20b substitute runs (Nemotron 3 Super withdrawn) - STEP 4/1/3/2 + reports
 
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_019cSVeJ3fG1sQTjFkgbG4QF
 '@
   $mf = Join-Path $env:TEMP "overnight_commit_msg.txt"
   Set-Content -Path $mf -Value $msg -Encoding UTF8

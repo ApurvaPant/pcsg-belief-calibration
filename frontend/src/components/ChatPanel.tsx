@@ -20,7 +20,7 @@ export default function ChatPanel({ messages, onSend, busy, userInitial }: Props
   }, [messages]);
 
   // Keep the composer focused after a send completes so messages can be fired
-  // back-to-back without clicking back into the box (ChatGPT/Claude behaviour).
+  // back-to-back without clicking back into the box (common chat-app behaviour).
   useEffect(() => {
     if (!busy) taRef.current?.focus();
   }, [busy]);

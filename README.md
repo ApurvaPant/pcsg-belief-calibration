@@ -1,13 +1,61 @@
-# User-State Graph Chat
+# Are LLM Agents' Beliefs About Users Calibrated? Confidence and Cost in Evolving User-State Memory
 
-A chat interface that builds a **temporal, evidence-backed graph of the user**.
-As you talk, the backend gates each turn for salience, extracts typed
-assertions about you (preferences, goals, skills, projects, habits, beliefs,
-relationships, communication style), and reconciles them over time. When you
-contradict something you said earlier, the old belief is **not overwritten** —
-it is closed off and superseded, and both versions stay in the graph.
+**Apurva Pant · Jithumol Thankachan · Raj Thakur · Ujjwal Kumar Yadav**
+KPR Institute of Engineering and Technology
 
-## Architecture
+Code and reproducibility package for the paper. This repository contains the
+**PCSG** system, the experiment harness, and every input and output needed to
+regenerate the paper's tables and figures **offline, with zero API calls**.
+
+## What is PCSG?
+
+The **Personal Cognitive State Graph (PCSG)** is a temporal, evidence-backed
+memory of a user that an LLM agent builds as it talks to them. Each turn is
+gated for salience and, when it carries durable information, distilled into
+typed assertions about the user — preferences, goals, skills, projects, habits,
+beliefs, relationships, communication style. Every assertion is a node carrying
+a raw and a *calibrated* confidence, the exact utterances that evidence it, and
+a validity interval. When the user later contradicts an earlier assertion the
+old node is **not overwritten**: it is closed off and superseded, and both
+versions remain in the graph. The paper studies whether the agent's *confidence*
+in these beliefs is **calibrated**, and the accuracy/token **cost** trade-off of
+writing and reading this memory versus full-context and vector-RAG baselines.
+
+## Repository contents
+
+| Path | What it is |
+|---|---|
+| `backend/` | FastAPI turn pipeline, SQLite store, provider-agnostic LLM client (`app/llm.py`), extraction/reconciliation/calibration, PCSG experiment code (`pcsg/`) |
+| `frontend/` | React + Vite + TypeScript chat UI with the Cytoscape.js graph |
+| `results/runs/main_20261015_000553/` | The main run's artifacts (ground-truth inputs for the paper numbers) |
+| `results/tables/`, `results/figures/` | Paper tables (T1–T4) and figures (F1–F3) |
+| `results/analysis_v2/` | Robustness & significance analysis (STATS, TEMPLATES, EVIDENCE_V2, HUMAN_AUDIT, ABSTAIN_SC) |
+| `results/lme/lme_gptoss_20261026b/` | LongMemEval run (T5): answers, judged records, `T5_final.md`, `PCSG_FAILURES.md`, human judge check (`JUDGE_CHECK.md`, `judge_check_lme_human.csv`) |
+| `results/model2/` | Second-model comparison |
+| `results/MANIFEST.json` | SHA-256 of every reproducibility input and output |
+| `docs/REPRODUCE.md`, `docs/PAPER_NUMBERS.md` | How to reproduce; provenance of every headline number |
+| `scripts/reproduce.ps1`, `scripts/reproduce.sh` | One-command offline reproduction + manifest check |
+
+## Reproducing the paper (offline, no API key)
+
+Every table, figure and analysis file regenerates from the committed run folders
+with **zero model calls** (the scripts set `PCSG_OFFLINE=1`, so any non-mock LLM
+call raises), then a SHA-256 manifest check confirms the outputs are bit-for-bit
+the committed artifacts.
+
+```powershell
+# Windows PowerShell
+powershell -ExecutionPolicy Bypass -File scripts\reproduce.ps1
+```
+```bash
+# Linux / macOS
+bash scripts/reproduce.sh
+```
+
+Expected tail: `REPRODUCE: OK (zero API calls)`. See **`docs/REPRODUCE.md`** for
+details and **`docs/PAPER_NUMBERS.md`** for the source of each headline number.
+
+## Running the interactive app
 
 Two processes:
 
@@ -52,8 +100,6 @@ Set `LLM_PROVIDER=mock` (the default when no API key is present) for a
 **deterministic, offline** provider — the whole pipeline and test-suite run
 with no key and no cost.
 
-## Running
-
 ### Backend
 
 ```bash
@@ -87,6 +133,14 @@ cd backend
 ./.venv/Scripts/python -m pytest -q
 ```
 
+## Live runs and the API key
+
+Reproducing the paper needs **no key**. Only *new* live experiments or the
+interactive app against a hosted model require credentials: create
+`backend/.env` (see `backend/.env.example`) with your `NVIDIA_API_KEY` (or any
+OpenAI-compatible `OPENAI_API_KEY` / `OPENAI_BASE_URL`). `backend/.env` is
+git-ignored and must never be committed.
+
 ## Visual encoding (Cytoscape)
 
 - **Colour** = dimension (see legend)
@@ -97,8 +151,8 @@ cd backend
 
 ## Configuration
 
-Everything vendor-specific lives in `backend/config.yaml` and
-`backend/.env` (see `.env.example`). Notable knobs:
+Everything vendor-specific lives in `backend/config.yaml` and `backend/.env`
+(see `.env.example`). Notable knobs:
 
 - `pipeline.salience_threshold` — how aggressive the gate is
 - `pipeline.calibration_prior` / `calibration_shrink` — confidence calibration

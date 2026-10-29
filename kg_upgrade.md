@@ -1,6 +1,6 @@
 # kg_depth_upgrade.md
 
-Paste everything below the line into Claude Code.
+Paste everything below the line into coding agent.
 
 ---
 

@@ -1,6 +1,6 @@
 # pcsg_v2_revamp.md
 
-Paste everything below the line into Claude Code. Run `extractor_improvement_today.md` first — this revamp builds on a frozen, scored extractor.
+Paste everything below the line into coding agent. Run `extractor_improvement_today.md` first — this revamp builds on a frozen, scored extractor.
 
 ---
 

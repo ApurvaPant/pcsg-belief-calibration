@@ -1,0 +1,154 @@
+{
+  "cells": [
+    {
+      "cell": "0/off",
+      "tier1": 0,
+      "write_tau": "off",
+      "accuracy": 0.8667,
+      "cost_tokens": 5634624,
+      "ece": null,
+      "pareto": true
+    },
+    {
+      "cell": "0/0.6",
+      "tier1": 0,
+      "write_tau": "0.6",
+      "accuracy": 0.8667,
+      "cost_tokens": 5634624,
+      "ece": null,
+      "pareto": true
+    },
+    {
+      "cell": "0/0.8",
+      "tier1": 0,
+      "write_tau": "0.8",
+      "accuracy": 0.7867,
+      "cost_tokens": 5634624,
+      "ece": null,
+      "pareto": false
+    },
+    {
+      "cell": "20/off",
+      "tier1": 20,
+      "write_tau": "off",
+      "accuracy": 0.8567,
+      "cost_tokens": 5055109,
+      "ece": null,
+      "pareto": true
+    },
+    {
+      "cell": "20/0.6",
+      "tier1": 20,
+      "write_tau": "0.6",
+      "accuracy": 0.8567,
+      "cost_tokens": 5055109,
+      "ece": null,
+      "pareto": true
+    },
+    {
+      "cell": "20/0.8",
+      "tier1": 20,
+      "write_tau": "0.8",
+      "accuracy": 0.7767,
+      "cost_tokens": 5055109,
+      "ece": null,
+      "pareto": false
+    },
+    {
+      "cell": "40/off",
+      "tier1": 40,
+      "write_tau": "off",
+      "accuracy": 0.8156,
+      "cost_tokens": 4750902,
+      "ece": null,
+      "pareto": true
+    },
+    {
+      "cell": "40/0.6",
+      "tier1": 40,
+      "write_tau": "0.6",
+      "accuracy": 0.8156,
+      "cost_tokens": 4750902,
+      "ece": null,
+      "pareto": true
+    },
+    {
+      "cell": "40/0.8",
+      "tier1": 40,
+      "write_tau": "0.8",
+      "accuracy": 0.7356,
+      "cost_tokens": 4750902,
+      "ece": null,
+      "pareto": false
+    },
+    {
+      "cell": "60/off",
+      "tier1": 60,
+      "write_tau": "off",
+      "accuracy": 0.7656,
+      "cost_tokens": 4538435,
+      "ece": null,
+      "pareto": true
+    },
+    {
+      "cell": "60/0.6",
+      "tier1": 60,
+      "write_tau": "0.6",
+      "accuracy": 0.7656,
+      "cost_tokens": 4538435,
+      "ece": null,
+      "pareto": true
+    },
+    {
+      "cell": "60/0.8",
+      "tier1": 60,
+      "write_tau": "0.8",
+      "accuracy": 0.6856,
+      "cost_tokens": 4538435,
+      "ece": null,
+      "pareto": false
+    },
+    {
+      "cell": "70/off",
+      "tier1": 70,
+      "write_tau": "off",
+      "accuracy": 0.6667,
+      "cost_tokens": 3843204,
+      "ece": null,
+      "pareto": true
+    },
+    {
+      "cell": "70/0.6",
+      "tier1": 70,
+      "write_tau": "0.6",
+      "accuracy": 0.6667,
+      "cost_tokens": 3843204,
+      "ece": null,
+      "pareto": true
+    },
+    {
+      "cell": "70/0.8",
+      "tier1": 70,
+      "write_tau": "0.8",
+      "accuracy": 0.5767,
+      "cost_tokens": 3843204,
+      "ece": null,
+      "pareto": false
+    }
+  ],
+  "tier1_levels": [
+    0,
+    20,
+    40,
+    60,
+    70
+  ],
+  "write_tau_levels": [
+    "off",
+    "0.6",
+    "0.8"
+  ],
+  "watermark": null,
+  "accuracy_definition": "truth RECALL: distinct ACTIVE truth facts matched by a retained assertion (rule A: dimension + normalised value) / total active truth facts, per persona, summed. In [0,1]. NOT QA accuracy, NOT assertion precision.",
+  "cost_definition": "write-path extraction tokens (gate frame+fill) summed over messages whose salience >= the tier1 threshold."
+}

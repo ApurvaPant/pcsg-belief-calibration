@@ -1,6 +1,6 @@
 # extractor_improvement_today.md
 
-Paste everything below the line into Claude Code. Copy `extractor_eval_cases.json` into `backend/tests/` first.
+Paste everything below the line into coding agent. Copy `extractor_eval_cases.json` into `backend/tests/` first.
 
 ---
 

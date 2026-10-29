@@ -1,0 +1,38 @@
+{
+  "no_memory": {
+    "accuracy": 0.1818,
+    "fabrication": 0.0,
+    "tokens_per_q": 113.0,
+    "selective_accuracy": 0.0,
+    "coverage": 0.0,
+    "aurc": 0.9954,
+    "answer_ece": 0.0
+  },
+  "full_context": {
+    "accuracy": 0.9924,
+    "fabrication": 0.0,
+    "tokens_per_q": 460.4,
+    "selective_accuracy": 0.9953,
+    "coverage": 0.8144,
+    "aurc": 0.0046,
+    "answer_ece": 0.0292
+  },
+  "vector_rag": {
+    "accuracy": 0.8258,
+    "fabrication": 0.0,
+    "tokens_per_q": 169.7,
+    "selective_accuracy": 0.9239,
+    "coverage": 0.697,
+    "aurc": 0.0321,
+    "answer_ece": 0.0206
+  },
+  "pcsg": {
+    "accuracy": 0.8788,
+    "fabrication": 0.0,
+    "tokens_per_q": 377.2,
+    "selective_accuracy": 0.9583,
+    "coverage": 0.7273,
+    "aurc": 0.0559,
+    "answer_ece": 0.1235
+  }
+}

@@ -1,0 +1,507 @@
+{
+  "run": "main_20261015_000553",
+  "persona_split": {
+    "fit": 24,
+    "test": 24,
+    "dev": 12
+  },
+  "assert_split_corrected": {
+    "fit": 459,
+    "test": 459,
+    "dev": 231
+  },
+  "assert_split_run_namecollapse": {
+    "fit": 862,
+    "test": 268,
+    "dev": 19
+  },
+  "name_collision": {
+    "personas": 60,
+    "unique_names": 28,
+    "distinct_personas_in_run_labels": 28
+  },
+  "defs": {
+    "A": {
+      "acc": 0.8954248366013072,
+      "verbalized": {
+        "n": 459,
+        "acc": 0.8954248366013072,
+        "base_brier": 0.09363919859882948,
+        "raw": {
+          "ece": 0.055,
+          "brier": 0.1033,
+          "auroc": 0.4487
+        },
+        "platt": {
+          "ece": 0.0188,
+          "brier": 0.0937,
+          "auroc": 0.5513
+        }
+      },
+      "self_consistency": {
+        "n": 459,
+        "acc": 0.8954248366013072,
+        "base_brier": 0.09363919859882948,
+        "raw": {
+          "ece": 0.0777,
+          "brier": 0.0922,
+          "auroc": 0.6802
+        },
+        "platt": {
+          "ece": 0.0224,
+          "brier": 0.0843,
+          "auroc": 0.6802
+        }
+      }
+    },
+    "B": {
+      "acc": 0.9041394335511983,
+      "verbalized": {
+        "n": 459,
+        "acc": 0.9041394335511983,
+        "base_brier": 0.08667131824891658,
+        "raw": {
+          "ece": 0.0637,
+          "brier": 0.0972,
+          "auroc": 0.4189
+        },
+        "platt": {
+          "ece": 0.0111,
+          "brier": 0.0865,
+          "auroc": 0.5811
+        }
+      },
+      "self_consistency": {
+        "n": 459,
+        "acc": 0.9041394335511983,
+        "base_brier": 0.08667131824891658,
+        "raw": {
+          "ece": 0.0777,
+          "brier": 0.0893,
+          "auroc": 0.6757
+        },
+        "platt": {
+          "ece": 0.0195,
+          "brier": 0.0808,
+          "auroc": 0.6757
+        }
+      }
+    },
+    "C": {
+      "acc": 0.934640522875817,
+      "verbalized": {
+        "n": 459,
+        "acc": 0.934640522875817,
+        "base_brier": 0.061087615874236396,
+        "raw": {
+          "ece": 0.0637,
+          "brier": 0.0724,
+          "auroc": 0.4652
+        },
+        "platt": {
+          "ece": 0.0133,
+          "brier": 0.0614,
+          "auroc": 0.5348
+        }
+      },
+      "self_consistency": {
+        "n": 459,
+        "acc": 0.934640522875817,
+        "base_brier": 0.061087615874236396,
+        "raw": {
+          "ece": 0.0821,
+          "brier": 0.0763,
+          "auroc": 0.6409
+        },
+        "platt": {
+          "ece": 0.0211,
+          "brier": 0.0591,
+          "auroc": 0.6409
+        }
+      }
+    },
+    "D": {
+      "acc": 0.934640522875817,
+      "verbalized": {
+        "n": 459,
+        "acc": 0.934640522875817,
+        "base_brier": 0.061087615874236396,
+        "raw": {
+          "ece": 0.0637,
+          "brier": 0.0724,
+          "auroc": 0.4652
+        },
+        "platt": {
+          "ece": 0.0133,
+          "brier": 0.0614,
+          "auroc": 0.5348
+        }
+      },
+      "self_consistency": {
+        "n": 459,
+        "acc": 0.934640522875817,
+        "base_brier": 0.061087615874236396,
+        "raw": {
+          "ece": 0.0821,
+          "brier": 0.0763,
+          "auroc": 0.6409
+        },
+        "platt": {
+          "ece": 0.0211,
+          "brier": 0.0591,
+          "auroc": 0.6409
+        }
+      }
+    }
+  },
+  "flips": {
+    "B": {
+      "count": 4,
+      "examples": [
+        {
+          "value": "sketching",
+          "dimension": "skill",
+          "key": "sketching",
+          "A": 0,
+          "B": 1,
+          "truth": "identity=sana; identity=jaipur; identity=pilot; identity=34; skill=arabic; skill=sql; preference=noodles; preference=pasta; habit=climbing; belief=work-life balance; project=podcast; goal=save for a house; relationship=cat; relationship=brother; interest=astronomy; identity=kolkata; identity=designer; habit=sketching"
+        },
+        {
+          "value": "sketching",
+          "dimension": "interest",
+          "key": "topic",
+          "A": 0,
+          "B": 1,
+          "truth": "identity=arjun; identity=chennai; identity=photographer; identity=38; skill=tamil; skill=chess; preference=pho; preference=paneer; habit=jogging; belief=work-life balance; project=podcast; goal=run a half marathon; relationship=dog; relationship=brother; interest=crypto; identity=bhopal; identity=dentist; habit=sketching"
+        },
+        {
+          "value": "painting",
+          "dimension": "interest",
+          "key": "topic",
+          "A": 0,
+          "B": 1,
+          "truth": "identity=\u0438\u0440\u0430; identity=indore; identity=designer; identity=19; skill=dutch; skill=photoshop; preference=momos; preference=biryani; habit=sketching; belief=work-life balance; project=home reno; goal=save for a house; relationship=dog; relationship=brother; interest=astronomy; identity=jaipur; identity=chef; habit=painting"
+        },
+        {
+          "value": "chess",
+          "dimension": "interest",
+          "key": "topic",
+          "A": 0,
+          "B": 1,
+          "truth": "identity=yash; identity=patna; identity=photographer; identity=21; skill=spanish; skill=sql; preference=sushi; preference=dosa; habit=gardening; belief=work-life balance; project=home reno; goal=learn to code; relationship=dog; relationship=brother; interest=crypto; identity=hyderabad; identity=dentist; habit=chess"
+        }
+      ]
+    },
+    "C": {
+      "count": 18,
+      "examples": [
+        {
+          "value": "save",
+          "dimension": "goal",
+          "key": "financial",
+          "A": 0,
+          "C": 1,
+          "truth": "identity=ken; identity=bhopal; identity=teacher; identity=29; skill=arabic; skill=welding; preference=ramen; preference=paneer; habit=cycling; belief=work-life balance; project=podcast; goal=save for a house; relationship=cat; relationship=sister; interest=philosophy; identity=surat; identity=architect; habit=hiking"
+        },
+        {
+          "value": "50s",
+          "dimension": "identity",
+          "key": "age_range",
+          "A": 0,
+          "C": 1,
+          "truth": "identity=zoya; identity=chennai; identity=designer; identity=50; skill=german; skill=python; preference=sushi; preference=paneer; habit=baking; belief=climate action matters; project=mobile app; goal=learn to code; relationship=dog; relationship=brother; interest=philosophy; identity=bangalore; identity=lawyer; habit=surfing"
+        },
+        {
+          "value": "save",
+          "dimension": "goal",
+          "key": "financial",
+          "A": 0,
+          "C": 1,
+          "truth": "identity=zoya; identity=goa; identity=nurse; identity=45; skill=german; skill=welding; preference=noodles; preference=ramen; habit=sketching; belief=lifelong learning; project=novel; goal=save for a house; relationship=cat; relationship=sister; interest=crypto; identity=jaipur; identity=lawyer; habit=cycling"
+        },
+        {
+          "value": "sketching",
+          "dimension": "skill",
+          "key": "sketching",
+          "A": 0,
+          "C": 1,
+          "truth": "identity=sana; identity=jaipur; identity=pilot; identity=34; skill=arabic; skill=sql; preference=noodles; preference=pasta; habit=climbing; belief=work-life balance; project=podcast; goal=save for a house; relationship=cat; relationship=brother; interest=astronomy; identity=kolkata; identity=designer; habit=sketching"
+        },
+        {
+          "value": "save",
+          "dimension": "goal",
+          "key": "financial",
+          "A": 0,
+          "C": 1,
+          "truth": "identity=sana; identity=jaipur; identity=pilot; identity=34; skill=arabic; skill=sql; preference=noodles; preference=pasta; habit=climbing; belief=work-life balance; project=podcast; goal=save for a house; relationship=cat; relationship=brother; interest=astronomy; identity=kolkata; identity=designer; habit=sketching"
+        },
+        {
+          "value": "apanese",
+          "dimension": "skill",
+          "key": "apanese",
+          "A": 0,
+          "C": 1,
+          "truth": "identity=dev; identity=lucknow; identity=accountant; identity=27; skill=japanese; skill=guitar; preference=momos; preference=sushi; habit=baking; belief=climate action matters; project=garden shed; goal=learn to code; relationship=dog; relationship=brother; interest=astronomy; identity=chennai; identity=dentist; habit=jogging"
+        },
+        {
+          "value": "40s",
+          "dimension": "identity",
+          "key": "age_range",
+          "A": 0,
+          "C": 1,
+          "truth": "identity=aman; identity=goa; identity=architect; identity=40; skill=french; skill=excel; preference=noodles; preference=tacos; habit=chess; belief=work-life balance; project=garden shed; goal=become a manager; relationship=dog; relationship=sister; interest=astronomy; identity=patna; identity=pharmacist; habit=baking"
+        },
+        {
+          "value": "manager",
+          "dimension": "goal",
+          "key": "career",
+          "A": 0,
+          "C": 1,
+          "truth": "identity=aman; identity=goa; identity=architect; identity=40; skill=french; skill=excel; preference=noodles; preference=tacos; habit=chess; belief=work-life balance; project=garden shed; goal=become a manager; relationship=dog; relationship=sister; interest=astronomy; identity=patna; identity=pharmacist; habit=baking"
+        },
+        {
+          "value": "manager",
+          "dimension": "goal",
+          "key": "career",
+          "A": 0,
+          "C": 1,
+          "truth": "identity=arjun; identity=kochi; identity=accountant; identity=30; skill=bengali; skill=excel; preference=pasta; preference=momos; habit=baking; belief=work-life balance; project=podcast; goal=become a manager; relationship=dog; relationship=sister; interest=crypto; identity=surat; identity=electrician; habit=gardening"
+        },
+        {
+          "value": "save",
+          "dimension": "goal",
+          "key": "financial",
+          "A": 0,
+          "C": 1,
+          "truth": "identity=bea; identity=goa; identity=lawyer; identity=45; skill=dutch; skill=photoshop; preference=momos; preference=noodles; habit=surfing; belief=work-life balance; project=home reno; goal=save for a house; relationship=dog; relationship=brother; interest=crypto; identity=lucknow; identity=teacher; habit=baking"
+        }
+      ]
+    },
+    "D": {
+      "count": 18,
+      "examples": [
+        {
+          "value": "save",
+          "dimension": "goal",
+          "key": "financial",
+          "A": 0,
+          "D": 1,
+          "truth": "identity=ken; identity=bhopal; identity=teacher; identity=29; skill=arabic; skill=welding; preference=ramen; preference=paneer; habit=cycling; belief=work-life balance; project=podcast; goal=save for a house; relationship=cat; relationship=sister; interest=philosophy; identity=surat; identity=architect; habit=hiking"
+        },
+        {
+          "value": "50s",
+          "dimension": "identity",
+          "key": "age_range",
+          "A": 0,
+          "D": 1,
+          "truth": "identity=zoya; identity=chennai; identity=designer; identity=50; skill=german; skill=python; preference=sushi; preference=paneer; habit=baking; belief=climate action matters; project=mobile app; goal=learn to code; relationship=dog; relationship=brother; interest=philosophy; identity=bangalore; identity=lawyer; habit=surfing"
+        },
+        {
+          "value": "save",
+          "dimension": "goal",
+          "key": "financial",
+          "A": 0,
+          "D": 1,
+          "truth": "identity=zoya; identity=goa; identity=nurse; identity=45; skill=german; skill=welding; preference=noodles; preference=ramen; habit=sketching; belief=lifelong learning; project=novel; goal=save for a house; relationship=cat; relationship=sister; interest=crypto; identity=jaipur; identity=lawyer; habit=cycling"
+        },
+        {
+          "value": "sketching",
+          "dimension": "skill",
+          "key": "sketching",
+          "A": 0,
+          "D": 1,
+          "truth": "identity=sana; identity=jaipur; identity=pilot; identity=34; skill=arabic; skill=sql; preference=noodles; preference=pasta; habit=climbing; belief=work-life balance; project=podcast; goal=save for a house; relationship=cat; relationship=brother; interest=astronomy; identity=kolkata; identity=designer; habit=sketching"
+        },
+        {
+          "value": "save",
+          "dimension": "goal",
+          "key": "financial",
+          "A": 0,
+          "D": 1,
+          "truth": "identity=sana; identity=jaipur; identity=pilot; identity=34; skill=arabic; skill=sql; preference=noodles; preference=pasta; habit=climbing; belief=work-life balance; project=podcast; goal=save for a house; relationship=cat; relationship=brother; interest=astronomy; identity=kolkata; identity=designer; habit=sketching"
+        },
+        {
+          "value": "apanese",
+          "dimension": "skill",
+          "key": "apanese",
+          "A": 0,
+          "D": 1,
+          "truth": "identity=dev; identity=lucknow; identity=accountant; identity=27; skill=japanese; skill=guitar; preference=momos; preference=sushi; habit=baking; belief=climate action matters; project=garden shed; goal=learn to code; relationship=dog; relationship=brother; interest=astronomy; identity=chennai; identity=dentist; habit=jogging"
+        },
+        {
+          "value": "40s",
+          "dimension": "identity",
+          "key": "age_range",
+          "A": 0,
+          "D": 1,
+          "truth": "identity=aman; identity=goa; identity=architect; identity=40; skill=french; skill=excel; preference=noodles; preference=tacos; habit=chess; belief=work-life balance; project=garden shed; goal=become a manager; relationship=dog; relationship=sister; interest=astronomy; identity=patna; identity=pharmacist; habit=baking"
+        },
+        {
+          "value": "manager",
+          "dimension": "goal",
+          "key": "career",
+          "A": 0,
+          "D": 1,
+          "truth": "identity=aman; identity=goa; identity=architect; identity=40; skill=french; skill=excel; preference=noodles; preference=tacos; habit=chess; belief=work-life balance; project=garden shed; goal=become a manager; relationship=dog; relationship=sister; interest=astronomy; identity=patna; identity=pharmacist; habit=baking"
+        },
+        {
+          "value": "manager",
+          "dimension": "goal",
+          "key": "career",
+          "A": 0,
+          "D": 1,
+          "truth": "identity=arjun; identity=kochi; identity=accountant; identity=30; skill=bengali; skill=excel; preference=pasta; preference=momos; habit=baking; belief=work-life balance; project=podcast; goal=become a manager; relationship=dog; relationship=sister; interest=crypto; identity=surat; identity=electrician; habit=gardening"
+        },
+        {
+          "value": "save",
+          "dimension": "goal",
+          "key": "financial",
+          "A": 0,
+          "D": 1,
+          "truth": "identity=bea; identity=goa; identity=lawyer; identity=45; skill=dutch; skill=photoshop; preference=momos; preference=noodles; habit=surfing; belief=work-life balance; project=home reno; goal=save for a house; relationship=dog; relationship=brother; interest=crypto; identity=lucknow; identity=teacher; habit=baking"
+        }
+      ]
+    }
+  },
+  "strat": {
+    "A": {
+      "operation": {
+        "ADD": {
+          "n": 411,
+          "acc": 0.8832,
+          "auroc": 0.4186
+        },
+        "UPDATE": {
+          "n": 48,
+          "acc": 1.0,
+          "auroc": "n/a(1class)"
+        }
+      },
+      "dimension": {
+        "belief": {
+          "n": 24,
+          "acc": 0.2917,
+          "auroc": 0.7647
+        },
+        "goal": {
+          "n": 22,
+          "acc": 0.2727,
+          "auroc": 0.5
+        },
+        "habit": {
+          "n": 44,
+          "acc": 1.0,
+          "auroc": "n/a(1class)"
+        },
+        "identity": {
+          "n": 146,
+          "acc": 0.9452,
+          "auroc": 0.2609
+        },
+        "interest": {
+          "n": 27,
+          "acc": 0.8889,
+          "auroc": 0.4167
+        },
+        "preference": {
+          "n": 50,
+          "acc": 1.0,
+          "auroc": "n/a(1class)"
+        },
+        "project": {
+          "n": 24,
+          "acc": 1.0,
+          "auroc": "n/a(1class)"
+        },
+        "relationship": {
+          "n": 69,
+          "acc": 1.0,
+          "auroc": "n/a(1class)"
+        },
+        "skill": {
+          "n": 53,
+          "acc": 0.9245,
+          "auroc": 0.7347
+        }
+      }
+    },
+    "C": {
+      "operation": {
+        "ADD": {
+          "n": 411,
+          "acc": 0.927,
+          "auroc": 0.4374
+        },
+        "UPDATE": {
+          "n": 48,
+          "acc": 1.0,
+          "auroc": "n/a(1class)"
+        }
+      },
+      "dimension": {
+        "belief": {
+          "n": 24,
+          "acc": 0.2917,
+          "auroc": 0.7647
+        },
+        "goal": {
+          "n": 22,
+          "acc": 0.7273,
+          "auroc": 0.5
+        },
+        "habit": {
+          "n": 44,
+          "acc": 1.0,
+          "auroc": "n/a(1class)"
+        },
+        "identity": {
+          "n": 146,
+          "acc": 0.9658,
+          "auroc": 0.2021
+        },
+        "interest": {
+          "n": 27,
+          "acc": 1.0,
+          "auroc": "n/a(1class)"
+        },
+        "preference": {
+          "n": 50,
+          "acc": 1.0,
+          "auroc": "n/a(1class)"
+        },
+        "project": {
+          "n": 24,
+          "acc": 1.0,
+          "auroc": "n/a(1class)"
+        },
+        "relationship": {
+          "n": 69,
+          "acc": 1.0,
+          "auroc": "n/a(1class)"
+        },
+        "skill": {
+          "n": 53,
+          "acc": 0.9623,
+          "auroc": 0.8431
+        }
+      }
+    }
+  },
+  "key_synonyms": {
+    "diet": "food_preference",
+    "food_preference": "diet",
+    "food_likes": "likes",
+    "likes": "food_likes",
+    "occupation": "job",
+    "job": "occupation",
+    "location": "city",
+    "city": "location",
+    "music_genre": "music",
+    "music": "music_genre"
+  },
+  "audit": {
+    "rows": 78,
+    "zeros": 48,
+    "ones_sampled": 30
+  }
+}

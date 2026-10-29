@@ -1,0 +1,2457 @@
+{
+  "meta": {
+    "run_id": "main_20261015_000553",
+    "git_sha": "9e77dbcda5e0a907209f19635d49fdb9970a4e9f",
+    "tag": "",
+    "mode": "live",
+    "date": "main_20261015_000553",
+    "models": {
+      "chat": "nvidia/nemotron-3-super-120b-a12b",
+      "classifier": "nvidia/nemotron-3-super-120b-a12b",
+      "extractor": "nvidia/nemotron-3-super-120b-a12b",
+      "simulator": "nvidia/nemotron-3-super-120b-a12b",
+      "judge": "openai/gpt-oss-20b",
+      "judge_longmemeval": "openai/gpt-oss-20b",
+      "embedding": "sentence-transformers/all-MiniLM-L6-v2"
+    },
+    "tokenizer": "tiktoken/cl100k_base",
+    "sample_sizes": {
+      "personas": 60,
+      "test_personas": 24,
+      "labelled_assertions": 1149,
+      "failed_extractions": 0
+    }
+  },
+  "watermark": null,
+  "kpi": {
+    "tokens_per_q_full": 273.3,
+    "tokens_per_q_pcsg": 119.2,
+    "pct_saved": 56.4,
+    "ece_before": 0.055,
+    "ece_after": 0.0109,
+    "baselines": {
+      "pcsg": 0.8788,
+      "no_memory": 0.1818,
+      "vector_rag": 0.8258,
+      "full_context": 0.9924
+    }
+  },
+  "baselines": [
+    {
+      "system": "pcsg",
+      "color": "#5b6cff",
+      "accuracy": 0.8788,
+      "fabrication": 0.0,
+      "tokens_per_q": 377.2,
+      "selective_accuracy": 0.9583,
+      "coverage": 0.7273,
+      "aurc": 0.0559,
+      "answer_ece": 0.1235
+    },
+    {
+      "system": "no_memory",
+      "color": "#9aa6b8",
+      "accuracy": 0.1818,
+      "fabrication": 0.0,
+      "tokens_per_q": 113.0,
+      "selective_accuracy": 0.0,
+      "coverage": 0.0,
+      "aurc": 0.9954,
+      "answer_ece": 0.0
+    },
+    {
+      "system": "vector_rag",
+      "color": "#38c7e8",
+      "accuracy": 0.8258,
+      "fabrication": 0.0,
+      "tokens_per_q": 169.7,
+      "selective_accuracy": 0.9239,
+      "coverage": 0.697,
+      "aurc": 0.0321,
+      "answer_ece": 0.0206
+    },
+    {
+      "system": "full_context",
+      "color": "#f2c558",
+      "accuracy": 0.9924,
+      "fabrication": 0.0,
+      "tokens_per_q": 460.4,
+      "selective_accuracy": 0.9953,
+      "coverage": 0.8144,
+      "aurc": 0.0046,
+      "answer_ece": 0.0292
+    }
+  ],
+  "token_growth": [
+    {
+      "turn": 5,
+      "raw": {
+        "mean": 48.8,
+        "iqr": [
+          48,
+          50
+        ]
+      },
+      "pcsg": {
+        "mean": 43.4,
+        "iqr": [
+          42,
+          44
+        ]
+      }
+    },
+    {
+      "turn": 10,
+      "raw": {
+        "mean": 91.9,
+        "iqr": [
+          90,
+          94
+        ]
+      },
+      "pcsg": {
+        "mean": 73.2,
+        "iqr": [
+          72,
+          74
+        ]
+      }
+    },
+    {
+      "turn": 15,
+      "raw": {
+        "mean": 151.7,
+        "iqr": [
+          150,
+          154
+        ]
+      },
+      "pcsg": {
+        "mean": 105.5,
+        "iqr": [
+          103,
+          106
+        ]
+      }
+    },
+    {
+      "turn": 20,
+      "raw": {
+        "mean": 223.2,
+        "iqr": [
+          220,
+          224
+        ]
+      },
+      "pcsg": {
+        "mean": 118.1,
+        "iqr": [
+          115,
+          120
+        ]
+      }
+    },
+    {
+      "turn": 25,
+      "raw": {
+        "mean": 273.3,
+        "iqr": [
+          270,
+          274
+        ]
+      },
+      "pcsg": {
+        "mean": 119.2,
+        "iqr": [
+          116,
+          122
+        ]
+      }
+    }
+  ],
+  "gate_funnel": {
+    "stages": [
+      {
+        "stage": "tier0_gate",
+        "count": 14,
+        "tokens": 280,
+        "cost": 0.0
+      },
+      {
+        "stage": "tier1_salience",
+        "count": 137,
+        "tokens": 8220,
+        "cost": 0.0
+      },
+      {
+        "stage": "structured_extraction",
+        "count": 1349,
+        "tokens": 404700,
+        "cost": 0.0
+      }
+    ],
+    "total_messages": 1500
+  },
+  "cost_curve": {
+    "cells": [
+      {
+        "cell": "0/off",
+        "tier1": 0,
+        "write_tau": "off",
+        "accuracy": 0.8667,
+        "cost_tokens": 5634624,
+        "ece": null,
+        "pareto": true
+      },
+      {
+        "cell": "0/0.6",
+        "tier1": 0,
+        "write_tau": "0.6",
+        "accuracy": 0.8667,
+        "cost_tokens": 5634624,
+        "ece": null,
+        "pareto": true
+      },
+      {
+        "cell": "0/0.8",
+        "tier1": 0,
+        "write_tau": "0.8",
+        "accuracy": 0.7867,
+        "cost_tokens": 5634624,
+        "ece": null,
+        "pareto": false
+      },
+      {
+        "cell": "20/off",
+        "tier1": 20,
+        "write_tau": "off",
+        "accuracy": 0.8567,
+        "cost_tokens": 5055109,
+        "ece": null,
+        "pareto": true
+      },
+      {
+        "cell": "20/0.6",
+        "tier1": 20,
+        "write_tau": "0.6",
+        "accuracy": 0.8567,
+        "cost_tokens": 5055109,
+        "ece": null,
+        "pareto": true
+      },
+      {
+        "cell": "20/0.8",
+        "tier1": 20,
+        "write_tau": "0.8",
+        "accuracy": 0.7767,
+        "cost_tokens": 5055109,
+        "ece": null,
+        "pareto": false
+      },
+      {
+        "cell": "40/off",
+        "tier1": 40,
+        "write_tau": "off",
+        "accuracy": 0.8156,
+        "cost_tokens": 4750902,
+        "ece": null,
+        "pareto": true
+      },
+      {
+        "cell": "40/0.6",
+        "tier1": 40,
+        "write_tau": "0.6",
+        "accuracy": 0.8156,
+        "cost_tokens": 4750902,
+        "ece": null,
+        "pareto": true
+      },
+      {
+        "cell": "40/0.8",
+        "tier1": 40,
+        "write_tau": "0.8",
+        "accuracy": 0.7356,
+        "cost_tokens": 4750902,
+        "ece": null,
+        "pareto": false
+      },
+      {
+        "cell": "60/off",
+        "tier1": 60,
+        "write_tau": "off",
+        "accuracy": 0.7656,
+        "cost_tokens": 4538435,
+        "ece": null,
+        "pareto": true
+      },
+      {
+        "cell": "60/0.6",
+        "tier1": 60,
+        "write_tau": "0.6",
+        "accuracy": 0.7656,
+        "cost_tokens": 4538435,
+        "ece": null,
+        "pareto": true
+      },
+      {
+        "cell": "60/0.8",
+        "tier1": 60,
+        "write_tau": "0.8",
+        "accuracy": 0.6856,
+        "cost_tokens": 4538435,
+        "ece": null,
+        "pareto": false
+      },
+      {
+        "cell": "70/off",
+        "tier1": 70,
+        "write_tau": "off",
+        "accuracy": 0.6667,
+        "cost_tokens": 3843204,
+        "ece": null,
+        "pareto": true
+      },
+      {
+        "cell": "70/0.6",
+        "tier1": 70,
+        "write_tau": "0.6",
+        "accuracy": 0.6667,
+        "cost_tokens": 3843204,
+        "ece": null,
+        "pareto": true
+      },
+      {
+        "cell": "70/0.8",
+        "tier1": 70,
+        "write_tau": "0.8",
+        "accuracy": 0.5767,
+        "cost_tokens": 3843204,
+        "ece": null,
+        "pareto": false
+      }
+    ],
+    "tier1_levels": [
+      0,
+      20,
+      40,
+      60,
+      70
+    ],
+    "write_tau_levels": [
+      "off",
+      "0.6",
+      "0.8"
+    ],
+    "watermark": null,
+    "accuracy_definition": "truth RECALL: distinct ACTIVE truth facts matched by a retained assertion (rule A: dimension + normalised value) / total active truth facts, per persona, summed. In [0,1]. NOT QA accuracy, NOT assertion precision.",
+    "cost_definition": "write-path extraction tokens (gate frame+fill) summed over messages whose salience >= the tier1 threshold."
+  },
+  "calibration": {
+    "signals": {
+      "verbalized": {
+        "recalibrators": {
+          "raw": {
+            "ece": 0.055,
+            "brier": 0.1033,
+            "auroc": 0.4487,
+            "ci": {
+              "ece": [
+                0.0439,
+                0.0709
+              ]
+            }
+          },
+          "temperature": {
+            "ece": 0.0559,
+            "brier": 0.1045,
+            "auroc": 0.4487,
+            "ci": {
+              "ece": [
+                0.0409,
+                0.0777
+              ]
+            }
+          },
+          "platt": {
+            "ece": 0.0188,
+            "brier": 0.0937,
+            "auroc": 0.5513,
+            "ci": {
+              "ece": [
+                0.0074,
+                0.0355
+              ]
+            }
+          },
+          "isotonic": {
+            "ece": 0.0109,
+            "brier": 0.0938,
+            "auroc": 0.5,
+            "ci": {
+              "ece": [
+                0.0008,
+                0.0314
+              ]
+            }
+          }
+        },
+        "reliability": {
+          "before": [
+            {
+              "bin": 6,
+              "conf": 0.7000000000000003,
+              "acc": 1.0,
+              "n": 52
+            },
+            {
+              "bin": 8,
+              "conf": 0.8478448275862065,
+              "acc": 0.8706896551724138,
+              "n": 116
+            },
+            {
+              "bin": 9,
+              "conf": 0.9106529209621995,
+              "acc": 0.8865979381443299,
+              "n": 291
+            }
+          ],
+          "after": [
+            {
+              "bin": 6,
+              "conf": 0.6841710854727575,
+              "acc": 1.0,
+              "n": 52
+            },
+            {
+              "bin": 7,
+              "conf": 0.7798418522772769,
+              "acc": 1.0,
+              "n": 5
+            },
+            {
+              "bin": 8,
+              "conf": 0.8643925437054075,
+              "acc": 0.8794117647058823,
+              "n": 340
+            },
+            {
+              "bin": 9,
+              "conf": 0.9362117425414855,
+              "acc": 0.8870967741935484,
+              "n": 62
+            }
+          ]
+        },
+        "histogram": [
+          {
+            "bin": 0.0,
+            "count": 0
+          },
+          {
+            "bin": 0.1,
+            "count": 0
+          },
+          {
+            "bin": 0.2,
+            "count": 0
+          },
+          {
+            "bin": 0.3,
+            "count": 0
+          },
+          {
+            "bin": 0.4,
+            "count": 0
+          },
+          {
+            "bin": 0.5,
+            "count": 0
+          },
+          {
+            "bin": 0.6,
+            "count": 0
+          },
+          {
+            "bin": 0.7,
+            "count": 127
+          },
+          {
+            "bin": 0.8,
+            "count": 281
+          },
+          {
+            "bin": 0.9,
+            "count": 741
+          }
+        ]
+      },
+      "self_consistency": {
+        "recalibrators": {
+          "raw": {
+            "ece": 0.0777,
+            "brier": 0.0922,
+            "auroc": 0.6802,
+            "ci": {
+              "ece": [
+                0.0605,
+                0.1043
+              ]
+            }
+          },
+          "temperature": {
+            "ece": 0.0311,
+            "brier": 0.0869,
+            "auroc": 0.6802,
+            "ci": {
+              "ece": [
+                0.0113,
+                0.0596
+              ]
+            }
+          },
+          "platt": {
+            "ece": 0.0224,
+            "brier": 0.0843,
+            "auroc": 0.6802,
+            "ci": {
+              "ece": [
+                0.0053,
+                0.0511
+              ]
+            }
+          },
+          "isotonic": {
+            "ece": 0.0365,
+            "brier": 0.0925,
+            "auroc": 0.6802,
+            "ci": {
+              "ece": [
+                0.0208,
+                0.0623
+              ]
+            }
+          }
+        },
+        "reliability": {
+          "before": [
+            {
+              "bin": 0,
+              "conf": 1e-06,
+              "acc": 0.0,
+              "n": 2
+            },
+            {
+              "bin": 3,
+              "conf": 0.3330000000000001,
+              "acc": 0.6538461538461539,
+              "n": 26
+            },
+            {
+              "bin": 6,
+              "conf": 0.6670000000000003,
+              "acc": 0.7027027027027027,
+              "n": 37
+            },
+            {
+              "bin": 9,
+              "conf": 0.9999990000000002,
+              "acc": 0.934010152284264,
+              "n": 394
+            }
+          ],
+          "after": [
+            {
+              "bin": 0,
+              "conf": 0.05828981766953515,
+              "acc": 0.0,
+              "n": 2
+            },
+            {
+              "bin": 4,
+              "conf": 0.46508360091548673,
+              "acc": 0.6538461538461539,
+              "n": 26
+            },
+            {
+              "bin": 5,
+              "conf": 0.5349163990845132,
+              "acc": 0.7027027027027027,
+              "n": 37
+            },
+            {
+              "bin": 9,
+              "conf": 0.9417101823301472,
+              "acc": 0.934010152284264,
+              "n": 394
+            }
+          ]
+        },
+        "histogram": [
+          {
+            "bin": 0.0,
+            "count": 14
+          },
+          {
+            "bin": 0.1,
+            "count": 0
+          },
+          {
+            "bin": 0.2,
+            "count": 0
+          },
+          {
+            "bin": 0.3,
+            "count": 44
+          },
+          {
+            "bin": 0.4,
+            "count": 0
+          },
+          {
+            "bin": 0.5,
+            "count": 0
+          },
+          {
+            "bin": 0.6,
+            "count": 100
+          },
+          {
+            "bin": 0.7,
+            "count": 0
+          },
+          {
+            "bin": 0.8,
+            "count": 0
+          },
+          {
+            "bin": 0.9,
+            "count": 991
+          }
+        ]
+      },
+      "evidence": {
+        "recalibrators": {
+          "raw": {
+            "ece": 0.0658,
+            "brier": 0.0997,
+            "auroc": 0.4487,
+            "ci": {
+              "ece": [
+                0.0454,
+                0.084
+              ]
+            }
+          },
+          "temperature": {
+            "ece": 0.0323,
+            "brier": 0.0972,
+            "auroc": 0.4487,
+            "ci": {
+              "ece": [
+                0.0257,
+                0.0534
+              ]
+            }
+          },
+          "platt": {
+            "ece": 0.0175,
+            "brier": 0.0937,
+            "auroc": 0.5513,
+            "ci": {
+              "ece": [
+                0.0066,
+                0.0342
+              ]
+            }
+          },
+          "isotonic": {
+            "ece": 0.0109,
+            "brier": 0.0938,
+            "auroc": 0.5,
+            "ci": {
+              "ece": [
+                0.0008,
+                0.0314
+              ]
+            }
+          }
+        },
+        "reliability": {
+          "before": [
+            {
+              "bin": 9,
+              "conf": 0.9612745098039216,
+              "acc": 0.8954248366013072,
+              "n": 459
+            }
+          ],
+          "after": [
+            {
+              "bin": 7,
+              "conf": 0.7951910061357979,
+              "acc": 1.0,
+              "n": 52
+            },
+            {
+              "bin": 8,
+              "conf": 0.8750991496426143,
+              "acc": 0.881159420289855,
+              "n": 345
+            },
+            {
+              "bin": 9,
+              "conf": 0.9208143115936449,
+              "acc": 0.8870967741935484,
+              "n": 62
+            }
+          ]
+        },
+        "histogram": [
+          {
+            "bin": 0.0,
+            "count": 0
+          },
+          {
+            "bin": 0.1,
+            "count": 0
+          },
+          {
+            "bin": 0.2,
+            "count": 0
+          },
+          {
+            "bin": 0.3,
+            "count": 0
+          },
+          {
+            "bin": 0.4,
+            "count": 0
+          },
+          {
+            "bin": 0.5,
+            "count": 0
+          },
+          {
+            "bin": 0.6,
+            "count": 0
+          },
+          {
+            "bin": 0.7,
+            "count": 0
+          },
+          {
+            "bin": 0.8,
+            "count": 0
+          },
+          {
+            "bin": 0.9,
+            "count": 1149
+          }
+        ]
+      }
+    }
+  },
+  "abstention": {
+    "watermark": null,
+    "sweep": {
+      "no_memory": [
+        {
+          "tau": 0.0,
+          "coverage": 1.0,
+          "accuracy": 0.0,
+          "risk": 1.0,
+          "fabrication": 1.0
+        },
+        {
+          "tau": 0.05,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.1,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.15,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.2,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.25,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.3,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.35,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.4,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.45,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.5,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.55,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.6,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.65,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.7,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.75,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.8,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.85,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.9,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.95,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 1.0,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        }
+      ],
+      "full_context": [
+        {
+          "tau": 0.0,
+          "coverage": 1.0,
+          "accuracy": 0.9907,
+          "risk": 0.0093,
+          "fabrication": 1.0
+        },
+        {
+          "tau": 0.05,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.1,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.15,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.2,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.25,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.3,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.35,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.4,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.45,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.5,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.55,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.6,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.65,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.7,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.75,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.8,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.85,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.9,
+          "coverage": 0.822,
+          "accuracy": 0.9953,
+          "risk": 0.0047,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 0.95,
+          "coverage": 0.7348,
+          "accuracy": 0.9948,
+          "risk": 0.0052,
+          "fabrication": 0.0417
+        },
+        {
+          "tau": 1.0,
+          "coverage": 0.3561,
+          "accuracy": 0.9891,
+          "risk": 0.0109,
+          "fabrication": 0.0417
+        }
+      ],
+      "vector_rag": [
+        {
+          "tau": 0.0,
+          "coverage": 1.0,
+          "accuracy": 0.787,
+          "risk": 0.213,
+          "fabrication": 1.0
+        },
+        {
+          "tau": 0.05,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.1,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.15,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.2,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.25,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.3,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.35,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.4,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.45,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.5,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.55,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.6,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.65,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.7,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.75,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.8,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.85,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.9,
+          "coverage": 0.697,
+          "accuracy": 0.9239,
+          "risk": 0.0761,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.95,
+          "coverage": 0.5189,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 1.0,
+          "coverage": 0.1515,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        }
+      ],
+      "pcsg": [
+        {
+          "tau": 0.0,
+          "coverage": 1.0,
+          "accuracy": 0.8519,
+          "risk": 0.1481,
+          "fabrication": 1.0
+        },
+        {
+          "tau": 0.05,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.1,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.15,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.2,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.25,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.3,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.35,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.4,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.45,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.5,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.55,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.6,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.65,
+          "coverage": 0.7273,
+          "accuracy": 0.9583,
+          "risk": 0.0417,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.7,
+          "coverage": 0.6174,
+          "accuracy": 0.9509,
+          "risk": 0.0491,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.75,
+          "coverage": 0.6174,
+          "accuracy": 0.9509,
+          "risk": 0.0491,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.8,
+          "coverage": 0.5341,
+          "accuracy": 0.9433,
+          "risk": 0.0567,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.85,
+          "coverage": 0.3144,
+          "accuracy": 0.9157,
+          "risk": 0.0843,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.9,
+          "coverage": 0.0947,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 0.95,
+          "coverage": 0.0152,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        },
+        {
+          "tau": 1.0,
+          "coverage": 0.0,
+          "accuracy": 1.0,
+          "risk": 0.0,
+          "fabrication": 0.0
+        }
+      ]
+    },
+    "aurc": {
+      "no_memory": 0.9954,
+      "full_context": 0.0046,
+      "vector_rag": 0.0321,
+      "pcsg": 0.0559
+    },
+    "n": 264
+  },
+  "persona_replay": [
+    {
+      "persona": 24,
+      "turns": [
+        {
+          "turn": 1,
+          "text": "hey, i'm ken",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "name",
+              "value": "ken",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 10,
+          "cum_tokens_pcsg": 4
+        },
+        {
+          "turn": 2,
+          "text": "i live in surat",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "location",
+              "value": "surat",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 20,
+          "cum_tokens_pcsg": 9
+        },
+        {
+          "turn": 3,
+          "text": "i work as a architect",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "occupation",
+              "value": "architect",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 30,
+          "cum_tokens_pcsg": 16
+        },
+        {
+          "turn": 4,
+          "text": "i'm 29",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "age_range",
+              "value": "29",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 38,
+          "cum_tokens_pcsg": 22
+        },
+        {
+          "turn": 5,
+          "text": "i speakarabic",
+          "assertions": [
+            {
+              "dimension": "skill",
+              "key": "arabic",
+              "value": "arabic",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 46,
+          "cum_tokens_pcsg": 29
+        },
+        {
+          "turn": 6,
+          "text": "i love ramen",
+          "assertions": [
+            {
+              "dimension": "preference",
+              "key": "food_likes",
+              "value": "ramen",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 54,
+          "cum_tokens_pcsg": 37
+        },
+        {
+          "turn": 7,
+          "text": "i also really like paneer",
+          "assertions": [
+            {
+              "dimension": "preference",
+              "key": "food_likes",
+              "value": "paneer",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 66,
+          "cum_tokens_pcsg": 37
+        },
+        {
+          "turn": 8,
+          "text": "i started hiking",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "hiking",
+              "value": "hiking",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 72,
+          "cum_tokens_pcsg": 43
+        },
+        {
+          "turn": 9,
+          "text": "i do cycling regularly",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "cycling",
+              "value": "cycling",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 80,
+          "cum_tokens_pcsg": 49
+        },
+        {
+          "turn": 10,
+          "text": "i'm good at welding",
+          "assertions": [
+            {
+              "dimension": "skill",
+              "key": "welding",
+              "value": "welding",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 90,
+          "cum_tokens_pcsg": 57
+        },
+        {
+          "turn": 11,
+          "text": "what can you help me with?",
+          "assertions": [
+            {
+              "dimension": "skill",
+              "key": "welding",
+              "value": "welding",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 104,
+          "cum_tokens_pcsg": 57
+        },
+        {
+          "turn": 12,
+          "text": "my cat's name is luna",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "pet",
+              "value": "cat",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 118,
+          "cum_tokens_pcsg": 62
+        },
+        {
+          "turn": 13,
+          "text": "my sister is a lawyer",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "sister",
+              "value": "sister",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 128,
+          "cum_tokens_pcsg": 68
+        },
+        {
+          "turn": 14,
+          "text": "i believe work-life balance",
+          "assertions": [
+            {
+              "dimension": "belief",
+              "key": "work_life_balance",
+              "value": "work_life_balance",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 138,
+          "cum_tokens_pcsg": 77
+        },
+        {
+          "turn": 15,
+          "text": "i'm working on a podcast",
+          "assertions": [
+            {
+              "dimension": "project",
+              "key": "podcast",
+              "value": "podcast",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 150,
+          "cum_tokens_pcsg": 83
+        },
+        {
+          "turn": 16,
+          "text": "i want to save for a house",
+          "assertions": [
+            {
+              "dimension": "goal",
+              "key": "financial",
+              "value": "save",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 164,
+          "cum_tokens_pcsg": 89
+        },
+        {
+          "turn": 17,
+          "text": "i think i'm kind of into philosophy",
+          "assertions": [
+            {
+              "dimension": "interest",
+              "key": "topic",
+              "value": "philosophy",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 180,
+          "cum_tokens_pcsg": 96
+        },
+        {
+          "turn": 18,
+          "text": "ugh i'm so tired today",
+          "assertions": [],
+          "cum_tokens_full": 192,
+          "cum_tokens_pcsg": 96
+        },
+        {
+          "turn": 19,
+          "text": "actually i moved to bhopal",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "location",
+              "value": "bhopal",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 206,
+          "cum_tokens_pcsg": 97
+        },
+        {
+          "turn": 20,
+          "text": "i switched jobs, now i'm a teacher",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "occupation",
+              "value": "teacher",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 224,
+          "cum_tokens_pcsg": 96
+        },
+        {
+          "turn": 21,
+          "text": "i stopped hiking",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "hiking",
+              "value": "hiking",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 230,
+          "cum_tokens_pcsg": 96
+        },
+        {
+          "turn": 22,
+          "text": "anyway, how are you?",
+          "assertions": [],
+          "cum_tokens_full": 244,
+          "cum_tokens_pcsg": 96
+        },
+        {
+          "turn": 23,
+          "text": "my sister visited yesterday",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "sister",
+              "value": "sister",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 252,
+          "cum_tokens_pcsg": 96
+        },
+        {
+          "turn": 24,
+          "text": "what do you know about me?",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "sister",
+              "value": "sister",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 266,
+          "cum_tokens_pcsg": 96
+        },
+        {
+          "turn": 25,
+          "text": "cool, thanks!",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "sister",
+              "value": "sister",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 274,
+          "cum_tokens_pcsg": 96
+        }
+      ]
+    },
+    {
+      "persona": 25,
+      "turns": [
+        {
+          "turn": 1,
+          "text": "hey, i'm riya",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "name",
+              "value": "riya",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 12,
+          "cum_tokens_pcsg": 5
+        },
+        {
+          "turn": 2,
+          "text": "i live in patna",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "location",
+              "value": "patna",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 22,
+          "cum_tokens_pcsg": 11
+        },
+        {
+          "turn": 3,
+          "text": "i work as a electrician",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "occupation",
+              "value": "electrician",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 34,
+          "cum_tokens_pcsg": 18
+        },
+        {
+          "turn": 4,
+          "text": "i'm 46",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "age_range",
+              "value": "46",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 42,
+          "cum_tokens_pcsg": 24
+        },
+        {
+          "turn": 5,
+          "text": "i speakkorean",
+          "assertions": [
+            {
+              "dimension": "skill",
+              "key": "korean",
+              "value": "korean",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 50,
+          "cum_tokens_pcsg": 30
+        },
+        {
+          "turn": 6,
+          "text": "i love biryani",
+          "assertions": [
+            {
+              "dimension": "preference",
+              "key": "food_likes",
+              "value": "biryani",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 60,
+          "cum_tokens_pcsg": 38
+        },
+        {
+          "turn": 7,
+          "text": "i also really like sushi",
+          "assertions": [
+            {
+              "dimension": "preference",
+              "key": "food_likes",
+              "value": "sushi",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 70,
+          "cum_tokens_pcsg": 37
+        },
+        {
+          "turn": 8,
+          "text": "i started swimming",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "swimming",
+              "value": "swimming",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 76,
+          "cum_tokens_pcsg": 44
+        },
+        {
+          "turn": 9,
+          "text": "i do hiking regularly",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "hiking",
+              "value": "hiking",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 84,
+          "cum_tokens_pcsg": 50
+        },
+        {
+          "turn": 10,
+          "text": "i'm good at excel",
+          "assertions": [
+            {
+              "dimension": "skill",
+              "key": "excel",
+              "value": "excel",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 94,
+          "cum_tokens_pcsg": 56
+        },
+        {
+          "turn": 11,
+          "text": "what can you help me with?",
+          "assertions": [
+            {
+              "dimension": "skill",
+              "key": "excel",
+              "value": "excel",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 108,
+          "cum_tokens_pcsg": 56
+        },
+        {
+          "turn": 12,
+          "text": "my cat's name is mochi",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "pet",
+              "value": "cat",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 122,
+          "cum_tokens_pcsg": 61
+        },
+        {
+          "turn": 13,
+          "text": "my brother is a pilot",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "brother",
+              "value": "brother",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 132,
+          "cum_tokens_pcsg": 69
+        },
+        {
+          "turn": 14,
+          "text": "i believe work-life balance",
+          "assertions": [
+            {
+              "dimension": "belief",
+              "key": "work_life_balance",
+              "value": "work_life_balance",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 142,
+          "cum_tokens_pcsg": 78
+        },
+        {
+          "turn": 15,
+          "text": "i'm working on a podcast",
+          "assertions": [
+            {
+              "dimension": "project",
+              "key": "podcast",
+              "value": "podcast",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 154,
+          "cum_tokens_pcsg": 84
+        },
+        {
+          "turn": 16,
+          "text": "i want to learn to code",
+          "assertions": [
+            {
+              "dimension": "goal",
+              "key": "learning",
+              "value": "coding",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 166,
+          "cum_tokens_pcsg": 89
+        },
+        {
+          "turn": 17,
+          "text": "i think i'm kind of into astronomy",
+          "assertions": [
+            {
+              "dimension": "interest",
+              "key": "topic",
+              "value": "astronomy",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 182,
+          "cum_tokens_pcsg": 95
+        },
+        {
+          "turn": 18,
+          "text": "ugh i'm so tired today",
+          "assertions": [],
+          "cum_tokens_full": 194,
+          "cum_tokens_pcsg": 95
+        },
+        {
+          "turn": 19,
+          "text": "actually i moved to surat",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "location",
+              "value": "surat",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 206,
+          "cum_tokens_pcsg": 94
+        },
+        {
+          "turn": 20,
+          "text": "i switched jobs, now i'm a nurse",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "occupation",
+              "value": "nurse",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 224,
+          "cum_tokens_pcsg": 93
+        },
+        {
+          "turn": 21,
+          "text": "i stopped swimming",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "swimming",
+              "value": "swimming",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 230,
+          "cum_tokens_pcsg": 93
+        },
+        {
+          "turn": 22,
+          "text": "anyway, how are you?",
+          "assertions": [],
+          "cum_tokens_full": 244,
+          "cum_tokens_pcsg": 93
+        },
+        {
+          "turn": 23,
+          "text": "my brother visited yesterday",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "brother",
+              "value": "brother",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 252,
+          "cum_tokens_pcsg": 93
+        },
+        {
+          "turn": 24,
+          "text": "what do you know about me?",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "brother",
+              "value": "brother",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 266,
+          "cum_tokens_pcsg": 93
+        },
+        {
+          "turn": 25,
+          "text": "cool, thanks!",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "brother",
+              "value": "brother",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 274,
+          "cum_tokens_pcsg": 93
+        }
+      ]
+    },
+    {
+      "persona": 26,
+      "turns": [
+        {
+          "turn": 1,
+          "text": "hey, i'm zoya",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "name",
+              "value": "zoya",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 12,
+          "cum_tokens_pcsg": 4
+        },
+        {
+          "turn": 2,
+          "text": "i live in bangalore",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "location",
+              "value": "bangalore",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 22,
+          "cum_tokens_pcsg": 10
+        },
+        {
+          "turn": 3,
+          "text": "i work as a lawyer",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "occupation",
+              "value": "lawyer",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 32,
+          "cum_tokens_pcsg": 17
+        },
+        {
+          "turn": 4,
+          "text": "i'm 50",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "age_range",
+              "value": "50s",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 40,
+          "cum_tokens_pcsg": 24
+        },
+        {
+          "turn": 5,
+          "text": "i speakgerman",
+          "assertions": [
+            {
+              "dimension": "skill",
+              "key": "german",
+              "value": "german",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 48,
+          "cum_tokens_pcsg": 31
+        },
+        {
+          "turn": 6,
+          "text": "i love sushi",
+          "assertions": [
+            {
+              "dimension": "preference",
+              "key": "food_likes",
+              "value": "sushi",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 54,
+          "cum_tokens_pcsg": 38
+        },
+        {
+          "turn": 7,
+          "text": "i also really like paneer",
+          "assertions": [
+            {
+              "dimension": "preference",
+              "key": "food_likes",
+              "value": "paneer",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 66,
+          "cum_tokens_pcsg": 39
+        },
+        {
+          "turn": 8,
+          "text": "i started surfing",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "surfing",
+              "value": "surfing",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 72,
+          "cum_tokens_pcsg": 47
+        },
+        {
+          "turn": 9,
+          "text": "i do baking regularly",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "baking",
+              "value": "baking",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 80,
+          "cum_tokens_pcsg": 53
+        },
+        {
+          "turn": 10,
+          "text": "i'm good at python",
+          "assertions": [
+            {
+              "dimension": "skill",
+              "key": "python",
+              "value": "python",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 90,
+          "cum_tokens_pcsg": 58
+        },
+        {
+          "turn": 11,
+          "text": "what can you help me with?",
+          "assertions": [
+            {
+              "dimension": "skill",
+              "key": "python",
+              "value": "python",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 104,
+          "cum_tokens_pcsg": 58
+        },
+        {
+          "turn": 12,
+          "text": "my dog's name is max",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "pet",
+              "value": "dog",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 116,
+          "cum_tokens_pcsg": 63
+        },
+        {
+          "turn": 13,
+          "text": "my brother is a chef",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "brother",
+              "value": "brother",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 126,
+          "cum_tokens_pcsg": 71
+        },
+        {
+          "turn": 14,
+          "text": "i believe climate action matters",
+          "assertions": [
+            {
+              "dimension": "belief",
+              "key": "climate_action_matters",
+              "value": "climate_action_matters",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 136,
+          "cum_tokens_pcsg": 83
+        },
+        {
+          "turn": 15,
+          "text": "i'm working on a mobile app",
+          "assertions": [
+            {
+              "dimension": "project",
+              "key": "mobile_app",
+              "value": "mobile app",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 150,
+          "cum_tokens_pcsg": 90
+        },
+        {
+          "turn": 16,
+          "text": "i want to learn to code",
+          "assertions": [
+            {
+              "dimension": "skill",
+              "key": "coding",
+              "value": "coding",
+              "confidence": 0.9,
+              "correct": 0
+            }
+          ],
+          "cum_tokens_full": 162,
+          "cum_tokens_pcsg": 96
+        },
+        {
+          "turn": 17,
+          "text": "i think i'm kind of into philosophy",
+          "assertions": [
+            {
+              "dimension": "interest",
+              "key": "topic",
+              "value": "philosophy",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 178,
+          "cum_tokens_pcsg": 103
+        },
+        {
+          "turn": 18,
+          "text": "ugh i'm so tired today",
+          "assertions": [],
+          "cum_tokens_full": 190,
+          "cum_tokens_pcsg": 103
+        },
+        {
+          "turn": 19,
+          "text": "actually i moved to chennai",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "location",
+              "value": "chennai",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 202,
+          "cum_tokens_pcsg": 103
+        },
+        {
+          "turn": 20,
+          "text": "i switched jobs, now i'm a designer",
+          "assertions": [
+            {
+              "dimension": "identity",
+              "key": "occupation",
+              "value": "designer",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 220,
+          "cum_tokens_pcsg": 103
+        },
+        {
+          "turn": 21,
+          "text": "i stopped surfing",
+          "assertions": [
+            {
+              "dimension": "habit",
+              "key": "surfing",
+              "value": "surfing",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 226,
+          "cum_tokens_pcsg": 103
+        },
+        {
+          "turn": 22,
+          "text": "anyway, how are you?",
+          "assertions": [],
+          "cum_tokens_full": 240,
+          "cum_tokens_pcsg": 103
+        },
+        {
+          "turn": 23,
+          "text": "my brother visited yesterday",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "brother",
+              "value": "brother",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 248,
+          "cum_tokens_pcsg": 103
+        },
+        {
+          "turn": 24,
+          "text": "what do you know about me?",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "brother",
+              "value": "brother",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 262,
+          "cum_tokens_pcsg": 103
+        },
+        {
+          "turn": 25,
+          "text": "cool, thanks!",
+          "assertions": [
+            {
+              "dimension": "relationship",
+              "key": "brother",
+              "value": "brother",
+              "confidence": 0.9,
+              "correct": 1
+            }
+          ],
+          "cum_tokens_full": 270,
+          "cum_tokens_pcsg": 103
+        }
+      ]
+    }
+  ]
+}

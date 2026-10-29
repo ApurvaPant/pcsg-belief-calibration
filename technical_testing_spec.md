@@ -1,6 +1,6 @@
 # technical_testing_spec.md
 
-Paste everything below the line into Claude Code.
+Paste everything below the line into coding agent.
 
 ---
 

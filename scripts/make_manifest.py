@@ -28,11 +28,13 @@ INPUTS = [
     "backend/app/extraction.py",
     "results/analysis/error_audit_v2_raj.csv",
     "results/analysis/error_audit_v2_key.csv",
+    "results/lme/lme_gptoss_20261026b/judge_check_lme_human.csv",
 ]
 OUTPUT_GLOBS = ["results/tables/*", "results/figures/F1*", "results/figures/F2*",
                 "results/figures/F3*", "results/analysis_v2/*.md",
                 "results/analysis_v2/*.csv", "results/analysis_v2/*.json",
-                "results/analysis_v2/*.png"]
+                "results/analysis_v2/*.png",
+                "results/lme/lme_gptoss_20261026b/JUDGE_CHECK.md"]
 
 
 def sha(p):

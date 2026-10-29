@@ -1,0 +1,13 @@
+﻿{
+    "current":  "tier3_longmemeval",
+    "active_hours":  8.79,
+    "run_id":  "main_20261015_000553",
+    "stages":  {
+                   "tier1_replay_calibration":  "done (mode=live personas=60/60 calls=12787 qa_q=0)",
+                   "tier3_longmemeval":  "running",
+                   "tier2_figures":  "done",
+                   "tier2_qa":  "done (mode=live personas=0/60 calls=1883 qa_q=264)",
+                   "tier1_figures":  "done"
+               },
+    "personas":  60
+}
