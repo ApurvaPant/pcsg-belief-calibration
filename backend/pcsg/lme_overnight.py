@@ -26,7 +26,10 @@ JUDGE_SOURCE = ("github.com/xiaowu0162/LongMemEval src/evaluation/evaluate_qa.py
 T_KU = "I will give you a question, a correct answer, and a response from a model. Please answer yes if the response contains the correct answer. Otherwise, answer no. If the response contains some previous information along with an updated answer, the response should be considered as correct as long as the updated answer is the required answer.\n\nQuestion: {}\n\nCorrect Answer: {}\n\nModel Response: {}\n\nIs the model response correct? Answer yes or no only."
 T_SSP = "I will give you a question, a rubric for desired personalized response, and a response from a model. Please answer yes if the response satisfies the desired response. Otherwise, answer no. The model does not need to reflect all the points in the rubric. The response is correct as long as it recalls and utilizes the user's personal information correctly.\n\nQuestion: {}\n\nRubric: {}\n\nModel Response: {}\n\nIs the model response correct? Answer yes or no only."
 T_ABS = "I will give you an unanswerable question, an explanation, and a response from a model. Please answer yes if the model correctly identifies the question as unanswerable. The model could say that the information is incomplete, or some other information is given but the asked information is not.\n\nQuestion: {}\n\nExplanation: {}\n\nModel Response: {}\n\nDoes the model correctly identify the question as unanswerable? Answer yes or no only."
-LABEL = "model: gpt-oss-20b (Nemotron 3 Super withdrawn from the hosted API on 2026-10-25)"
+LABEL = ("memory+answering: openai/gpt-oss-20b (reasoning_effort low); judge: minimaxai/minimax-m3.1-flash. "
+         "Nemotron 3 Super was withdrawn from the hosted API 2026-10-25; gpt-oss-20b is retained for the "
+         "structured write path because faster models (nemotron-3.5-lightning 0/5, minimax 3/5) did not "
+         "return valid 5/5 JSON frames on this endpoint, while gpt-oss-20b did (5/5).")
 SYSTEMS = ["no_memory", "full_context", "vector_rag", "pcsg"]
 
 
@@ -48,6 +51,9 @@ def _setup_models():
     settings.llm.models["judge_longmemeval"] = "minimaxai/minimax-m3.1-flash"
     settings.llm.request_params = {**settings.llm.request_params,
                                    "openai/gpt-oss-20b": {"reasoning_effort": "low"}}
+    settings.llm.timeout_seconds = 90     # per-call timeout (task: 90 s)
+    from app import llm as _llm
+    _llm._MAX_RETRIES = 3                  # task: max 3 retries (exp backoff + jitter already in llm.py)
     return settings
 
 
@@ -58,6 +64,18 @@ def _select(questions, mode):
     abst = [q for q in questions if q["is_abstention"]]
     if mode == "pilot":
         return ku[:2] + abst[:1] + ssp[:2]
+    if mode == "ordered":
+        # All _abs first (balanced partial runs), then KU:SSP interleaved 2:1,
+        # KU/SSP each shuffled with seed 2026. Processed in this exact order.
+        rng = random.Random(2026); rng.shuffle(ku); rng.shuffle(ssp)
+        inter, ki, si = [], 0, 0
+        while ki < len(ku) or si < len(ssp):
+            for _ in range(2):
+                if ki < len(ku):
+                    inter.append(ku[ki]); ki += 1
+            if si < len(ssp):
+                inter.append(ssp[si]); si += 1
+        return abst + inter
     if mode == "75":
         rng = random.Random(2026)
         return sorted(abst + rng.sample(ku, min(49, len(ku))) + rng.sample(ssp, min(20, len(ssp))),
@@ -261,13 +279,25 @@ def write_stats(questions, outdir):
     (outdir / "STATS.md").write_text("\n".join(L), encoding="utf-8")
 
 
+def _parse_hhmm(s):
+    if not s:
+        return None
+    hh, mm = map(int, s.split(":"))
+    now = dt.datetime.now()
+    c = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
+    return c + dt.timedelta(days=1) if c < now else c
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
-    ap.add_argument("--select", default="full", choices=["full", "75", "pilot"])
-    ap.add_argument("--until", default=None, help="HH:MM local wall-clock stop (don't START new questions after)")
+    ap.add_argument("--select", default="full", choices=["full", "75", "pilot", "ordered"])
+    ap.add_argument("--until", default=None, help="HH:MM: stop STARTING new questions after this")
+    ap.add_argument("--hard-until", dest="hard_until", default=None,
+                    help="HH:MM: hard stop — stop even between in-flight questions")
+    ap.add_argument("--limit", type=int, default=0, help="process only the first N of the ordered todo (0=all; pilot)")
     ap.add_argument("--rate", type=float, default=35)
-    ap.add_argument("--workers", type=int, default=6, help="parallel questions (each has its own thread-local DB)")
+    ap.add_argument("--workers", type=int, default=4, help="parallel questions (each has its own thread-local DB)")
     args = ap.parse_args(argv)
     outdir = pathlib.Path(args.out); outdir.mkdir(parents=True, exist_ok=True)
     _setup_models()
@@ -283,47 +313,83 @@ def main(argv=None):
     recs_path = outdir / "answers.jsonl"
     records = [json.loads(l) for l in recs_path.read_text(encoding="utf-8").splitlines()] if recs_path.exists() else []
     pause = pathlib.Path(__file__).resolve().parents[2] / "results" / "PAUSE"
-    cutoff = None
-    if args.until:
-        hh, mm = map(int, args.until.split(":"))
-        now = dt.datetime.now()
-        cutoff = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
-        if cutoff < now:
-            cutoff += dt.timedelta(days=1)
+    cutoff = _parse_hhmm(args.until)
+    hard = _parse_hhmm(args.hard_until)
     todo = [q for q in chosen if q["question_id"] not in done]
-    print(f"[lme] select={args.select} total={len(chosen)} todo={len(todo)} "
-          f"workers={args.workers} cutoff={args.until or 'none'}")
+    if args.limit and args.limit > 0:
+        todo = todo[:args.limit]
+    print(f"[lme] select={args.select} total={len(chosen)} done={len(done)} todo={len(todo)} "
+          f"workers={args.workers} until={args.until or '-'} hard={args.hard_until or '-'}")
     import threading, concurrent.futures as cf
     lock = threading.Lock()
     t0 = time.time(); counter = {"n": 0}
+    retries0 = len(llm.RETRY_LOG)
+
+    def _periodic_report():
+        try:
+            good = [r for r in records if r.get("systems") and not r.get("failed")]
+            if len(good) >= 10:
+                write_reports(good, outdir)
+                (outdir / "judged.jsonl").write_text("\n".join(json.dumps(r) for r in records), encoding="utf-8")
+        except Exception as e:  # noqa: BLE001 — a partial report must never kill the run
+            print(f"[lme] periodic T5 skipped: {type(e).__name__}: {str(e)[:60]}")
+
+    prog = outdir / "run_progress.log"
 
     def _process(q):
-        if pause.exists() or (cutoff and dt.datetime.now() >= cutoff):
+        if pause.exists() or (cutoff and dt.datetime.now() >= cutoff) or (hard and dt.datetime.now() >= hard):
             return "skip"
+        q_t0 = time.time()
+        calls_before = int(llm.cost_summary().get("calls", 0))
         try:
             rec = _answer_one(q)
+            status = "ok"
         except Exception as e:  # noqa: BLE001 — one bad question never stops the run
-            print(f"[lme] q {q['question_id']} failed: {type(e).__name__}: {str(e)[:80]}")
+            status = f"FAILED {type(e).__name__}: {str(e)[:60]}"
             rec = {"question_id": q["question_id"], "question_type": q["question_type"],
                    "is_abstention": bool(q["is_abstention"]), "failed": True, "systems": {}}
+        secs = time.time() - q_t0
         with lock:
             records.append(rec); done.add(q["question_id"]); counter["n"] += 1
             with open(recs_path, "a", encoding="utf-8") as fh:
                 fh.write(json.dumps(rec) + "\n")
             ck.write_text(json.dumps({"done": sorted(done)}), encoding="utf-8")
+            n = counter["n"]
+            cum_calls = int(llm.cost_summary().get("calls", 0))
+            # calls_delta brackets THIS question + whatever else finished meanwhile (4-way
+            # parallel), so it's an upper bound; cumulative rate is the honest speed signal.
+            el = (time.time() - t0) / 60.0
+            line = (f"[lme] DONE {q['question_id']} ({q['question_type']}{'/abs' if q['is_abstention'] else ''}) "
+                    f"{secs:.0f}s {status} | {n}/{len(todo)} done | ~{cum_calls-calls_before} calls bracket | "
+                    f"cum {cum_calls} calls, {cum_calls/el:.1f} calls/min")
+            print(line, flush=True)
+            with open(prog, "a", encoding="utf-8") as fh:
+                fh.write(line + "\n")
+            if n % 10 == 0:
+                print(f"[lme] {n} done; regenerating partial T5.md", flush=True)
+                _periodic_report()
         return "done"
 
     with cf.ThreadPoolExecutor(max_workers=max(1, args.workers)) as ex:
         for f in cf.as_completed([ex.submit(_process, q) for q in todo]):
             f.result()
     n_done = counter["n"]; elapsed = time.time() - t0
+    calls = int(llm.cost_summary().get("calls", 0))
+    retries = len(llm.RETRY_LOG) - retries0
+    metrics = {"n_done": n_done, "elapsed_min": round(elapsed / 60, 2), "calls": calls, "retries": retries,
+               "retry_rate": round(retries / calls, 4) if calls else 0.0,
+               "calls_per_q": round(calls / n_done, 1) if n_done else 0,
+               "min_per_q": round(elapsed / 60 / n_done, 2) if n_done else 0,
+               "calls_per_min": round(calls / (elapsed / 60), 1) if elapsed else 0,
+               "workers": args.workers, "spent_tokens": llm.spent_tokens()}
+    (outdir / "run_metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     if n_done:
-        print(f"[lme] processed {n_done} in {elapsed/60:.1f} min = {elapsed/n_done:.1f}s/q; "
-              f"projected 108 = {(elapsed/n_done)*108/60:.1f} min, 75 = {(elapsed/n_done)*75/60:.1f} min")
-    # judged.jsonl mirror (records already carry judge verdict+raw)
+        print(f"[lme] processed {n_done} in {elapsed/60:.1f} min | calls={calls} retries={retries} "
+              f"retry_rate={metrics['retry_rate']} | {metrics['calls_per_q']} calls/q, "
+              f"{metrics['min_per_q']} min/q, {metrics['calls_per_min']} calls/min")
     (outdir / "judged.jsonl").write_text("\n".join(json.dumps(r) for r in records), encoding="utf-8")
     good = [r for r in records if r.get("systems") and not r.get("failed")]
-    if good and args.select != "pilot":
+    if len(good) >= 10:
         write_reports(good, outdir)
     print(f"[lme] done: {len(good)} judged records -> {outdir}")
     return 0
