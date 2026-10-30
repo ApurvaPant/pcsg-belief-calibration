@@ -1,0 +1,9 @@
+# Analysis / reproduction dependencies (NOT needed to run the app or backend tests).
+# Used by scripts/make_figures.py and scripts/analysis_v2/*.py to regenerate the
+# paper's tables, figures and significance analysis offline.
+#   pip install -r backend/requirements.txt -r requirements-analysis.txt
+numpy>=2.0
+scipy>=1.13
+scikit-learn>=1.5
+matplotlib>=3.9
+tiktoken>=0.7

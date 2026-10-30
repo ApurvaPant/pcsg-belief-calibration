@@ -14,6 +14,7 @@ import numpy as np
 REPO = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "backend"))
 from pcsg.analysis import calibration as C
+from pcsg.analysis.report import rnd  # version-stable fixed-decimal formatting
 from app import signals
 from app.update import noisy_or
 
@@ -51,7 +52,7 @@ def link():
 
 def auroc_brier(p, y):
     p = np.asarray(p, float); y = np.asarray(y, int)
-    return round(C.auroc(p, y), 4), round(C.brier(p, y), 4)
+    return rnd(C.auroc(p, y)), rnd(C.brier(p, y))
 
 
 def main():
@@ -73,7 +74,7 @@ def main():
     fy = [r["correct_A"] for r in ftest]
     f_ev, _ = auroc_brier([r["evidence"] for r in ftest], fy)
     f_vb, _ = auroc_brier([r["verbalized"] for r in ftest], fy)
-    f_rho = round(float(spearmanr([r["evidence"] for r in ftest], [r["verbalized"] for r in ftest]).statistic), 4)
+    f_rho = rnd(float(spearmanr([r["evidence"] for r in ftest], [r["verbalized"] for r in ftest]).statistic))
     f_expl = collections.Counter(r.get("explicitness", "explicit") for r in ftest)
     L = ["# EVIDENCE_V2 — post-hoc deterministic explicitness (analysis_v2)", "",
          "**POST-HOC sensitivity analysis. `confidence_raw` is untouched.** OFFLINE, read-only.",

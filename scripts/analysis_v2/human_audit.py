@@ -16,6 +16,7 @@ import numpy as np
 REPO = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "backend"))
 from pcsg.analysis import calibration as C
+from pcsg.analysis.report import rnd  # version-stable fixed-decimal formatting
 from sklearn.metrics import cohen_kappa_score
 
 RD = REPO / "results" / "runs" / "main_20261015_000553"
@@ -51,7 +52,7 @@ def linked_with_value():
 
 def au(p, y):
     p = np.asarray(p, float); y = np.asarray(y, int)
-    return round(C.auroc(p, y), 4) if len(set(y.tolist())) > 1 else float("nan")
+    return rnd(C.auroc(p, y)) if len(set(y.tolist())) > 1 else "nan"
 
 
 def main():
@@ -89,8 +90,8 @@ def main():
     L += ["", "## 2. Rule vs human agreement (human lenient: correct|partly = correct)", "",
           "| rule | % agreement with human (lenient) | % agreement (strict) |", "|---|---|---|"]
     for rk in ("A", "C", "E"):
-        agl = round(np.mean([r[rk] == r["len"] for r in rows]), 4)
-        ags = round(np.mean([r[rk] == r["strict"] for r in rows]), 4)
+        agl = rnd(np.mean([r[rk] == r["len"] for r in rows]))
+        ags = rnd(np.mean([r[rk] == r["strict"] for r in rows]))
         L.append(f"| rule {rk} | {agl} | {ags} |")
     # 3. human-human kappa
     apurva = rd("error_audit_v2_apurva.csv")
@@ -98,7 +99,7 @@ def main():
         by = {r["id"]: r["human_label"] for r in apurva}
         pairs = [(r["human"], by[r["id"]]) for r in rows if r["id"] in by]
         k = cohen_kappa_score([a for a, _ in pairs], [b for _, b in pairs])
-        L += ["", f"## 3. Human-human Cohen's kappa (raj vs apurva): {round(float(k),4)} (n={len(pairs)})"]
+        L += ["", f"## 3. Human-human Cohen's kappa (raj vs apurva): {rnd(float(k))} (n={len(pairs)})"]
     else:
         L += ["", "## 3. Human-human Cohen's kappa", "- **SKIPPED: no second-annotator file "
               "(error_audit_v2_apurva.csv absent); only raj annotated.**"]

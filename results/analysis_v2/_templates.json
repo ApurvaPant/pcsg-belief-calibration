@@ -7,29 +7,29 @@
     "verbalized": {
       "linked_all": {
         "n": 313,
-        "acc": 0.8722,
-        "brier": 0.1256,
-        "auroc": 0.3718
+        "acc": "0.872",
+        "brier": "0.126",
+        "auroc": "0.372"
       },
       "unique_evidence": {
         "n": 14,
-        "acc": 0.8571,
-        "brier": 0.1261,
-        "auroc": 0.375
+        "acc": "0.857",
+        "brier": "0.126",
+        "auroc": "0.375"
       }
     },
     "self_consistency": {
       "linked_all": {
         "n": 313,
-        "acc": 0.8722,
-        "brier": 0.1221,
-        "auroc": 0.6184
+        "acc": "0.872",
+        "brier": "0.122",
+        "auroc": "0.618"
       },
       "unique_evidence": {
         "n": 14,
-        "acc": 0.8571,
-        "brier": 0.1032,
-        "auroc": 0.75
+        "acc": "0.857",
+        "brier": "0.103",
+        "auroc": "0.750"
       }
     }
   }

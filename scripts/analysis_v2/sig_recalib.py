@@ -14,6 +14,7 @@ import numpy as np
 REPO = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "backend"))
 from pcsg.analysis import calibration as C
+from pcsg.analysis.report import rnd  # version-stable fixed-decimal formatting
 
 RD = REPO / "results" / "runs" / "main_20261015_000553"
 OUT = REPO / "results" / "analysis_v2"; OUT.mkdir(parents=True, exist_ok=True)
@@ -110,8 +111,10 @@ def loo_platt(recs, sig, lab="correct_A"):
         f = C.fit_platt(ptr, ytr)
         oof_p += list(f(pte)); oof_y += list(yte)
     p = np.array(oof_p); y = np.array(oof_y)
-    return {"n": len(y), "folds": len(personas), "brier": round(C.brier(p, y), 4),
-            "ece15_equalmass": round(ece_equal_mass(p, y, 15), 4), "auroc": round(C.auroc(p, y), 4)}
+    # 3 dp: these come from an sklearn Platt fit and are not paper-headline numbers, so
+    # fix them at 3 dp to absorb cross-version solver wobble in the 4th decimal.
+    return {"n": len(y), "folds": len(personas), "brier": rnd(C.brier(p, y)),
+            "ece15_equalmass": rnd(ece_equal_mass(p, y, 15)), "auroc": rnd(C.auroc(p, y))}
 
 
 def main():
@@ -169,7 +172,7 @@ def main():
         orig_s = f"Brier {orig.get('brier')}, ECE {orig.get('ece')}, AUROC {orig.get('auroc')}"
         L.append(f"| {sig} | {lo['n']} | {lo['folds']} | {lo['brier']} | {lo['ece15_equalmass']} | {lo['auroc']} | {orig_s} |")
     (OUT / "STATS.md").write_text("\n".join(L) + "\n", encoding="utf-8")
-    json.dump({"paired": res, "brier_platt_sc": brier_platt, "base_brier": base_brier,
+    json.dump({"paired": res, "brier_platt_sc": round(brier_platt, 4), "base_brier": round(base_brier, 4),
                "delong": dl}, open(OUT / "_stats.json", "w"), indent=2)
     print("[stats] wrote results/analysis_v2/STATS.md")
     print(f"  rule A dAUROC={res['correct_A']['observed_dAUROC']} CI={res['correct_A']['ci95']} p={res['correct_A']['p_one_sided_sc_le_verb']}")

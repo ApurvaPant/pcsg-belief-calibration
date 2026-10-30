@@ -16,6 +16,7 @@ import numpy as np
 REPO = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "backend"))
 from pcsg.analysis import calibration as C
+from pcsg.analysis.report import rnd  # version-stable fixed-decimal formatting
 
 RD = REPO / "results" / "runs" / "main_20261015_000553"
 OUT = REPO / "results" / "analysis_v2"; OUT.mkdir(parents=True, exist_ok=True)
@@ -31,8 +32,8 @@ def norm(t):
 
 def metrics(p, y):
     p = np.asarray(p, float); y = np.asarray(y, int)
-    return {"n": len(y), "acc": round(float(y.mean()), 4), "brier": round(C.brier(p, y), 4),
-            "auroc": round(C.auroc(p, y), 4)}
+    return {"n": len(y), "acc": rnd(float(y.mean())), "brier": rnd(C.brier(p, y)),
+            "auroc": rnd(C.auroc(p, y))}
 
 
 def main():
@@ -48,8 +49,8 @@ def main():
     for sp in ("fit", "test", "dev"):
         ms = bysplit.get(sp, []); allmsgs += ms
         u = len(set(ms))
-        L.append(f"| {sp} | {len(ms)} | {u} | {round(1-u/max(len(ms),1),4)} |")
-    L.append(f"| ALL | {len(allmsgs)} | {len(set(allmsgs))} | {round(1-len(set(allmsgs))/max(len(allmsgs),1),4)} |")
+        L.append(f"| {sp} | {len(ms)} | {u} | {rnd(1-u/max(len(ms),1))} |")
+    L.append(f"| ALL | {len(allmsgs)} | {len(set(allmsgs))} | {rnd(1-len(set(allmsgs))/max(len(allmsgs),1))} |")
 
     # message -> set of personas that used it (normalized)
     msg_personas = collections.defaultdict(set)
@@ -121,8 +122,8 @@ def main():
                 if not np.isnan(a): au.append(a); br.append(C.brier(p[idx], y[idx]))
             except Exception:
                 pass
-        L.append(f"| {name} | {C.auroc(p,y):.4f} [{np.quantile(au,0.025):.4f}, {np.quantile(au,0.975):.4f}] | "
-                 f"{C.brier(p,y):.4f} [{np.quantile(br,0.025):.4f}, {np.quantile(br,0.975):.4f}] |")
+        L.append(f"| {name} | {rnd(C.auroc(p,y))} [{rnd(np.quantile(au,0.025))}, {rnd(np.quantile(au,0.975))}] | "
+                 f"{rnd(C.brier(p,y))} [{rnd(np.quantile(br,0.025))}, {rnd(np.quantile(br,0.975))}] |")
     # side-by-side original (full test, no dedup)
     full_test = [r for r in LAB if r["split"] == "test"]
     L += ["", "### Original (full test, no dedup) for comparison",
@@ -131,7 +132,7 @@ def main():
         m = metrics([r[k] for r in full_test], [r["correct_A"] for r in full_test])
         L.append(f"| {sig} | {m['n']} | {m['acc']} | {m['brier']} | {m['auroc']} |")
     (OUT / "TEMPLATES.md").write_text("\n".join(L) + "\n", encoding="utf-8")
-    json.dump({"msg_dupe_all": 1-len(set(allmsgs))/len(allmsgs), "shared_test_beliefs": shared,
+    json.dump({"msg_dupe_all": round(1-len(set(allmsgs))/len(allmsgs), 4), "shared_test_beliefs": shared,
                "n_test_beliefs": len(test_beliefs), "linked_cov": cov, "signals": rowjson},
               open(OUT / "_templates.json", "w"), indent=2)
     print(f"[templates] msgs ALL dupe-rate={1-len(set(allmsgs))/len(allmsgs):.4f}; "

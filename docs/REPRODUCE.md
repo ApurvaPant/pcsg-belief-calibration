@@ -4,12 +4,29 @@ Everything in the paper's analysis is regenerated **from the committed run folde
 zero API calls**. Only re-running the experiments themselves needs a model API.
 
 ## Fresh clone
+
+Supported Python: **3.11 – 3.14**. The clone folder is `pcsg-belief-calibration`.
+
 ```bash
-git clone <repo> && cd "Chat Interface"
+git clone https://github.com/ApurvaPant/pcsg-belief-calibration.git
+cd pcsg-belief-calibration
 python -m venv backend/.venv
-backend/.venv/Scripts/pip install -r backend/requirements.txt   # Windows
-# backend/.venv/bin/pip install -r backend/requirements.txt     # Linux/macOS
+# Windows:
+backend/.venv/Scripts/python -m pip install -r backend/requirements.txt -r requirements-analysis.txt
+# Linux/macOS:
+backend/.venv/bin/python -m pip install -r backend/requirements.txt -r requirements-analysis.txt
 ```
+
+Two requirements files, installed together:
+- `backend/requirements.txt` — the app + backend tests (FastAPI, pydantic, httpx, …).
+- `requirements-analysis.txt` — the reproduction scripts only (numpy, scipy,
+  scikit-learn, matplotlib, tiktoken). All pins are **ranges** so wheels resolve on
+  Python 3.11–3.14 without a C compiler.
+
+> **tiktoken** downloads its `cl100k_base` encoding once on first use (this needs
+> internet); it is cached afterwards. If the machine is fully offline, `build.py`
+> falls back to a chars/4 token estimate — this does not affect any SHA-checked table,
+> figure or analysis file (those are reformatted from committed run artifacts).
 
 ## Reproduce all tables + figures (NO API)
 ```powershell
@@ -26,7 +43,7 @@ This sets `PCSG_OFFLINE=1` (any non-mock LLM call raises), then:
    (hard-fails on input/CSV/MD/JSON drift; PNG diffs warn only, as they are matplotlib-backend dependent).
 
 **Expected runtime:** ~2–4 minutes on a laptop (bootstraps are seeded: `seed=2026`). Deterministic:
-a second run prints `CHECK OK: 15 inputs + 23 outputs match`.
+a second run prints `CHECK OK: 16 inputs + 24 outputs match`.
 
 ## What needs the API (re-running experiments) vs what does not
 | task | API? |

@@ -44,6 +44,15 @@ with **zero model calls** (the scripts set `PCSG_OFFLINE=1`, so any non-mock LLM
 call raises), then a SHA-256 manifest check confirms the outputs are bit-for-bit
 the committed artifacts.
 
+Supported Python: **3.11–3.14**. Install the app and analysis dependencies (ranges,
+so wheels resolve on 3.14 without a C compiler):
+
+```bash
+python -m venv backend/.venv
+backend/.venv/Scripts/python -m pip install -r backend/requirements.txt -r requirements-analysis.txt   # Windows
+# backend/.venv/bin/python -m pip install -r backend/requirements.txt -r requirements-analysis.txt      # Linux/macOS
+```
+
 ```powershell
 # Windows PowerShell
 powershell -ExecutionPolicy Bypass -File scripts\reproduce.ps1
@@ -105,7 +114,7 @@ with no key and no cost.
 
 ```bash
 cd backend
-py -3.13 -m venv .venv                 # Python 3.13 recommended
+py -3.13 -m venv .venv                 # Python 3.11–3.14 supported
 ./.venv/Scripts/python -m pip install -r requirements.txt
 cp .env.example .env                   # optional; defaults to mock provider
 ./.venv/Scripts/python -m uvicorn app.main:app --reload --port 8000

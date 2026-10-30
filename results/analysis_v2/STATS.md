@@ -22,5 +22,5 @@ test n=459, fit n=459, fit+test personas=48.
 
 | signal | OOF n | folds | Brier | ECE(15 eq-mass) | AUROC | original fit->test (Platt) |
 |---|---|---|---|---|---|---|
-| self_consistency | 918 | 48 | 0.0808 | 0.0327 | 0.6242 | Brier 0.0843, ECE 0.0224, AUROC 0.6802 |
-| verbalized | 918 | 48 | 0.0973 | 0.0548 | 0.5338 | Brier 0.0937, ECE 0.0188, AUROC 0.5513 |
+| self_consistency | 918 | 48 | 0.081 | 0.033 | 0.624 | Brier 0.0843, ECE 0.0224, AUROC 0.6802 |
+| verbalized | 918 | 48 | 0.097 | 0.051 | 0.534 | Brier 0.0937, ECE 0.0188, AUROC 0.5513 |

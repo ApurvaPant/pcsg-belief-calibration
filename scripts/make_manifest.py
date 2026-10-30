@@ -37,11 +37,21 @@ OUTPUT_GLOBS = ["results/tables/*", "results/figures/F1*", "results/figures/F2*"
                 "results/lme/lme_gptoss_20261026b/JUDGE_CHECK.md"]
 
 
+# Text files are hashed after normalizing CRLF/CR -> LF so the manifest is identical
+# on Windows and Linux regardless of git's autocrlf checkout; binaries (.png, .db, ...)
+# are hashed as raw bytes. See .gitattributes.
+TEXT_EXT = {".md", ".csv", ".json", ".jsonl", ".py", ".txt", ".yaml", ".yml", ".ps1", ".sh"}
+
+
 def sha(p):
     h = hashlib.sha256()
-    with open(p, "rb") as f:
-        for b in iter(lambda: f.read(65536), b""):
-            h.update(b)
+    if pathlib.Path(p).suffix.lower() in TEXT_EXT:
+        data = pathlib.Path(p).read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+        h.update(data)
+    else:
+        with open(p, "rb") as f:
+            for b in iter(lambda: f.read(65536), b""):
+                h.update(b)
     return h.hexdigest()
 
 

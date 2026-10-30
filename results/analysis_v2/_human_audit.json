@@ -7,12 +7,12 @@
   },
   "auroc": {
     "verbalized": {
-      "lenient": 0.2797,
-      "strict": 0.5514
+      "lenient": "0.280",
+      "strict": "0.551"
     },
     "self_consistency": {
-      "lenient": 0.3644,
-      "strict": 0.661
+      "lenient": "0.364",
+      "strict": "0.661"
     }
   }
 }

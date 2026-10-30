@@ -45,5 +45,5 @@ def aurc(records, signal_key="confidence"):
         correct += r["correct"]
         covs.append(i / len(known))
         risks.append(1 - correct / i)
-    trap = getattr(np, "trapezoid", np.trapz)
+    trap = getattr(np, "trapezoid", None) or np.trapz  # np.trapz removed in numpy 2.x
     return float(trap(risks, covs))

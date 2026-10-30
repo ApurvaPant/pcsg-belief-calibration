@@ -19,8 +19,8 @@
       "reps": 10000
     }
   },
-  "brier_platt_sc": 0.08428657118074102,
-  "base_brier": 0.09363919859882949,
+  "brier_platt_sc": 0.0843,
+  "base_brier": 0.0936,
   "delong": {
     "auc_sc": 0.6802,
     "auc_verb": 0.4487,
